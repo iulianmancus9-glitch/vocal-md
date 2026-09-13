@@ -157,8 +157,7 @@ Pașii întregi, cu ce se completează în `.env` și de unde se iau cheile, sun
 
 ```bash
 git clone <repo> /root/vocal-md && cd /root/vocal-md
-cp .env.example .env && nano .env
-docker compose up -d --build
+bash deploy/setup.sh
 docker compose logs -f worker
 ```
 

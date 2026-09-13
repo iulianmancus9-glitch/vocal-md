@@ -26,8 +26,13 @@ cd vocal-md
 ## 3. Configurarea, automat
 
 ```bash
-./deploy/setup.sh
+cd /root/vocal-md
+bash deploy/setup.sh
 ```
+
+Primul rând te duce în folderul potrivit indiferent unde te afli — dacă te-ai
+deconectat între timp, sesiunea nouă pornește din altă parte și `./deploy/setup.sh`
+ar da „no such file or directory".
 
 Scriptul îți cere cele două chei API (sau le găsește singur, dacă ai testat
 pipeline-ul pe acest server), inventează parolele care trebuie inventate,
