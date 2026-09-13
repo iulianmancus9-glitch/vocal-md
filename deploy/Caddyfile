@@ -1,16 +1,24 @@
-# Fragmentul pentru Caddy-ul care rulează deja pe gazdă.
-# Cloudflare stă în față, deci IP-ul real al vizitatorului vine din CF-Connecting-IP.
+# Configurarea pentru Caddy. Există două feluri de a rula Caddy, iar linia
+# `reverse_proxy` diferă între ele — e singura diferență, dar e esențială.
+#
+# ─────────────────────────────────────────────────────────────────────────
+#  CAZUL 1 — Caddy rulează ÎN CONTAINER (verifici cu: docker ps | grep caddy)
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Pentru un program din container, `127.0.0.1` înseamnă containerul însuși, nu
+# serverul. Deci Caddy trebuie să caute site-ul pe nume de container, iar pentru
+# asta cele două containere trebuie să fie în aceeași rețea Docker:
+#
+#     docker network connect vocal-md_default <numele-containerului-caddy>
+#
+# Apoi folosește blocul de mai jos AȘA CUM E.
 
 vocal.md, www.vocal.md {
 	encode zstd gzip
 
-	# Fișierele audio pleacă prin route handler, care verifică semnătura și plata.
-	reverse_proxy 127.0.0.1:3000 {
+	reverse_proxy vocal-md-web-1:3000 {
+		# Cloudflare stă în față, deci IP-ul real al vizitatorului vine de la el.
 		header_up X-Real-IP {http.request.header.CF-Connecting-IP}
-		# Generările lungi trec prin coadă, dar descărcarea unui mp3 poate dura.
-		transport http {
-			read_timeout 300s
-		}
 	}
 
 	header {
@@ -21,7 +29,17 @@ vocal.md, www.vocal.md {
 	}
 
 	log {
-		output file /var/log/caddy/vocal.md.log
+		output stdout
 		format json
 	}
 }
+
+# ─────────────────────────────────────────────────────────────────────────
+#  CAZUL 2 — Caddy e instalat pe server (there's /etc/caddy/Caddyfile)
+# ─────────────────────────────────────────────────────────────────────────
+#
+# Atunci Caddy și site-ul sunt pe aceeași mașină, deci schimbi o singură linie:
+#
+#     reverse_proxy 127.0.0.1:3000 {
+#
+# și scoți blocul `log`, pentru că un Caddy de sistem scrie deja în jurnalul lui.
