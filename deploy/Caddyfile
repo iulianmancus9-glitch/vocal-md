@@ -1,0 +1,27 @@
+# Fragmentul pentru Caddy-ul care rulează deja pe gazdă.
+# Cloudflare stă în față, deci IP-ul real al vizitatorului vine din CF-Connecting-IP.
+
+vocal.md, www.vocal.md {
+	encode zstd gzip
+
+	# Fișierele audio pleacă prin route handler, care verifică semnătura și plata.
+	reverse_proxy 127.0.0.1:3000 {
+		header_up X-Real-IP {http.request.header.CF-Connecting-IP}
+		# Generările lungi trec prin coadă, dar descărcarea unui mp3 poate dura.
+		transport http {
+			read_timeout 300s
+		}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/vocal.md.log
+		format json
+	}
+}

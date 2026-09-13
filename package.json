@@ -1,0 +1,45 @@
+{
+  "name": "vocal-md",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "worker": "tsx src/worker/index.ts",
+    "worker:dev": "tsx watch src/worker/index.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/lib/db/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "db:verify": "tsx scripts/verify-schema.ts"
+  },
+  "dependencies": {
+    "@paddle/paddle-node-sdk": "^3.10.0",
+    "drizzle-orm": "^0.45.2",
+    "lucide-react": "^1.45.0",
+    "nanoid": "^6.0.1",
+    "next": "^16.3.5",
+    "pg": "^8.23.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "resend": "^6.28.0",
+    "zod": "^4.6.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/pg": "^8.15.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9",
+    "eslint-config-next": "^16.3.5",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

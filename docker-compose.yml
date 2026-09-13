@@ -1,0 +1,83 @@
+# ══════════════════════════════════════════════════════════════
+#  VOCAL MD — VPS Ubuntu 24.04
+#
+#  Caddy rulează deja pe gazdă și termină HTTPS pentru vocal.md, deci web-ul
+#  ascultă doar pe 127.0.0.1. Nimic din stivă nu e expus direct în internet.
+#
+#    docker compose up -d --build
+#    docker compose logs -f worker
+# ══════════════════════════════════════════════════════════════
+
+name: vocal-md
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vocal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?parola bazei de date lipsește din .env}
+      POSTGRES_DB: ${POSTGRES_DB:-vocalmd}
+      # Fără asta, un restore de backup poate ajunge cu altă colație decât baza.
+      POSTGRES_INITDB_ARGS: '--locale-provider=icu --icu-locale=ro-RO --encoding=UTF8'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/backup:/backup
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-vocal} -d ${POSTGRES_DB:-vocalmd}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    # Baza nu are nevoie de port pe gazdă; se accesează din rețeaua compose.
+    expose:
+      - '5432'
+
+  # Rulează migrările și iese. Web-ul și worker-ul pornesc doar după ce a reușit.
+  migrate:
+    build: .
+    restart: 'no'
+    env_file: .env
+    command: ['npx', 'tsx', 'src/lib/db/migrate.ts']
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    # Caddy de pe gazdă face reverse proxy aici.
+    ports:
+      - '127.0.0.1:3000:3000'
+    volumes:
+      - audio:/data/audio
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:3000/api/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  worker:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    command: ['npm', 'run', 'worker']
+    volumes:
+      - audio:/data/audio
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    # Worker-ul așteaptă generările; îi dăm timp să termine jobul curent la oprire.
+    stop_grace_period: 45s
+
+volumes:
+  pgdata:
+  audio:

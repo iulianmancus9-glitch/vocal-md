@@ -1,0 +1,21 @@
+/* Stilurile prototipului intră aici la portarea interfeței. Deocamdată doar temelia. */
+:root {
+  color-scheme: light;
+  --ink: #16161a;
+  --ink-2: #55555f;
+  --line: #ececf1;
+  --violet: #6C4CF1;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #fbfbfd;
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font: inherit; cursor: pointer; background: none; border: 0; color: inherit; }
