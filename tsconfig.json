@@ -8,7 +8,7 @@
     ],
     "module": "esnext",
     "moduleResolution": "bundler",
-    "allowJs": false,
+    "allowJs": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noEmit": true,

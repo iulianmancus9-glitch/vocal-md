@@ -8,7 +8,8 @@
  * țină o cerere HTTP deschisă.
  */
 import { hostname } from 'node:os';
-import { pool } from '@/lib/db';
+import { sql } from 'drizzle-orm';
+import { db, pool } from '@/lib/db';
 import type { Job } from '@/lib/db/schema';
 import { claimNext, completeJob, enqueue, failJob, requeueStaleJobs } from '@/lib/queue/queue';
 import { handleCleanup } from '@/lib/queue/handlers/cleanup';
@@ -59,18 +60,44 @@ async function runOne(job: Job): Promise<void> {
   }
 }
 
+/**
+ * Baza poate să nu fie gata în clipa în care pornim containerul, iar o repornire
+ * a ei nu are voie să omoare worker-ul. Așteptăm, nu murim.
+ */
+async function waitForDb(): Promise<void> {
+  for (let attempt = 1; running; attempt++) {
+    try {
+      await db.execute(sql`select 1`);
+      if (attempt > 1) console.log(`Baza răspunde (încercarea ${attempt}).`);
+      return;
+    } catch (err) {
+      const wait = Math.min(30, 2 ** Math.min(attempt, 4));
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Baza nu răspunde (${msg}). Reîncerc peste ${wait}s.`);
+      await sleep(wait * 1000);
+    }
+  }
+}
+
 async function loop(): Promise<void> {
   console.log(`Worker ${WORKER_ID} pornit.`);
+  await waitForDb();
 
-  const requeued = await requeueStaleJobs();
-  if (requeued) console.log(`Am repus în coadă ${requeued} joburi rămase blocate.`);
+  try {
+    const requeued = await requeueStaleJobs();
+    if (requeued) console.log(`Am repus în coadă ${requeued} joburi rămase blocate.`);
+  } catch (err) {
+    // Curățenia de la pornire e utilă, nu esențială: dacă pică, mergem mai departe.
+    console.error('Nu am putut repune joburile blocate:', err);
+  }
 
   let lastCleanup = 0;
 
   while (running) {
     if (Date.now() - lastCleanup > CLEANUP_EVERY_MS) {
       lastCleanup = Date.now();
-      await enqueue('cleanup', null, { maxAttempts: 1 });
+      await enqueue('cleanup', null, { maxAttempts: 1 }).catch((err) =>
+        console.error('Nu am putut programa curățenia:', err));
     }
 
     let job: Job | null = null;
@@ -78,7 +105,7 @@ async function loop(): Promise<void> {
       job = await claimNext(WORKER_ID);
     } catch (err) {
       console.error('Nu pot citi coada:', err);
-      await sleep(5000);
+      await waitForDb();
       continue;
     }
 

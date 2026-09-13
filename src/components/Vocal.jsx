@@ -1,4 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+'use client';
+
+/**
+ * Formularul Vocal MD, portat din prototipul v7.
+ *
+ * Ecranele și stilurile sunt cele testate, neatinse. Ce s-a schimbat e că toate
+ * datele vin acum de la server: versurile de la Gemini, piesele de la Suno,
+ * fișierele audio prin linkuri semnate. Nimic nu mai e simulat în pagină.
+ *
+ * Starea comenzii o ține serverul, nu browserul. Pagina întreabă periodic „unde
+ * suntem?" și desenează ce i se răspunde — așa, un telefon care intră în
+ * stand-by la mijlocul generării găsește melodia gata când revine.
+ */
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { api } from '@/lib/client';
 import {
   Check, ArrowLeft, ArrowRight, Heart, Users, PartyPopper, Music2, Star, Mic2,
   Disc3, Guitar, Piano, Flame, Radio, Pencil, PenLine, RefreshCw, Play, Pause,
@@ -75,121 +90,12 @@ const STORY_EXAMPLE =
 
 const STEPS = ['Stilul', 'Personalizare', 'Pentru cine', 'Povestea', 'Limba', 'Gata'];
 
-const DEMO_LYRICS = `[Strofa 1]
-Dimineața se ridică peste casa de pe deal,
-Tu ești prima care râde, eu sunt ultimul la mal.
-Ai purtat pe umeri anii fără să te plângi o dată
-Și-ai crescut din nimic lumea care astăzi îmi e toată.
-
-[Refren]
-Maria, Maria, tu ești cântecul din mine,
-Tot ce am mai bun pe lume am învățat de la tine.
-Dacă viața mi-ar da timpul înapoi ca să-l aleg,
-Tot pe drumul tău aș merge, tot cu tine l-aș petrec.
-
-[Strofa 2]
-Mâinile tale știu drumul spre orice durere-a mea,
-Le-am văzut muncind în tăcere, n-ai cerut nimic în schimb.
-Azi îți scriu ce nu-ți spusesem, că mi-a fost rușine, poate —
-Că din tot ce am pe lume, tu ești partea cea mai mare.`;
-
-/* ══════════════════════════════════════════════════════════════
-   TEXTE LEGALE
-   ══════════════════════════════════════════════════════════════ */
-
-const LEGAL = {
-  ro: {
-    tabs: { terms: 'Termeni și condiții', refund: 'Politica de rambursare', privacy: 'Confidențialitate' },
-    terms: {
-      date: 'Data intrării în vigoare: 13 septembrie 2026',
-      intro: 'Bun venit pe Vocal MD! Prin accesarea site-ului nostru și achiziționarea serviciilor noastre, sunteți de acord să respectați următorii Termeni și Condiții. Vă rugăm să îi citiți cu atenție înainte de a plasa o comandă.',
-      s: [
-        { h: '1. Descrierea serviciului', p: ['Vocal MD oferă un serviciu care utilizează Inteligența Artificială (AI) pentru a genera piese muzicale personalizate și originale, pe baza instrucțiunilor textuale, poveștilor, genurilor și detaliilor furnizate de dumneavoastră („Clientul”).'] },
-        { h: '2. Livrare și termene', p: ['Odată ce plata dumneavoastră este procesată cu succes, sistemul nostru automat va începe generarea melodiei. În condiții normale, fișierele audio finale (format MP3) vor fi livrate la adresa de email furnizată de dumneavoastră în termen de 5 până la 10 minute. Vocal MD nu este responsabil pentru întârzierile cauzate de introducerea incorectă a adresei de email de către Client sau de întreruperile tehnice temporare ale serverelor terțe de AI sau de email.'] },
-        { h: '3. Politica de nerambursare (toate vânzările sunt finale)', p: ['Deoarece Vocal MD creează produse audio digitale extrem de personalizate, bazate strict pe detaliile dumneavoastră unice, toate vânzările sunt finale. Nu putem refolosi sau revinde melodia dumneavoastră personalizată. Prin urmare, nu oferim rambursări, schimburi sau revizuiri gratuite odată ce o comandă a fost plasată și procesul de generare audio a început.', 'Prin finalizarea achiziției, recunoașteți și sunteți de acord în mod explicit să renunțați la orice drept la rambursare.'] },
-        { h: '4. Calitate și așteptări', p: ['Deși utilizăm tehnologie AI de ultimă generație pentru a produce piese de înaltă calitate cu sunet de studio, natura creativă a inteligenței artificiale înseamnă că melodia finală, vocile și pronunția pot varia. Nu garantăm că melodia generată se va potrivi perfect cu o anumită linie melodică pe care o aveți în minte. AI-ul va interpreta povestea și genul selectat la capacitatea sa tehnică maximă.'] },
-        { h: '5. Drepturi de autor și utilizare', p: ['La livrarea melodiei, Vocal MD vă acordă o licență globală, neexclusivă și perpetuă pentru a utiliza piesa audio generată în scopuri personale, pentru distribuire pe rețelele sociale (ex. TikTok, Instagram, YouTube) și pentru a o oferi cadou. Nu puteți pretinde că ați compus sau interpretat dumneavoastră piesa și nici nu puteți înregistra piesa în sisteme de identificare a conținutului (precum YouTube Content ID) care ar putea bloca sau penaliza alți utilizatori.'] },
-        { h: '6. Reguli privind conținutul utilizatorului', p: ['Sunteți de acord să nu trimiteți instrucțiuni sau povești care conțin instigare la ură, promovează violența sau sunt explicit ilegale. Vocal MD își rezervă dreptul de a refuza prestarea serviciului și de a anula comenzile (cu o rambursare completă) dacă conținutul solicitat încalcă aceste reguli sau filtrele de siguranță ale partenerilor noștri de procesare AI.'] },
-        { h: '7. Limitarea răspunderii', p: ['Vocal MD nu va fi răspunzător pentru nicio daună indirectă, accidentală sau pe cale de consecință care rezultă din utilizarea serviciului nostru sau din incapacitatea de a primi melodia generată în timp util.'] },
-        { h: '8. Informații de contact', p: ['Dacă aveți nevoie de asistență sau aveți întrebări referitoare la acești Termeni, vă rugăm să ne contactați la: base.vocalmd@gmail.com'] },
-      ],
-      foot: 'Serviciul este furnizat de Wade Production S.R.L.',
-    },
-    refund: {
-      date: 'Data intrării în vigoare: 13 septembrie 2026',
-      intro: 'Vă mulțumim că ați ales Vocal MD. Ne străduim să vă oferim cea mai bună muzică personalizată, generată de AI.',
-      s: [
-        { h: 'Produse digitale', p: ['Datorită naturii serviciului nostru — crearea de fișiere audio digitale complet personalizate pe baza solicitărilor dumneavoastră specifice — toate vânzările sunt finale. Odată ce o comandă a fost procesată, iar melodia personalizată a fost generată și livrată, nu putem oferi rambursări, schimburi sau anulări.'] },
-        { h: 'Excepții', p: ['Vom emite o rambursare sau vom oferi o înlocuire numai în următoarele cazuri excepționale:'], ul: ['Nelivrare: dacă nu primiți melodia în intervalul de timp promis din cauza unei erori tehnice din partea noastră.', 'Fișier corupt: dacă fișierul audio livrat este corupt tehnic, gol sau nu poate fi redat și nu vă putem oferi o înlocuire funcțională.'] },
-        { h: 'Cum ne contactați', p: ['Dacă întâmpinați probleme cu comanda dumneavoastră, vă rugăm să contactați echipa noastră de suport la base.vocalmd@gmail.com în termen de 7 zile de la achiziție, iar noi vom face tot posibilul pentru a remedia situația.'] },
-      ],
-      foot: 'Serviciul este furnizat de Wade Production S.R.L.',
-    },
-    privacy: {
-      date: 'Data intrării în vigoare: 19 martie 2026',
-      intro: 'Bun venit pe Vocal MD! Confidențialitatea dumneavoastră este de o importanță critică pentru noi. Această Politică de Confidențialitate explică modul în care colectăm, utilizăm și protejăm informațiile dumneavoastră personale atunci când vizitați site-ul nostru și utilizați serviciul nostru pentru a crea melodii personalizate generate de AI.',
-      s: [
-        { h: '1. Informațiile pe care le colectăm', p: ['Pentru a vă oferi serviciul nostru de melodii personalizate, colectăm următoarele tipuri de informații:'], ul: ['Informații personale de contact: când plasați o comandă, colectăm adresa dumneavoastră de email. Avem nevoie de aceasta pentru a vă livra fișierele audio finale și pentru a vă trimite actualizări despre comandă.', 'Conținut furnizat de utilizator: colectăm textul pe care îl trimiteți în formularul nostru de comandă (de exemplu: povestea, numele, amintirile, ocaziile, stilul muzical și starea de spirit). Aceste date reprezintă fundația creativă necesară pentru a genera melodia dumneavoastră unică.', 'Informații de plată: toate plățile sunt procesate în siguranță prin intermediul procesatorului terț Paddle. Vocal MD nu colectează, nu stochează și nu are acces la numerele complete ale cardului dumneavoastră de credit sau la detaliile contului bancar.', 'Date colectate automat: la fel ca majoritatea site-urilor web, putem colecta informații tehnice standard, cum ar fi adresa dumneavoastră IP, tipul de browser și interacțiunile cu site-ul nostru, pentru a menține funcționarea optimă și sigură a acestuia.'] },
-        { h: '2. Cum utilizăm informațiile dumneavoastră', p: ['Utilizăm datele pe care le colectăm strict în următoarele scopuri:'], ul: ['Pentru a genera melodia dumneavoastră personalizată folosind tehnologii de inteligență artificială.', 'Pentru a livra piesele audio finalizate direct în căsuța dumneavoastră de email.', 'Pentru a procesa plata dumneavoastră în siguranță.', 'Pentru a oferi suport clienților și a răspunde la orice întrebări ați putea avea.'] },
-        { h: '3. Partajarea și dezvăluirea informațiilor', p: ['Vă respectăm confidențialitatea și nu vindem, nu închiriem și nu tranzacționăm informațiile dumneavoastră personale către marketeri externi. Partajăm datele dumneavoastră doar cu furnizori de servicii terți de încredere care ne ajută în operarea site-ului nostru și în livrarea serviciului nostru. Aceștia includ:'], ul: ['Parteneri de procesare AI: pentru a transforma povestea dumneavoastră scrisă într-o piesă muzicală.', 'Furnizori de servicii de email: pentru a automatiza livrarea melodiei în căsuța dumneavoastră de email.', 'Procesatorul de plăți Paddle: pentru a gestiona în siguranță tranzacția dumneavoastră financiară.'] },
-        { h: '4. Securitatea datelor', p: ['Tratăm cu seriozitate securitatea datelor dumneavoastră personale. Implementăm standarde comerciale rezonabile de tehnologie și securitate operațională pentru a vă proteja informațiile împotriva accesului neautorizat, alterării sau distrugerii.'] },
-        { h: '5. Drepturile dumneavoastră asupra datelor', p: ['Aveți dreptul de a solicita accesul la datele personale pe care le deținem despre dumneavoastră sau de a ne cere să le ștergem din bazele noastre de date active. Pentru a face o solicitare, vă rugăm să contactați echipa noastră de suport.'] },
-        { h: '6. Modificări ale acestei politici', p: ['Putem actualiza această politică din când în când pentru a reflecta modificările aduse practicilor noastre sau cerințelor legale. Vă încurajăm să revizuiți această pagină periodic.'] },
-        { h: '7. Contactați-ne', p: ['Dacă aveți întrebări, nelămuriri sau solicitări referitoare la această Politică de Confidențialitate, vă rugăm să ne contactați la: base.vocalmd@gmail.com'] },
-      ],
-      foot: 'Serviciul este furnizat de Wade Production S.R.L.',
-    },
-  },
-  en: {
-    tabs: { terms: 'Terms of Service', refund: 'Refund Policy', privacy: 'Privacy Policy' },
-    terms: {
-      date: 'Effective date: 13 September 2026',
-      intro: 'Welcome to Vocal MD! By accessing our website and purchasing our services, you agree to be bound by the following Terms of Service. Please read them carefully before placing an order.',
-      s: [
-        { h: '1. Service description', p: ['Vocal MD provides a service that uses Artificial Intelligence (AI) to generate customized, original musical tracks based on the text prompts, stories, genres, and details provided by you (the “Customer”).'] },
-        { h: '2. Delivery and timelines', p: ['Once your payment is successfully processed, our automated system will begin generating your song. Under normal circumstances, the final audio files (MP3 format) will be delivered to the email address you provided within 5 to 10 minutes. Vocal MD is not responsible for delays caused by incorrect email addresses entered by the Customer or temporary technical outages of third-party AI or email servers.'] },
-        { h: '3. No refunds policy (all sales are final)', p: ['Because Vocal MD creates highly personalized, custom digital audio products based specifically on your unique input, all sales are final. We cannot repurpose or resell your custom song. Therefore, we do not offer refunds, exchanges, or free revisions once an order has been submitted and the audio generation process has begun.', 'By completing your purchase, you explicitly acknowledge and agree to waive any right to a refund.'] },
-        { h: '4. Quality and expectations', p: ['While we utilize cutting-edge AI technology to produce high-quality studio-sounding tracks, the creative nature of AI means the final melody, vocals, and pronunciation may vary. We do not guarantee that the generated song will perfectly match a specific melody you may have in mind. The AI will interpret your story and genre selection to the best of its technical ability.'] },
-        { h: '5. Copyright and usage rights', p: ['Upon delivery of the song, Vocal MD grants you a worldwide, non-exclusive, perpetual license to use the generated audio track for personal use, social media sharing (e.g. TikTok, Instagram, YouTube), and gifting. You may not claim you composed or performed the track yourself, nor can you register the track with content ID systems (like YouTube Content ID) that might strike other users.'] },
-        { h: '6. User content guidelines', p: ['You agree not to submit prompts or stories that contain hate speech, promote violence, or are explicitly illegal. Vocal MD reserves the right to refuse service and cancel orders (with a full refund) if the requested content violates these guidelines or our AI processing partners’ safety filters.'] },
-        { h: '7. Limitation of liability', p: ['Vocal MD shall not be liable for any indirect, incidental, or consequential damages arising from the use of our service or the inability to receive the generated song in a timely manner.'] },
-        { h: '8. Contact information', p: ['If you need assistance or have questions regarding these Terms, please contact us at: base.vocalmd@gmail.com'] },
-      ],
-      foot: 'The service is provided by Wade Production S.R.L.',
-    },
-    refund: {
-      date: 'Effective date: 13 September 2026',
-      intro: 'Thank you for choosing Vocal MD. We strive to provide you with the best personalized AI-generated music.',
-      s: [
-        { h: 'Digital products', p: ['Due to the nature of our service — creating custom, personalized digital audio files based on your specific requests — all sales are final. Once an order has been processed and the custom song has been generated and delivered to you, we cannot offer refunds, exchanges, or cancellations.'] },
-        { h: 'Exceptions', p: ['We will issue a refund or provide a replacement only in the following exceptional cases:'], ul: ['Non-delivery: if you do not receive your song within the promised timeframe due to a technical error on our end.', 'Corrupted file: if the audio file delivered is technically corrupted, empty, or unplayable, and we are unable to provide a working replacement.'] },
-        { h: 'How to reach us', p: ['If you experience any issues with your order, please contact our support team at base.vocalmd@gmail.com within 7 days of your purchase, and we will do our best to resolve the issue.'] },
-      ],
-      foot: 'The service is provided by Wade Production S.R.L.',
-    },
-    privacy: {
-      date: 'Effective date: 19 March 2026',
-      intro: 'Welcome to Vocal MD! Your privacy is critically important to us. This Privacy Policy explains how we collect, use, and protect your personal information when you visit our website and use our service to create personalized AI-generated songs.',
-      s: [
-        { h: '1. Information we collect', p: ['To provide you with our custom song service, we collect the following types of information:'], ul: ['Personal contact information: when you place an order, we collect your email address. We need this to deliver your final audio files and send order updates.', 'User-provided content: we collect the text you submit in our order form (e.g. the story, names, memories, occasions, music style, and mood). This data is the creative foundation required to generate your unique song.', 'Payment information: all payments are processed securely through our third-party payment processor, Paddle. Vocal MD does not collect, store, or have access to your full credit card numbers or bank account details.', 'Automatically collected data: like most websites, we may collect standard technical information, such as your IP address, browser type, and interactions with our site, to keep our website running smoothly and securely.'] },
-        { h: '2. How we use your information', p: ['We use the data we collect strictly for the following business purposes:'], ul: ['To generate your personalized song using artificial intelligence technologies.', 'To deliver the finished audio tracks directly to your email inbox.', 'To process your payment securely.', 'To provide customer support and answer any questions you might have.'] },
-        { h: '3. Information sharing and disclosure', p: ['We respect your privacy and do not sell, rent, or trade your personal information to outside marketers. We only share your data with trusted third-party service providers who assist us in operating our website and delivering our service. These include:'], ul: ['AI processing partners: to transform your written story into a musical track.', 'Email service providers: to automate the delivery of your song to your inbox.', 'Paddle, our payment processor: to securely handle your financial transaction.'] },
-        { h: '4. Data security', p: ['We take the security of your personal data seriously. We implement reasonable commercial standards of technology and operational security to protect your information from unauthorized access, alteration, or destruction.'] },
-        { h: '5. Your data rights', p: ['You have the right to request access to the personal data we hold about you, or ask us to delete it from our active databases. To make a request, please contact our support team.'] },
-        { h: '6. Changes to this policy', p: ['We may update this policy from time to time to reflect changes in our practices or legal requirements. We encourage you to review this page periodically.'] },
-        { h: '7. Contact us', p: ['If you have any questions, concerns, or requests regarding this Privacy Policy, please reach out to us at: base.vocalmd@gmail.com'] },
-      ],
-      foot: 'The service is provided by Wade Production S.R.L.',
-    },
-  },
-};
-
 /* ══════════════════════════════════════════════════════════════
    STIL
    ══════════════════════════════════════════════════════════════ */
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+/* Fontul vine din layout, prin next/font — găzduit de noi, nu de Google. */
 
 .vc, .vc *, .vc *::before, .vc *::after { box-sizing: border-box; }
 .vc {
@@ -198,7 +104,7 @@ const CSS = `
   --ink: #16161D; --ink-2: #3F3F4B; --gray: #767686;
   --tile: #F4F4F6; --tile-h: #ECECF0; --line: #E6E6EC; --line-2: #D6D6E0;
   --page: #FFFFFF;
-  font-family: Poppins, "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-poppins), "Segoe UI", system-ui, sans-serif;
   background: var(--page); color: var(--ink); min-height: 100vh; -webkit-font-smoothing: antialiased;
 }
 /* :where() ține resetul la specificitate zero. Fără el, „.vc button" (0-1-1) bate
@@ -384,7 +290,7 @@ const CSS = `
 .vc-trustBit svg { color: var(--violet); }
 
 .vc-footer { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; gap: 8px 16px; justify-content: center; flex-wrap: wrap; }
-.vc-footLink { font-size: 12px; color: var(--gray); font-weight: 500; }
+.vc-footLink { font-size: 12px; color: var(--gray); text-decoration: none; font-weight: 500; }
 .vc-footLink:hover { color: var(--violet); }
 
 .vc-tabs { display: flex; gap: 4px; background: var(--tile); padding: 4px; border-radius: 13px; margin-bottom: 16px; }
@@ -460,6 +366,18 @@ button.vc-mark:hover { opacity: .62; }
 @keyframes vcfade { from { opacity: 0; } }
 @keyframes vcrise { from { opacity: 0; transform: translateY(8px) scale(.97); } }
 
+/* Bifa reală e ascunsă sub caseta desenată: tastatura și cititoarele de ecran
+   o găsesc, ochiul vede caseta noastră. */
+.vc-checkIn { position: absolute; width: 1px; height: 1px; opacity: 0; margin: 0; pointer-events: none; }
+.vc-check { cursor: pointer; }
+.vc-check:has(.vc-checkIn:focus-visible) { outline: 2px solid var(--violet); outline-offset: 2px; }
+.vc-checkLinks { font-size: 12px; line-height: 1.5; color: var(--gray); margin: 8px 0 0; padding-left: 34px; }
+.vc-checkLinks a { color: var(--violet); font-weight: 500; }
+
+/* ─── mesaj de eroare ─── */
+.vc-alert { display: flex; gap: 10px; align-items: flex-start; background: #FEF2F2; border: 1px solid #FECACA; color: #B42318; border-radius: 13px; padding: 13px 14px; font-size: 13px; line-height: 1.55; margin-top: 14px; }
+.vc-alert svg { flex: none; margin-top: 1px; }
+
 @media (prefers-reduced-motion: reduce) { .vc *, .vc *::before, .vc *::after { animation: none !important; transition: none !important; } }
 
 @media (min-width: 760px) {
@@ -528,6 +446,16 @@ function Segmented({ options, value, onPick, emoji }) {
   );
 }
 
+function Alert({ text }) {
+  if (!text) return null;
+  return (
+    <div className="vc-alert" role="alert">
+      <AlertTriangle size={16} />
+      <span>{text}</span>
+    </div>
+  );
+}
+
 function Need({ items }) {
   if (!items.length) return null;
   return (
@@ -552,14 +480,14 @@ const barColor = (i) => {
   return `rgb(${Math.round(59 + 80 * t)},${Math.round(189 - 97 * t)},${Math.round(245 + t)})`;
 };
 
-function Take({ name, meta, playing, at, active, onToggle, onSeek }) {
+function Take({ name, meta, playing, at, active, dur = 60, onToggle, onSeek }) {
   const ref = useRef(null);
   const seek = (e) => {
     const r = ref.current?.getBoundingClientRect();
     if (!r) return;
-    onSeek(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * 60);
+    onSeek(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * dur);
   };
-  const head = active ? at / 60 : 0;
+  const head = active && dur ? at / dur : 0;
   return (
     <div className="vc-take" data-on={active ? '1' : '0'}>
       <div className="vc-takeTop">
@@ -582,17 +510,25 @@ function Take({ name, meta, playing, at, active, onToggle, onSeek }) {
           })}
         </div>
       </div>
-      <div className="vc-times"><span>{fmt(active ? at : 0)}</span><span>1:00</span></div>
+      <div className="vc-times"><span>{fmt(active ? at : 0)}</span><span>{fmt(dur)}</span></div>
     </div>
   );
 }
 
-function Footer({ onOpen }) {
+/* Documentele se deschid ca pagini proprii, în filă nouă: cine citește Termenii
+   la pasul patru nu are voie să-și piardă povestea scrisă. */
+function Footer() {
   return (
     <div className="vc-footer">
-      <button className="vc-footLink" onClick={() => onOpen('terms')}>Termeni și condiții</button>
-      <button className="vc-footLink" onClick={() => onOpen('refund')}>Politica de rambursare</button>
-      <button className="vc-footLink" onClick={() => onOpen('privacy')}>Confidențialitate</button>
+      <a className="vc-footLink" href="/legal/ro/termeni" target="_blank" rel="noopener noreferrer">
+        Termeni și condiții
+      </a>
+      <a className="vc-footLink" href="/legal/ro/rambursare" target="_blank" rel="noopener noreferrer">
+        Politica de rambursare
+      </a>
+      <a className="vc-footLink" href="/legal/ro/confidentialitate" target="_blank" rel="noopener noreferrer">
+        Confidențialitate
+      </a>
       <span className="vc-footLink">Wade Production S.R.L.</span>
     </div>
   );
@@ -612,22 +548,29 @@ export default function Vocal() {
   });
   const set = (k, v) => setD((p) => ({ ...p, [k]: v }));
 
-  const [lyrics, setLyrics] = useState(DEMO_LYRICS);
+  /* ce știe serverul despre comandă; pagina doar desenează ce i se spune */
+  const [orderId, setOrderId] = useState(null);
+  const [order, setOrder] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [apiError, setApiError] = useState(null);
+
+  const [lyrics, setLyrics] = useState('');
   const [editing, setEditing] = useState(false);
-  const [regens, setRegens] = useState(2);
-  const [progress, setProgress] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [waitFrom, setWaitFrom] = useState(0);
+  const [tick, setTick] = useState(0);
+
   const [take, setTake] = useState(null);
   const [playing, setPlaying] = useState(false);
   const [at, setAt] = useState(0);
+  const audioRefs = useRef({});
 
   const [email, setEmail] = useState('');
   const [agree, setAgree] = useState(false);
   const [news, setNews] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [legalTab, setLegalTab] = useState('terms');
-  const [legalLang, setLegalLang] = useState('ro');
-  const [back, setBack] = useState('intro');
   const [confirmHome, setConfirmHome] = useState(false);
+  const [library, setLibrary] = useState([]);
 
   const top = useRef(null);
   const storyBox = useRef(null);
@@ -637,7 +580,7 @@ export default function Vocal() {
   const style = STYLES.find((s) => s.id === d.style);
   const opts = d.style ? OPTIONS[d.style] : null;
 
-  useEffect(() => { top.current?.scrollIntoView({ block: 'start' }); }, [step, screen, legalTab]);
+  useEffect(() => { top.current?.scrollIntoView({ block: 'start' }); }, [step, screen]);
 
   /* bara de jos apare doar când butonul din pagină nu se vede */
   useEffect(() => {
@@ -648,26 +591,92 @@ export default function Vocal() {
     return () => io.disconnect();
   }, [step, screen, d.mode, d.style]);
 
+  /* ─── legătura cu serverul ─── */
+
+  /* Starea vine de la server; ecranul e doar reflexia ei. Așa, o pagină
+     reîncărcată sau un telefon revenit din stand-by nimeresc locul corect. */
+  const applyState = useCallback((state) => {
+    setOrder(state);
+    if (state.lyrics != null) setLyrics((cur) => (editing ? cur : state.lyrics));
+
+    const map = {
+      draft: 'writing',
+      lyrics_pending: 'writing',
+      lyrics_ready: 'lyrics',
+      rendering: 'making',
+      preview_ready: 'demo',
+      paid: 'done',
+      delivered: 'done',
+      refused: 'error',
+      failed: 'error',
+      expired: 'error',
+    };
+    const next = map[state.status];
+    if (next) setScreen((cur) => (cur === next ? cur : next));
+  }, [editing]);
+
+  /* Întrebăm serverul cât timp are ceva de lucru. Trei secunde e des cât să
+     nu pară blocat și rar cât să nu încărcăm baza degeaba. */
   useEffect(() => {
-    if (screen !== 'making') return;
-    setProgress(0);
-    const t = setInterval(() => setProgress((p) => {
-      if (p >= 100) { clearInterval(t); setScreen('demo'); return 100; }
-      return p + 4;
-    }), 210);
+    if (!orderId) return;
+    const waiting = ['draft', 'lyrics_pending', 'rendering'].includes(order?.status);
+    if (!waiting) return;
+
+    let stop = false;
+    const tick = async () => {
+      try {
+        const state = await api.get(orderId);
+        if (!stop) applyState(state);
+      } catch {
+        /* o interogare pierdută nu e o eroare pentru client; încercăm iar */
+      }
+    };
+    const t = setInterval(tick, 3000);
+    return () => { stop = true; clearInterval(t); };
+  }, [orderId, order?.status, applyState]);
+
+  /* Bara de progres nu măsoară nimic real — Suno nu ne spune cât a făcut. Ce
+     poate face cinstit e să arate că timpul trece, fără să ajungă la 100 înainte
+     ca melodia să existe. */
+  useEffect(() => {
+    if (screen !== 'making' && screen !== 'writing') return;
+    const t = setInterval(() => setTick(Date.now()), 400);
     return () => clearInterval(t);
   }, [screen]);
 
-  useEffect(() => {
-    if (!playing) return;
-    const t = setInterval(() => setAt((v) => (v >= 60 ? (setPlaying(false), 60) : v + 0.3)), 100);
-    return () => clearInterval(t);
-  }, [playing]);
+  const progress = (() => {
+    if (!waitFrom || (screen !== 'making' && screen !== 'writing')) return 0;
+    const total = screen === 'making' ? 165 : 35;
+    const elapsed = (Math.max(tick, waitFrom) - waitFrom) / 1000;
+    return Math.max(0, Math.min(96, Math.round((elapsed / total) * 100)));
+  })();
 
-  const toggleTake = (n) => { if (take === n) return setPlaying((p) => !p); setTake(n); setAt(0); setPlaying(true); };
-  const seekTake = (n, s) => { setTake(n); setAt(s); setPlaying(true); };
+  /* ─── ascultarea previzualizărilor ─── */
 
-  const openLegal = (tab) => { setBack(screen); setLegalTab(tab); setScreen('legal'); };
+  const stopOthers = (keep) => {
+    Object.entries(audioRefs.current).forEach(([n, el]) => {
+      if (Number(n) !== keep && el) { el.pause(); el.currentTime = 0; }
+    });
+  };
+
+  const toggleTake = (n) => {
+    const el = audioRefs.current[n];
+    if (!el) return;
+    if (take === n && playing) { el.pause(); setPlaying(false); return; }
+    stopOthers(n);
+    setTake(n); setPlaying(true);
+    el.play().catch(() => setPlaying(false));
+  };
+
+  const seekTake = (n, sec) => {
+    const el = audioRefs.current[n];
+    if (!el) return;
+    stopOthers(n);
+    el.currentTime = sec;
+    setTake(n); setAt(sec); setPlaying(true);
+    el.play().catch(() => setPlaying(false));
+  };
+
 
   /* nume multiple */
   const setName = (i, v) => setD((p) => { const n = [...p.names]; n[i] = v; return { ...p, names: n }; });
@@ -705,6 +714,63 @@ export default function Vocal() {
 
   const goNext = () => (step === 5 ? setScreen('email') : setStep(step + 1));
 
+  /* ─── acțiunile care ating serverul ─── */
+
+  const run = async (fn) => {
+    setBusy(true); setApiError(null);
+    try { await fn(); }
+    catch (e) { setApiError(e.message); }
+    finally { setBusy(false); }
+  };
+
+  /* Trimiterea formularului. De aici încolo comanda există pe server și
+     supraviețuiește închiderii paginii. */
+  const submitOrder = () => run(async () => {
+    const { publicId } = await api.create({
+      style: d.style, sub: d.sub, mood: d.mood, voice: d.voice,
+      recipient: d.recipient, recipientOther: d.recipientOther,
+      names: filledNames, occasion: d.occasion, occasionOther: d.occasionOther,
+      mode: d.mode, title: d.title, story: d.story, lang: d.lang,
+      email: email.trim(), newsletter: news, terms: agree,
+    });
+    setOrderId(publicId);
+    setWaitFrom(Date.now());
+    setScreen('writing');
+    setOrder({ status: 'lyrics_pending', tracks: [], regensLeft: 2 });
+  });
+
+  const askNewLyrics = () => run(async () => {
+    await api.regenerate(orderId);
+    setEditing(false);
+    setWaitFrom(Date.now());
+    setScreen('writing');
+    setOrder((o) => ({ ...o, status: 'lyrics_pending' }));
+  });
+
+  /* Textul modificat se salvează la ieșirea din editare, nu la fiecare tastă. */
+  const finishEditing = async () => {
+    setEditing(false);
+    if (!orderId || lyrics.trim() === (order?.lyrics ?? '').trim()) return;
+    setSaving(true); setApiError(null);
+    try { applyState(await api.saveLyrics(orderId, lyrics)); }
+    catch (e) { setApiError(e.message); }
+    finally { setSaving(false); }
+  };
+
+  const approveLyrics = () => run(async () => {
+    if (editing) await finishEditing();
+    await api.approve(orderId);
+    setWaitFrom(Date.now());
+    setScreen('making');
+    setOrder((o) => ({ ...o, status: 'rendering' }));
+  });
+
+  const openLibrary = () => run(async () => {
+    const { orders } = await api.list();
+    setLibrary(orders);
+    setScreen('library');
+  });
+
   /* apăsarea pe siglă nu aruncă niciodată munca omului fără să întrebe */
   const askHome = () => { if (screen !== 'intro') setConfirmHome(true); };
 
@@ -715,7 +781,8 @@ export default function Vocal() {
       recipient: null, recipientOther: '', names: [''], occasion: null, occasionOther: '',
       mode: 'ai', title: '', story: '', lang: 'Română',
     });
-    setStep(0); setLyrics(DEMO_LYRICS); setRegens(2); setEditing(false);
+    setStep(0); setLyrics(''); setEditing(false);
+    setOrderId(null); setOrder(null); setApiError(null); setWaitFrom(0);
     setTake(null); setPlaying(false); setAt(0);
     setEmail(''); setAgree(false); setNews(false);
     setScreen('intro');
@@ -790,55 +857,7 @@ export default function Vocal() {
             </div>
           </div>
 
-          <Footer onOpen={openLegal} />
-        </div>
-      </div>
-    );
-  }
-
-  if (screen === 'legal') {
-    const L = LEGAL[legalLang];
-    const doc = L[legalTab];
-    return (
-      <div className="vc">
-        <style>{CSS}</style>
-      {homeDialog}
-        <div className="vc-head"><div className="vc-headIn">
-          <button className="vc-mark" onClick={askHome}>VOCAL</button>
-          <div className="vc-langBtns">
-            {['ro', 'en'].map((l) => (
-              <button key={l} className="vc-langBtn" data-on={legalLang === l ? '1' : '0'} onClick={() => setLegalLang(l)}>
-                {l === 'ro' ? '🇷🇴 RO' : '🇬🇧 EN'}
-              </button>
-            ))}
-          </div>
-        </div></div>
-        <div className="vc-wrap" ref={top} data-bar="0">
-          <div className="vc-panel">
-            <div className="vc-tabs">
-              {['terms', 'refund', 'privacy'].map((t) => (
-                <button key={t} className="vc-tab" data-on={legalTab === t ? '1' : '0'} onClick={() => setLegalTab(t)}>
-                  {L.tabs[t]}
-                </button>
-              ))}
-            </div>
-            <h1 className="vc-q" style={{ marginTop: 4 }}>{L.tabs[legalTab]}</h1>
-            <p className="vc-legalDate">{doc.date}</p>
-            <p className="vc-legalIntro">{doc.intro}</p>
-            {doc.s.map((sec) => (
-              <div key={sec.h}>
-                <h3 className="vc-legalH">{sec.h}</h3>
-                {sec.p?.map((t, i) => <p className="vc-legalP" key={i}>{t}</p>)}
-                {sec.ul && <ul className="vc-legalUl">{sec.ul.map((t, i) => <li key={i}>{t}</li>)}</ul>}
-              </div>
-            ))}
-            <p className="vc-legalFoot">{doc.foot}</p>
-            <div className="vc-nav" ref={navRef}>
-              <button className="vc-next" onClick={() => setScreen(back)}>
-                <ArrowLeft size={18} /> {legalLang === 'ro' ? 'Înapoi la site' : 'Back to the site'}
-              </button>
-            </div>
-          </div>
+          <Footer />
         </div>
       </div>
     );
@@ -869,19 +888,35 @@ export default function Vocal() {
                 onChange={(e) => setEmail(e.target.value)} placeholder="numele.tau@email.com" />
             </Module>
 
-            <button className="vc-check" data-on={agree ? '1' : '0'} onClick={() => setAgree(!agree)}>
+            <label className="vc-check" data-on={agree ? '1' : '0'} htmlFor="vc-agree">
+              <input className="vc-checkIn" type="checkbox" id="vc-agree"
+                checked={agree} onChange={(e) => setAgree(e.target.checked)} />
               <span className="vc-box">{agree && <Check size={14} strokeWidth={3} />}</span>
               <span className="vc-checkText">
-                Am citit și accept <u>Termenii și condițiile</u> și <u>Politica de confidențialitate</u>.
+                Am citit și accept Termenii și condițiile și Politica de confidențialitate.
               </span>
-            </button>
+            </label>
 
-            <button className="vc-check" data-on={news ? '1' : '0'} onClick={() => setNews(!news)}>
+            {/* Legăturile stau sub bifă, nu în ea: altfel aproape tot rândul devine
+                legătură, iar o apăsare pe mijloc deschide un document în loc să bifeze. */}
+            <p className="vc-checkLinks">
+              <a href="/legal/ro/termeni" target="_blank" rel="noopener noreferrer">
+                Citește Termenii
+              </a>
+              <span aria-hidden="true"> · </span>
+              <a href="/legal/ro/confidentialitate" target="_blank" rel="noopener noreferrer">
+                Citește Politica de confidențialitate
+              </a>
+            </p>
+
+            <label className="vc-check" data-on={news ? '1' : '0'} htmlFor="vc-news">
+              <input className="vc-checkIn" type="checkbox" id="vc-news"
+                checked={news} onChange={(e) => setNews(e.target.checked)} />
               <span className="vc-box">{news && <Check size={14} strokeWidth={3} />}</span>
               <span className="vc-checkText">
                 Vreau să primesc ocazional idei de cadouri și oferte. Opțional, te poți dezabona oricând.
               </span>
-            </button>
+            </label>
 
             <div className="vc-safe" style={{ background: 'var(--violet-t)', color: 'var(--ink-2)' }}>
               <ShieldCheck size={16} color="#6C5CE7" />
@@ -892,29 +927,33 @@ export default function Vocal() {
               <button className="vc-back" onClick={() => { setScreen('wizard'); setStep(5); }} aria-label="Înapoi">
                 <ArrowLeft size={19} />
               </button>
-              <button className={nextCls} disabled={!okMail || !agree} onClick={() => setScreen('lyrics')}>
-                <Sparkles size={18} /> Scrie versurile — gratuit
+              <button className={nextCls} disabled={!okMail || !agree || busy} onClick={submitOrder}>
+                <Sparkles size={18} /> {busy ? 'Se trimite…' : 'Scrie versurile — gratuit'}
               </button>
             </div>
             {(!okMail || !agree) && (
               <Need items={[!okMail && 'o adresă de email validă', !agree && 'acordul cu termenii'].filter(Boolean)} />
             )}
+            <Alert text={apiError} />
           </div>
-          <Footer onOpen={openLegal} />
+          <Footer />
         </div>
       </div>
     );
   }
 
   /* ────────── livrarea, după plată ────────── */
+  /* Se ajunge aici doar cu plata confirmată de server. Fișierele integrale vin
+     prin linkuri semnate, verificate la fiecare descărcare. */
   if (screen === 'done') {
-    const link = 'https://vocal.md/m/8f4c21';
+    const tracks = order?.tracks ?? [];
     return (
       <div className="vc">
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <button className="vc-mark" onClick={askHome}>VOCAL</button><span className="vc-headNote">Comanda #8F4C21</span>
+          <button className="vc-mark" onClick={askHome}>VOCAL</button>
+          <span className="vc-headNote">Comanda {order?.publicId ?? ''}</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-panel">
@@ -922,36 +961,26 @@ export default function Vocal() {
               <div className="vc-doneIcon"><Check size={34} strokeWidth={3} /></div>
               <h1 className="vc-doneTitle">Melodia e a ta.</h1>
               <p className="vc-doneText">
-                Ți-am trimis totul și pe email, la {email || 'adresa ta'}. O poți descărca de aici oricând.
+                Ți-am trimis totul și pe email, la {order?.email || email || 'adresa ta'}.
+                O poți descărca de aici oricând.
               </p>
             </div>
 
-            <div className="vc-track">
-              <span className="vc-trackIcon"><Music2 size={20} /></span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p className="vc-trackName">{d.title || 'Melodia ta'} — varianta 1</p>
-                <p className="vc-trackMeta">MP3 · 3:14 · calitate 320 kbps</p>
+            {tracks.map((t) => (
+              <div className="vc-track" key={t.variant}>
+                <span className="vc-trackIcon"><Music2 size={20} /></span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p className="vc-trackName">
+                    {order?.songTitle || d.title || 'Melodia ta'} — varianta {t.variant}
+                  </p>
+                  <p className="vc-trackMeta">MP3 · {t.duration ? fmt(t.duration) : '—'}</p>
+                </div>
+                <a className="vc-dl" href={t.fullUrl ?? '#'} download
+                  aria-label={`Descarcă varianta ${t.variant}`}>
+                  <Download size={19} />
+                </a>
               </div>
-              <button className="vc-dl" aria-label="Descarcă varianta 1"><Download size={19} /></button>
-            </div>
-            <div className="vc-track">
-              <span className="vc-trackIcon"><Music2 size={20} /></span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p className="vc-trackName">{d.title || 'Melodia ta'} — varianta 2</p>
-                <p className="vc-trackMeta">MP3 · 3:02 · calitate 320 kbps</p>
-              </div>
-              <button className="vc-dl" aria-label="Descarcă varianta 2"><Download size={19} /></button>
-            </div>
-
-            <Module icon={Link2} title="Trimite cadoul" text="Un link cu piesa și versurile, gata de dat mai departe.">
-              <div className="vc-linkRow">
-                <span className="vc-linkBox">{link}</span>
-                <button className="vc-copy" data-done={copied ? '1' : '0'}
-                  onClick={() => { setCopied(true); setTimeout(() => setCopied(false), 1800); }}>
-                  {copied ? <><Check size={15} /> Copiat</> : <><Copy size={15} /> Copiază</>}
-                </button>
-              </div>
-            </Module>
+            ))}
 
             <div className="vc-safe">
               <Check size={16} />
@@ -962,16 +991,48 @@ export default function Vocal() {
             </div>
 
             <div className="vc-nav" ref={navRef}>
-              <button className="vc-ghost" style={{ flex: 1 }} onClick={() => setScreen('library')}>
+              <button className="vc-ghost" style={{ flex: 1 }} disabled={busy} onClick={openLibrary}>
                 <ListMusic size={16} /> Biblioteca mea
               </button>
-              <button className="vc-ghost" style={{ flex: 1 }}
-                onClick={() => { setScreen('wizard'); setStep(0); }}>
+              <button className="vc-ghost" style={{ flex: 1 }} onClick={goHome}>
                 <Sparkles size={16} /> Mai fac una
               </button>
             </div>
+            <Alert text={apiError} />
           </div>
-          <Footer onOpen={openLegal} />
+          <Footer />
+        </div>
+      </div>
+    );
+  }
+
+  /* Plata nu e încă legată: Paddle aprobă contul abia după ce se uită un om
+     peste site. Până atunci spunem exact asta, în loc să livrăm pe gratis. */
+  if (screen === 'soon') {
+    return (
+      <div className="vc">
+        <style>{CSS}</style>
+      {homeDialog}
+        <div className="vc-head"><div className="vc-headIn">
+          <button className="vc-mark" onClick={askHome}>VOCAL</button>
+        </div></div>
+        <div className="vc-wrap" ref={top} data-bar="0">
+          <div className="vc-panel">
+            <div className="vc-err">
+              <div className="vc-errIcon"><Clock size={30} /></div>
+              <h1 className="vc-errTitle">Plata se activează în curând</h1>
+              <p className="vc-errText">
+                Melodia ta e generată și rămâne salvată. Scrie-ne la base.vocalmd@gmail.com
+                și îți trimitem varianta completă imediat ce plata e deschisă.
+              </p>
+            </div>
+            <div className="vc-nav" ref={navRef}>
+              <button className="vc-ghost" style={{ flex: 1 }} onClick={() => setScreen('demo')}>
+                <ArrowLeft size={16} /> Înapoi la melodie
+              </button>
+            </div>
+          </div>
+          <Footer />
         </div>
       </div>
     );
@@ -979,10 +1040,6 @@ export default function Vocal() {
 
   /* ────────── biblioteca ────────── */
   if (screen === 'library') {
-    const items = [
-      { name: d.title || 'Cântecul mamei', meta: 'Din suflet · pentru Maria · 13 septembrie 2026', state: 'paid' },
-      { name: 'Zece ani împreună', meta: 'Romantic · pentru Ana · 2 septembrie 2026', state: 'demo' },
-    ];
     return (
       <div className="vc">
         <style>{CSS}</style>
@@ -993,54 +1050,62 @@ export default function Vocal() {
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-panel">
             <h1 className="vc-q" style={{ marginTop: 4 }}>Melodiile tale</h1>
-            <p className="vc-qSub">Tot ce ai creat cu adresa {email || 'ta de email'}.</p>
+            <p className="vc-qSub">Comenzile făcute de pe acest dispozitiv.</p>
 
-            {items.map((it) => (
-              <div className="vc-item" key={it.name}>
+            {library.length === 0 && (
+              <p className="vc-qSub" style={{ marginTop: 14 }}>
+                Încă nu ai nicio melodie aici.
+              </p>
+            )}
+
+            {library.map((it) => (
+              <div className="vc-item" key={it.publicId}>
                 <div className="vc-itemTop">
                   <div style={{ minWidth: 0 }}>
-                    <p className="vc-itemName">{it.name}</p>
-                    <p className="vc-itemMeta">{it.meta}</p>
+                    <p className="vc-itemName">{it.songTitle || 'Melodie fără titlu'}</p>
+                    <p className="vc-itemMeta">
+                      {new Date(it.createdAt).toLocaleDateString('ro-RO', {
+                        day: 'numeric', month: 'long', year: 'numeric',
+                      })}
+                    </p>
                   </div>
-                  <span className="vc-state" data-t={it.state}>
-                    {it.state === 'paid' ? 'CUMPĂRATĂ' : 'DOAR DEMO'}
+                  <span className="vc-state" data-t={it.paid ? 'paid' : 'demo'}>
+                    {it.paid ? 'CUMPĂRATĂ' : 'DOAR DEMO'}
                   </span>
                 </div>
-                {it.state === 'paid' ? (
+
+                {it.tracks.length > 0 && (
                   <div className="vc-itemAct">
-                    <button className="vc-ghost" style={{ flex: 1 }}><Play size={15} /> Ascultă</button>
-                    <button className="vc-ghost" style={{ flex: 1 }}><Download size={15} /> Descarcă</button>
+                    <button className="vc-ghost" style={{ flex: 1 }}
+                      onClick={() => { setOrderId(it.publicId); applyState(it); }}>
+                      <Play size={15} /> {it.paid ? 'Ascultă' : 'Ascultă demo'}
+                    </button>
+                    {it.paid && it.tracks[0]?.fullUrl && (
+                      <a className="vc-ghost" style={{ flex: 1 }} href={it.tracks[0].fullUrl} download>
+                        <Download size={15} /> Descarcă
+                      </a>
+                    )}
                   </div>
-                ) : (
-                  <>
-                    <p className="vc-itemMeta" style={{ marginTop: 10, color: '#9A5B0B' }}>
-                      Previzualizarea expiră peste 19 zile. Cumpăr-o ca s-o păstrezi.
-                    </p>
-                    <div className="vc-itemAct">
-                      <button className="vc-ghost" style={{ flex: 1 }}><Play size={15} /> Ascultă demo</button>
-                      <button className="vc-ghost" style={{ flex: 1 }} onClick={() => setScreen('done')}>
-                        <Gift size={15} /> Cumpără — 30 €
-                      </button>
-                    </div>
-                  </>
                 )}
               </div>
             ))}
 
             <div className="vc-nav" ref={navRef}>
-              <button className={nextCls} onClick={() => { setScreen('wizard'); setStep(0); }}>
+              <button className={nextCls} onClick={goHome}>
                 <Sparkles size={18} /> Creează o melodie nouă
               </button>
             </div>
           </div>
-          <Footer onOpen={openLegal} />
+          <Footer />
         </div>
       </div>
     );
   }
 
-  /* ────────── eroare la generare ────────── */
+  /* Două feluri de oprire, cu răspunsuri diferite: o eroare tehnică se
+     reîncearcă, un refuz de conținut nu — ar da același răspuns. */
   if (screen === 'error') {
+    const refused = order?.status === 'refused';
     return (
       <div className="vc">
         <style>{CSS}</style>
@@ -1052,10 +1117,12 @@ export default function Vocal() {
           <div className="vc-panel">
             <div className="vc-err">
               <div className="vc-errIcon"><AlertTriangle size={32} /></div>
-              <h1 className="vc-errTitle">Înregistrarea nu a reușit</h1>
+              <h1 className="vc-errTitle">
+                {refused ? 'Nu putem face această melodie' : 'Înregistrarea nu a reușit'}
+              </h1>
               <p className="vc-errText">
-                Studioul nostru a răspuns cu o eroare la această piesă. Se întâmplă rar și de obicei
-                se rezolvă din a doua încercare — versurile tale sunt salvate, nu le rescrii.
+                {order?.problem
+                  ?? 'Studioul nostru a răspuns cu o eroare la această piesă. Se întâmplă rar și de obicei se rezolvă din a doua încercare — versurile tale sunt salvate, nu le rescrii.'}
               </p>
             </div>
 
@@ -1065,25 +1132,55 @@ export default function Vocal() {
             </div>
 
             <div className="vc-nav" ref={navRef}>
-              <button className={nextCls} onClick={() => setScreen('making')}>
-                <RotateCcw size={18} /> Încearcă din nou
-              </button>
+              {refused ? (
+                <button className={nextCls} onClick={goHome}>
+                  <Sparkles size={18} /> Începe altă melodie
+                </button>
+              ) : (
+                <button className={nextCls} disabled={busy} onClick={approveLyrics}>
+                  <RotateCcw size={18} /> {busy ? 'Se reîncearcă…' : 'Încearcă din nou'}
+                </button>
+              )}
             </div>
             <button className="vc-ghost" style={{ width: '100%', marginTop: 9 }}
-              onClick={() => setScreen('library')}>
+              disabled={busy} onClick={openLibrary}>
               <ListMusic size={16} /> Vezi melodiile salvate
             </button>
+            <Alert text={apiError} />
             <p style={{ fontSize: 12.5, color: '#767686', textAlign: 'center', marginTop: 14, lineHeight: 1.55 }}>
               Dacă se repetă, scrie-ne la base.vocalmd@gmail.com și rezolvăm noi manual.
             </p>
           </div>
-          <Footer onOpen={openLegal} />
+          <Footer />
         </div>
       </div>
     );
   }
 
   /* ────────── se creează ────────── */
+  /* Gemini durează zeci de secunde, nu instant. Ecranul spune ce se întâmplă,
+     ca omul să nu creadă că pagina s-a blocat. */
+  if (screen === 'writing') {
+    return (
+      <div className="vc">
+        <style>{CSS}</style>
+      {homeDialog}
+        <div className="vc-head"><div className="vc-headIn"><button className="vc-mark" onClick={askHome}>VOCAL</button></div></div>
+        <div className="vc-wrap"><div className="vc-panel">
+          <div className="vc-wait">
+            <div className="vc-waitRing"><PenLine size={30} /></div>
+            <h2 className="vc-waitTitle">Se scriu versurile</h2>
+            <p className="vc-waitText">
+              Citim povestea ta și compunem textul. Durează câteva zeci de secunde —
+              lasă pagina deschisă.
+            </p>
+            <div className="vc-waitRail"><div className="vc-waitFill" style={{ width: `${progress}%` }} /></div>
+          </div>
+        </div></div>
+      </div>
+    );
+  }
+
   if (screen === 'making') {
     return (
       <div className="vc">
@@ -1104,6 +1201,10 @@ export default function Vocal() {
 
   /* ────────── demo + ofertă ────────── */
   if (screen === 'demo') {
+    const tracks = order?.tracks ?? [];
+    // Previzualizarea e tăiată la 60 de secunde, dar dacă piesa e mai scurtă
+    // playerul trebuie să arate durata adevărată, nu una promisă.
+    const previewLen = Math.min(60, Math.max(...tracks.map((t) => t.duration || 60), 60));
     return (
       <div className="vc">
         <style>{CSS}</style>
@@ -1118,12 +1219,29 @@ export default function Vocal() {
             <p className="vc-heroText">Am pregătit două interpretări ale aceleiași piese. Ascultă-le pe amândouă — le primești pe ambele, integral.</p>
           </div>
           <div className="vc-panel">
-            <Take name="Varianta 1" meta={`${style?.name} · voce ${(d.voice || 'Femeie').toLowerCase()}`}
-              playing={playing && take === 1} at={at} active={take === 1}
-              onToggle={() => toggleTake(1)} onSeek={(s) => seekTake(1, s)} />
-            <Take name="Varianta 2" meta={`${style?.name} · interpretare alternativă`}
-              playing={playing && take === 2} at={at} active={take === 2}
-              onToggle={() => toggleTake(2)} onSeek={(s) => seekTake(2, s)} />
+            {tracks.map((t) => (
+              <React.Fragment key={t.variant}>
+                <audio
+                  ref={(el) => { audioRefs.current[t.variant] = el; }}
+                  src={t.previewUrl ?? undefined}
+                  preload="metadata"
+                  onTimeUpdate={(e) => { if (take === t.variant) setAt(e.currentTarget.currentTime); }}
+                  onEnded={() => setPlaying(false)}
+                />
+                <Take
+                  name={`Varianta ${t.variant}`}
+                  meta={t.variant === 1
+                    ? `${style?.name ?? 'Melodia ta'} · voce ${(d.voice || 'Femeie').toLowerCase()}`
+                    : `${style?.name ?? 'Melodia ta'} · interpretare alternativă`}
+                  playing={playing && take === t.variant}
+                  at={at}
+                  active={take === t.variant}
+                  dur={previewLen}
+                  onToggle={() => toggleTake(t.variant)}
+                  onSeek={(sec) => seekTake(t.variant, sec)}
+                />
+              </React.Fragment>
+            ))}
 
             <div className="vc-offer">
               <div className="vc-offerIn">
@@ -1144,7 +1262,7 @@ export default function Vocal() {
                     <span>Link dedicat cu piesa și versurile, gata de trimis persoanei dragi</span></li>
                 </ul>
                 <div className="vc-nav" ref={navRef} style={{ marginTop: 0 }}>
-                  <button className="vc-buy" onClick={() => setScreen('done')}><Gift size={20} /> Primește melodia — 30 €</button>
+                  <button className="vc-buy" onClick={() => setScreen('soon')}><Gift size={20} /> Primește melodia — 30 €</button>
                 </div>
                 <div className="vc-offerTrust">
                   <span className="vc-trustBit"><ShieldCheck size={13} /> Plată securizată</span>
@@ -1154,11 +1272,11 @@ export default function Vocal() {
               </div>
             </div>
           </div>
-          <Footer onOpen={openLegal} />
+          <Footer />
         </div>
         {showBar && (
           <div className="vc-bar"><div className="vc-barIn">
-            <button className="vc-next" onClick={() => setScreen('done')}><Gift size={18} /> Primește melodia — 30 €</button>
+            <button className="vc-next" onClick={() => setScreen('soon')}><Gift size={18} /> Primește melodia — 30 €</button>
           </div></div>
         )}
       </div>
@@ -1167,6 +1285,7 @@ export default function Vocal() {
 
   /* ────────── versuri ────────── */
   if (screen === 'lyrics') {
+    const left = order?.regensLeft ?? 0;
     return (
       <div className="vc">
         <style>{CSS}</style>
@@ -1177,7 +1296,7 @@ export default function Vocal() {
         <div className="vc-wrap" ref={top} data-bar={showBar ? '1' : '0'}>
           <div className="vc-hero">
             <p className="vc-heroEyebrow">Pasul următor</p>
-            <h1 className="vc-heroTitle">{d.title || 'Versurile tale sunt gata'}</h1>
+            <h1 className="vc-heroTitle">{order?.songTitle || d.title || 'Versurile tale sunt gata'}</h1>
             <p className="vc-heroText">Citește-le cu atenție — exact așa vor fi înregistrate. Poți modifica orice cuvânt sau poți cere o variantă nouă.</p>
           </div>
           <div className="vc-panel">
@@ -1185,30 +1304,37 @@ export default function Vocal() {
               ? <textarea className="vc-lyricsEdit" value={lyrics} onChange={(e) => setLyrics(e.target.value)} />
               : <div className="vc-lyrics">{lyrics}</div>}
             <div className="vc-two">
-              <button className="vc-ghost" onClick={() => setEditing(!editing)}>
-                <Pencil size={16} /> {editing ? 'Am terminat' : 'Modifică acest text'}
+              <button className="vc-ghost" disabled={saving}
+                onClick={() => (editing ? finishEditing() : setEditing(true))}>
+                <Pencil size={16} /> {saving ? 'Se salvează…' : editing ? 'Am terminat' : 'Modifică acest text'}
               </button>
-              <button className="vc-ghost" disabled={regens === 0} onClick={() => setRegens(regens - 1)}
-                style={regens === 0 ? { opacity: .5, cursor: 'not-allowed' } : undefined}>
+              <button className="vc-ghost" disabled={left === 0 || busy || editing}
+                onClick={askNewLyrics}
+                style={left === 0 ? { opacity: .5, cursor: 'not-allowed' } : undefined}>
                 <RefreshCw size={16} /> Altă variantă
               </button>
             </div>
             <p style={{ fontSize: 12, color: '#767686', margin: '12px 0 0', lineHeight: 1.55 }}>
-              {regens > 0
-                ? `Mai ai ${regens} ${regens === 1 ? 'variantă gratuită' : 'variante gratuite'} de versuri.`
+              {left > 0
+                ? `Mai ai ${left} ${left === 1 ? 'variantă gratuită' : 'variante gratuite'} de versuri.`
                 : 'Ai folosit variantele gratuite — dar poți modifica textul direct, oricât vrei.'}
             </p>
+            <Alert text={apiError} />
             <div className="vc-nav" ref={navRef}>
-              <button className="vc-back" onClick={() => { setScreen('wizard'); setStep(5); }} aria-label="Înapoi"><ArrowLeft size={19} /></button>
-              <button className="vc-next" onClick={() => setScreen('making')}><Check size={18} /> Aprobă și înregistrează</button>
+              <button className="vc-back" onClick={askHome} aria-label="Înapoi"><ArrowLeft size={19} /></button>
+              <button className="vc-next" disabled={busy || saving} onClick={approveLyrics}>
+              <Check size={18} /> {busy ? 'Se trimite…' : 'Aprobă și înregistrează'}
+            </button>
             </div>
           </div>
-          <Footer onOpen={openLegal} />
+          <Footer />
         </div>
         {showBar && (
           <div className="vc-bar"><div className="vc-barIn">
-            <button className="vc-back" onClick={() => { setScreen('wizard'); setStep(5); }} aria-label="Înapoi"><ArrowLeft size={19} /></button>
-            <button className="vc-next" onClick={() => setScreen('making')}><Check size={18} /> Aprobă și înregistrează</button>
+            <button className="vc-back" onClick={askHome} aria-label="Înapoi"><ArrowLeft size={19} /></button>
+            <button className="vc-next" disabled={busy || saving} onClick={approveLyrics}>
+              <Check size={18} /> {busy ? 'Se trimite…' : 'Aprobă și înregistrează'}
+            </button>
           </div></div>
         )}
       </div>
@@ -1370,8 +1496,8 @@ export default function Vocal() {
                 <p className="vc-meter">{d.story.length} / 2000</p>
                 {d.mode === 'ai' && (
                   <p className="vc-tip">
-                    <b>Un detaliu mic creează cea mai mare emoție.</b> „Cafeaua pregătită în diminețile aglomerate"
-                    spune mult mai multe într-o piesă decât un simplu „îți mulțumesc pentru tot".
+                    <b>Un detaliu mic creează cea mai mare emoție.</b> „Cafeaua pregătită în diminețile aglomerate”
+                    spune mult mai multe într-o piesă decât un simplu „îți mulțumesc pentru tot”.
                   </p>
                 )}
               </Module>
@@ -1471,7 +1597,7 @@ export default function Vocal() {
           </div>
         </div>
 
-        <Footer onOpen={openLegal} />
+        <Footer />
       </div>
 
       {showBar && (

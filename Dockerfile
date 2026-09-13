@@ -8,17 +8,22 @@ FROM node:22-alpine AS base
 RUN apk add --no-cache ffmpeg libc6-compat
 WORKDIR /app
 
-# ─── dependențe ───
+# ─── dependențe, complete, doar pentru build ───
 FROM base AS deps
 COPY package.json package-lock.json* ./
 RUN npm ci
+
+# ─── dependențe de producție, pentru imaginea finală ───
+FROM base AS proddeps
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
 
 # ─── build ───
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# Next validează configurarea la build; valorile reale vin la rulare.
 ENV NEXT_TELEMETRY_DISABLED=1
+# Build-ul citește documentele legale și prerandează paginile lor.
 RUN npm run build
 
 # ─── imaginea finală ───
@@ -26,15 +31,17 @@ FROM base AS runner
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 RUN addgroup -g 1001 -S nodejs && adduser -S vocal -u 1001
 
-# Serverul standalone al lui Next, fără node_modules complet.
+# Serverul standalone al lui Next. `static` și `public` trebuie puse lângă el:
+# serverul nu le caută în altă parte, iar fără ele pagina rămâne fără stiluri.
 COPY --from=builder --chown=vocal:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=vocal:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=vocal:nodejs /app/public ./public
 
-# Worker-ul și migrările rulează din sursă cu tsx, deci au nevoie de node_modules.
-COPY --from=deps --chown=vocal:nodejs /app/node_modules ./node_modules
+# Worker-ul și migrările rulează din sursă cu tsx, deci au nevoie de module.
+COPY --from=proddeps --chown=vocal:nodejs /app/node_modules ./node_modules
 COPY --chown=vocal:nodejs src ./src
 COPY --chown=vocal:nodejs drizzle ./drizzle
+COPY --chown=vocal:nodejs content ./content
 COPY --chown=vocal:nodejs package.json tsconfig.json drizzle.config.ts ./
 
 # Fișierele audio stau pe un volum, nu în imagine.

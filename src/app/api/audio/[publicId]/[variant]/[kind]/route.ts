@@ -1,0 +1,103 @@
+/**
+ * Servirea fișierelor audio.
+ *
+ * Nimic nu stă în /public. Fiecare cerere trece pe aici, unde se verifică două
+ * lucruri: semnătura linkului și, pentru varianta integrală, plata. Semnătura
+ * acoperă comanda, varianta, tipul fișierului și expirarea, deci nu se poate
+ * schimba „preview" în „full" în bara de adrese.
+ *
+ * Răspundem la cereri cu interval (Range), ca mutarea cursorului în player să nu
+ * ceară de fiecare dată tot fișierul.
+ */
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
+import { Readable } from 'node:stream';
+import type { ReadableStream as WebReadableStream } from 'node:stream/web';
+import { and, eq } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { orderTracks, orders } from '@/lib/db/schema';
+import { absPath, verifyDownload, type TrackKind } from '@/lib/storage';
+
+export const dynamic = 'force-dynamic';
+
+const PAID_STATUSES = ['paid', 'delivered'];
+
+export async function GET(
+  req: Request,
+  { params }: { params: Promise<{ publicId: string; variant: string; kind: string }> },
+) {
+  const { publicId, variant: variantRaw, kind: kindRaw } = await params;
+  const url = new URL(req.url);
+
+  const variant = Number(variantRaw);
+  const kind = kindRaw as TrackKind;
+
+  if (!Number.isInteger(variant) || variant < 1 || variant > 4) {
+    return new Response('Not found', { status: 404 });
+  }
+  if (kind !== 'preview' && kind !== 'full') {
+    return new Response('Not found', { status: 404 });
+  }
+
+  const exp = Number(url.searchParams.get('exp'));
+  const sig = url.searchParams.get('sig') ?? '';
+  if (!verifyDownload(publicId, variant, kind, exp, sig)) {
+    return new Response('Link expirat sau invalid', { status: 403 });
+  }
+
+  const order = await db.query.orders.findFirst({ where: eq(orders.publicId, publicId) });
+  if (!order) return new Response('Not found', { status: 404 });
+
+  // Semnătura dovedește că linkul e al nostru; plata se verifică separat, la
+  // fiecare cerere, ca o rambursare să închidă accesul imediat.
+  if (kind === 'full' && !PAID_STATUSES.includes(order.status)) {
+    return new Response('Melodia completă se deblochează după plată.', { status: 402 });
+  }
+
+  const track = await db.query.orderTracks.findFirst({
+    where: and(eq(orderTracks.orderId, order.id), eq(orderTracks.variant, variant)),
+  });
+
+  const rel = kind === 'full' ? track?.fullPath : track?.previewPath;
+  if (!rel) return new Response('Not found', { status: 404 });
+
+  const file = absPath(rel);
+  let size: number;
+  try {
+    size = (await stat(file)).size;
+  } catch {
+    return new Response('Not found', { status: 404 });
+  }
+
+  const headers = new Headers({
+    'Content-Type': 'audio/mpeg',
+    'Accept-Ranges': 'bytes',
+    // Linkul e semnat și expiră; nu are ce căuta într-un cache public.
+    'Cache-Control': 'private, max-age=3600',
+  });
+  if (kind === 'full') {
+    const name = `${order.songTitle ?? 'melodie'}-varianta-${variant}.mp3`.replace(/[^\w.\-]+/g, '-');
+    headers.set('Content-Disposition', `attachment; filename="${name}"`);
+  }
+
+  const range = req.headers.get('range');
+  const match = range?.match(/^bytes=(\d*)-(\d*)$/);
+
+  if (match) {
+    const start = match[1] ? Number(match[1]) : 0;
+    const end = match[2] ? Math.min(Number(match[2]), size - 1) : size - 1;
+
+    if (start >= size || start > end) {
+      return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${size}` } });
+    }
+
+    headers.set('Content-Range', `bytes ${start}-${end}/${size}`);
+    headers.set('Content-Length', String(end - start + 1));
+    const stream = Readable.toWeb(createReadStream(file, { start, end })) as WebReadableStream;
+    return new Response(stream as unknown as ReadableStream, { status: 206, headers });
+  }
+
+  headers.set('Content-Length', String(size));
+  const stream = Readable.toWeb(createReadStream(file)) as WebReadableStream;
+  return new Response(stream as unknown as ReadableStream, { status: 200, headers });
+}

@@ -17,18 +17,21 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/lib/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "db:verify": "tsx scripts/verify-schema.ts"
+    "db:verify": "tsx scripts/verify-schema.ts",
+    "test:e2e": "node scripts/e2e.mjs"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.10.0",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.45.0",
+    "marked": "^18.0.13",
     "nanoid": "^6.0.1",
     "next": "^16.3.5",
     "pg": "^8.23.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "resend": "^6.28.0",
+    "tsx": "^4.20.0",
     "zod": "^4.6.4"
   },
   "devDependencies": {
@@ -39,7 +42,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "^16.3.5",
-    "tsx": "^4.20.0",
+    "playwright": "^1.56.0",
     "typescript": "^5.9.0"
   }
 }

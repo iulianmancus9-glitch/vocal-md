@@ -1,0 +1,51 @@
+/* Pagini de citit, nu de folosit: o coloană îngustă, mult aer, zero podoabe. */
+.lg {
+  --ink: #16161D;
+  --ink-2: #3F3F4B;
+  --gray: #767686;
+  --line: #E6E6EC;
+  --violet: #6C5CE7;
+  font-family: var(--font-poppins), "Segoe UI", system-ui, sans-serif;
+  color: var(--ink);
+  background: #fff;
+  min-height: 100vh;
+}
+
+.lg-head {
+  position: sticky; top: 0; z-index: 10;
+  background: rgba(255, 255, 255, .93);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px;
+  max-width: 720px; margin: 0 auto;
+  padding: 14px 20px;
+}
+.lg-mark { font-size: 17px; font-weight: 700; letter-spacing: .16em; text-decoration: none; color: inherit; }
+.lg-lang { font-size: 13px; font-weight: 600; color: var(--violet); text-decoration: none; }
+.lg-lang:hover { text-decoration: underline; }
+
+.lg-wrap { max-width: 720px; margin: 0 auto; padding: 28px 20px 64px; }
+.lg-title { font-size: clamp(25px, 6vw, 33px); font-weight: 700; letter-spacing: -.022em; line-height: 1.2; margin: 0 0 26px; text-wrap: balance; }
+
+/* Corpul vine din markdown, deci stilurile se dau pe elemente, nu pe clase. */
+.lg-body { font-size: 15px; line-height: 1.72; color: var(--ink-2); }
+.lg-body h3 { font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -.01em; margin: 32px 0 10px; }
+.lg-body p { margin: 0 0 15px; max-width: 66ch; }
+.lg-body strong { color: var(--ink); font-weight: 600; }
+.lg-body ul, .lg-body ol { margin: 0 0 15px; padding-left: 22px; max-width: 66ch; }
+.lg-body li { margin-bottom: 8px; }
+.lg-body hr { border: 0; border-top: 1px solid var(--line); margin: 30px 0; }
+.lg-body a { color: var(--violet); }
+
+/* Tabelul de temeiuri juridice din Politica de confidențialitate. */
+.lg-tableWrap, .lg-body .lg-tableWrap { overflow-x: auto; }
+.lg-body table { border-collapse: collapse; width: 100%; margin: 0 0 18px; font-size: 14px; }
+.lg-body th, .lg-body td { border: 1px solid var(--line); padding: 9px 12px; text-align: left; vertical-align: top; }
+.lg-body th { background: #F7F7FA; font-weight: 600; color: var(--ink); }
+
+.lg-other { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 40px 0 22px; padding-top: 22px; border-top: 1px solid var(--line); }
+.lg-otherLink { font-size: 13.5px; font-weight: 600; color: var(--violet); text-decoration: none; }
+.lg-otherLink:hover { text-decoration: underline; }
+
+.lg-foot { font-size: 12px; color: var(--gray); margin: 0; line-height: 1.6; }

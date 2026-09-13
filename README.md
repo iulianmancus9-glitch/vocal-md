@@ -13,7 +13,11 @@ Next.js + PostgreSQL, în Docker, pe VPS Ubuntu 24.04. Caddy termină HTTPS pe g
 ```
 src/
   app/                 paginile și rutele API (Next, App Router)
+    api/orders/        creare comandă, stare, versuri, aprobare
+    api/audio/         fișierele audio, prin linkuri semnate
     api/health/        verificarea folosită de compose și de monitorizare
+    legal/             Termenii, rambursarea, confidențialitatea (RO și EN)
+  components/          formularul în șase pași și bannerul de cookie-uri
   lib/
     db/                schema, conexiunea, migrările, identificatorii publici
     pipeline/          lanțul testat: prompt → Gemini → Suno → ffmpeg
@@ -26,7 +30,7 @@ drizzle/               migrările SQL generate
 scripts/               verificarea schemei
 deploy/                Caddyfile, backup
 content/legal/         Termenii, rambursarea, confidențialitatea (textul valabil)
-reference/             prototipul de interfață, ca material sursă
+reference/             prototipul original, înghețat ca material sursă
 ```
 
 Regula după care e împărțit totul: **web-ul nu așteaptă niciodată un furnizor extern.**
@@ -127,10 +131,29 @@ npm run worker:dev        # coada, în alt terminal
 
 ---
 
+## Testare
+
+```bash
+npm run typecheck && npm run lint
+CONFIRM_WIPE=1 DATABASE_URL=postgres://.../vocalmd_test npm run db:verify
+BASE_URL=http://127.0.0.1:3000 DATABASE_NAME=vocalmd_e2e npm run test:e2e
+```
+
+`db:verify` ia la mână garanțiile schemei. `test:e2e` parcurge site-ul într-un
+browser adevărat: formularul, crearea comenzii, trecerea la versuri, aprobarea,
+ascultarea previzualizării, linkurile semnate și deblocarea după plată. Pașii
+worker-ului sunt imitați scriind în bază, ca testul să meargă fără chei și fără
+să consume credite.
+
+Amândouă golesc tabele și refuză orice bază fără „test", „dev" sau „e2e" în nume.
+
 ## Pornire, pe server
 
 Caddy rulează deja pe gazdă și termină HTTPS pentru vocal.md, deci web-ul ascultă
 doar pe `127.0.0.1:3000`. Nimic din stivă nu e expus direct în internet.
+
+Pașii întregi, cu ce se completează în `.env` și de unde se iau cheile, sunt în
+**`deploy/PRIMA-INSTALARE.md`**. Pe scurt:
 
 ```bash
 git clone <repo> /root/vocal-md && cd /root/vocal-md
@@ -141,6 +164,8 @@ docker compose logs -f worker
 
 Serviciile: `db`, `migrate` (rulează o dată și iese), `web`, `worker`.
 Web-ul și worker-ul pornesc doar după ce migrările au reușit.
+
+Actualizările, după prima instalare: `./deploy/deploy.sh`.
 
 Fragmentul de Caddy e în `deploy/Caddyfile`. Backup zilnic al bazei:
 
@@ -174,11 +199,9 @@ arată de ce.
 
 ## Ce urmează
 
-1. Portarea interfeței din `reference/prototip-v7.jsx` pe ecrane.
-2. Rutele API: creare comandă, generare și editare versuri, aprobare, checkout.
-3. Paddle: checkout, webhook cu verificare de semnătură, trecerea în `paid`.
-4. Emailul de livrare și jobul `deliver` — singurul handler încă nescris.
-5. Paginile legale din `content/legal/`, în română și engleză, plus bannerul de cookie-uri.
-
-⚠️ Textele legale din prototip sunt versiunea veche și se contrazic cu documentele
-din `content/legal/`. Vezi `reference/README.md`.
+1. **Paddle** — checkout, webhook cu verificare de semnătură, trecerea în `paid`.
+   Până atunci, butonul de cumpărare spune că plata se activează în curând.
+2. **Emailul de livrare** și jobul `deliver` — singurul handler de coadă nescris.
+3. **Pagina publică de dăruit** — un link cu piesa și versurile, de trimis mai
+   departe. A fost scoasă din ecranul de livrare până există o pagină care arată
+   o comandă fără să deschidă și restul.

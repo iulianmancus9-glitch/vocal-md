@@ -1,4 +1,5 @@
-/* Stilurile prototipului intră aici la portarea interfeței. Deocamdată doar temelia. */
+/* Formularul își aduce toate stilurile cu el, sub clasa .vc. Aici stă doar
+   temelia paginii și bannerul de cookie-uri, care trăiește în afara lui. */
 :root {
   color-scheme: light;
   --ink: #16161a;
@@ -14,8 +15,31 @@ html, body {
   padding: 0;
   background: #fbfbfd;
   color: var(--ink);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-poppins), 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-button { font: inherit; cursor: pointer; background: none; border: 0; color: inherit; }
+/* :where() ține resetul la specificitate zero, ca o clasă de componentă să-l
+   poată depăși. Fără asta, butoanele rămân fără fundal și fără chenar. */
+:where(button) { font: inherit; cursor: pointer; background: none; border: 0; color: inherit; }
+
+/* ─── banner de cookie-uri ─── */
+.ck {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 80;
+  background: #fff;
+  border-top: 1px solid #E6E6EC;
+  box-shadow: 0 -8px 28px rgba(22, 22, 29, .10);
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+}
+.ck-in { max-width: 640px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+.ck-text { font-size: 12.5px; line-height: 1.6; color: #3F3F4B; margin: 0; }
+.ck-text a { color: #6C5CE7; }
+.ck-opts { display: flex; flex-direction: column; gap: 9px; }
+.ck-opt { display: flex; gap: 9px; align-items: flex-start; font-size: 12.5px; line-height: 1.55; color: #3F3F4B; }
+.ck-opt input { margin-top: 2px; accent-color: #6C5CE7; flex: none; }
+.ck-opt b { color: #16161D; font-weight: 600; }
+.ck-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.ck-btn { height: 40px; padding: 0 15px; border-radius: 11px; font-size: 13px; font-weight: 600; flex: 1; min-width: 120px; }
+.ck-ghost { border: 1.5px solid #D6D6E0; color: #3F3F4B; }
+.ck-ghost:hover { background: #F4F4F6; }
+.ck-primary { background: linear-gradient(135deg, #3BBDF5 0%, #6C5CE7 55%, #8B5CF6 100%); color: #fff; }

@@ -1,15 +1,19 @@
 # Material sursă
 
-Ce e aici nu se execută. Sunt documentele din care se construiește aplicația.
+Ce e aici nu se execută și nu se mai modifică.
 
-**`prototip-v7.jsx`** — prototipul complet de interfață, într-un singur fișier React.
-Se portează în `src/app` și `src/components` pe ecrane.
+**`prototip-v7.jsx`** — prototipul de interfață, așa cum a fost testat înainte de
+portare. A fost mutat în `src/components/Vocal.jsx`, care e de acum singurul loc
+unde se schimbă interfața. Fișierul de aici rămâne doar ca să se poată vedea de
+unde s-a plecat.
 
-⚠️ **Textele legale din prototip (constanta `LEGAL`) sunt versiunea veche** și spun
-altceva decât documentele din `content/legal/`: vorbesc despre livrare în 5–10 minute
-după plată și despre „toate vânzările sunt finale", fără previzualizare gratuită.
-Modelul de business s-a schimbat între timp. La portare, textele legale se iau din
-`content/legal/documente-legale.md`, nu din prototip.
+Ce s-a schimbat la portare:
 
-**`../content/legal/documente-legale.md`** — Termeni, Politica de rambursare și
-Politica de confidențialitate, în română și engleză. Acesta e textul valabil.
+- toate datele vin de la server; nimic nu mai e simulat în pagină;
+- playerele folosesc fișiere audio adevărate, prin linkuri semnate;
+- ecranul de documente legale a fost scos — textele au pagini proprii,
+  generate din `content/legal/`, deschise în filă nouă ca să nu se piardă
+  formularul completat;
+- **textele legale din prototip erau versiunea veche** și spuneau altceva decât
+  documentele valabile: livrare în 5–10 minute după plată și „toate vânzările
+  sunt finale", fără previzualizare gratuită. Au plecat odată cu ecranul.
