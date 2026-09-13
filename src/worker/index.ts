@@ -14,6 +14,7 @@ import { assertConfig } from '@/lib/env';
 import type { Job } from '@/lib/db/schema';
 import { claimNext, completeJob, enqueue, failJob, requeueStaleJobs } from '@/lib/queue/queue';
 import { handleCleanup } from '@/lib/queue/handlers/cleanup';
+import { handleDeliver } from '@/lib/queue/handlers/deliver';
 import { handleLyrics } from '@/lib/queue/handlers/lyrics';
 import { handleRender } from '@/lib/queue/handlers/render';
 
@@ -21,14 +22,10 @@ const WORKER_ID = `${hostname()}-${process.pid}`;
 const IDLE_MS = 2000;
 const CLEANUP_EVERY_MS = 6 * 60 * 60 * 1000;
 
-/**
- * `deliver` (emailul cu melodia completă) intră aici odată cu integrarea Paddle.
- * Până atunci nimic nu îl pune în coadă, iar un job neașteptat trebuie să se vadă,
- * nu să fie înghițit în tăcere.
- */
 const handlers: Partial<Record<Job['type'], (job: Job) => Promise<void>>> = {
   lyrics: handleLyrics,
   render: handleRender,
+  deliver: handleDeliver,
   cleanup: handleCleanup,
 };
 

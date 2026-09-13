@@ -217,11 +217,25 @@ arată de ce.
 
 ---
 
+## Plata
+
+Tranzacția se creează pe server, nu în browser: prețul, cantitatea și
+identificatorul comenzii sunt puse de noi, ca să nu poată fi schimbate înainte
+de „plătește". Confirmarea vine doar prin webhook — browserul poate minți,
+Paddle nu, pentru că semnează fiecare mesaj.
+
+Webhook-ul verifică semnătura, apoi citește JSON-ul brut câmp cu câmp. Nu
+folosim transformarea în obiecte a bibliotecii: aruncă dacă payload-ul are un
+câmp neașteptat, iar atunci o plată adevărată ar fi respinsă cu 401 și clientul
+n-ar primi niciodată melodia.
+
+O rambursare readuce comanda exact de unde a plecat: păstrează previzualizările,
+pierde fișierele integrale. Ruta de audio verifică starea la fiecare cerere,
+deci accesul se închide imediat.
+
 ## Ce urmează
 
-1. **Paddle** — checkout, webhook cu verificare de semnătură, trecerea în `paid`.
-   Până atunci, butonul de cumpărare spune că plata se activează în curând.
-2. **Emailul de livrare** și jobul `deliver` — singurul handler de coadă nescris.
-3. **Pagina publică de dăruit** — un link cu piesa și versurile, de trimis mai
+1. **Pagina publică de dăruit** — un link cu piesa și versurile, de trimis mai
    departe. A fost scoasă din ecranul de livrare până există o pagină care arată
    o comandă fără să deschidă și restul.
+2. **Cheile de producție Paddle**, după testarea în sandbox.

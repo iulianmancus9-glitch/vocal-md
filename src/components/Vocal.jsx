@@ -14,6 +14,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '@/lib/client';
+import { openCheckout } from '@/lib/paddle-client';
 import {
   Check, ArrowLeft, ArrowRight, Heart, Users, PartyPopper, Music2, Star, Mic2,
   Disc3, Guitar, Piano, Flame, Radio, Pencil, PenLine, RefreshCw, Play, Pause,
@@ -559,8 +560,12 @@ function Footer() {
    APLICAȚIA
    ══════════════════════════════════════════════════════════════ */
 
-export default function Vocal() {
-  const [screen, setScreen] = useState('intro');
+/**
+ * @param {{ initialOrderId?: string | null }} props
+ *   `initialOrderId` vine din pagina deschisă dintr-un link de email.
+ */
+export default function Vocal({ initialOrderId = null }) {
+  const [screen, setScreen] = useState(initialOrderId ? 'loading' : 'intro');
   const [step, setStep] = useState(0);
   const [d, setD] = useState({
     style: null, sub: null, mood: null, voice: null,
@@ -570,7 +575,7 @@ export default function Vocal() {
   const set = (k, v) => setD((p) => ({ ...p, [k]: v }));
 
   /* ce știe serverul despre comandă; pagina doar desenează ce i se spune */
-  const [orderId, setOrderId] = useState(null);
+  const [orderId, setOrderId] = useState(initialOrderId);
   const [order, setOrder] = useState(null);
   const [busy, setBusy] = useState(false);
   const [apiError, setApiError] = useState(null);
@@ -663,6 +668,33 @@ export default function Vocal() {
       return next;
     });
   }, [editing]);
+
+  /* Deschisă dintr-un link de email: sărim direct unde a rămas comanda. Aici
+     mutarea ecranului e voită, spre deosebire de sincronizarea obișnuită. */
+  useEffect(() => {
+    if (!initialOrderId) return;
+    let stop = false;
+    (async () => {
+      try {
+        const state = await api.get(initialOrderId);
+        if (stop) return;
+        setOrder(state);
+        if (state.lyrics != null) setLyrics(state.lyrics);
+        const map = {
+          draft: 'writing', lyrics_pending: 'writing', lyrics_ready: 'lyrics',
+          rendering: 'making', preview_ready: 'demo', paid: 'done', delivered: 'done',
+          refused: 'error', failed: 'error', expired: 'error',
+        };
+        if (state.status === 'rendering' || state.status === 'lyrics_pending') {
+          setWaitFrom(Date.now());
+        }
+        setScreen(map[state.status] ?? 'intro');
+      } catch {
+        if (!stop) setScreen('intro');
+      }
+    })();
+    return () => { stop = true; };
+  }, [initialOrderId]);
 
   /* Întrebăm serverul cât timp are ceva de lucru. Trei secunde e des cât să
      nu pară blocat și rar cât să nu încărcăm baza degeaba. */
@@ -843,6 +875,41 @@ export default function Vocal() {
     applyState(await api.restoreLyrics(orderId, version));
   });
 
+  /**
+   * Plata. Serverul pregătește tranzacția, Paddle deschide fereastra, iar
+   * confirmarea vine prin webhook — nu de la browser, care poate minți.
+   * De asta, după ce fereastra se închide, întrebăm serverul dacă s-a încasat.
+   */
+  const [waitingPayment, setWaitingPayment] = useState(false);
+
+  const buy = () => run(async () => {
+    const session = await api.checkout(orderId);
+    await openCheckout(session, {
+      onCompleted: () => {
+        setWaitingPayment(true);
+        // Webhook-ul ajunge în câteva secunde; întrebăm până se vede plata.
+        const started = Date.now();
+        const t = setInterval(async () => {
+          try {
+            const state = await api.get(orderId);
+            if (state.paid) {
+              clearInterval(t);
+              setWaitingPayment(false);
+              setOrder(state);
+              setScreen('done');
+            } else if (Date.now() - started > 90_000) {
+              clearInterval(t);
+              setWaitingPayment(false);
+              setApiError(
+                'Plata a fost trimisă, dar confirmarea întârzie. Îți scriem pe email imediat ce intră.',
+              );
+            }
+          } catch { /* o interogare pierdută nu e o eroare; încercăm iar */ }
+        }, 2500);
+      },
+    });
+  });
+
   const openLibrary = () => run(async () => {
     const { orders } = await api.list();
     setLibrary(orders);
@@ -892,6 +959,23 @@ export default function Vocal() {
   );
 
   /* ────────── pagini legale ────────── */
+  if (screen === 'loading') {
+    return (
+      <div className="vc">
+        <style>{CSS}</style>
+        <div className="vc-head"><div className="vc-headIn">
+          <span className="vc-mark">VOCAL</span>
+        </div></div>
+        <div className="vc-wrap"><div className="vc-panel">
+          <div className="vc-wait">
+            <div className="vc-waitRing"><Disc3 size={32} /></div>
+            <h2 className="vc-waitTitle">Se deschide comanda ta</h2>
+          </div>
+        </div></div>
+      </div>
+    );
+  }
+
   /* pagina de start: bannerul singur, cu un singur lucru de făcut.
      Pașii apar abia după apăsare, iar bannerul nu se mai întoarce. */
   if (screen === 'intro') {
@@ -1084,39 +1168,6 @@ export default function Vocal() {
     );
   }
 
-  /* Plata nu e încă legată: Paddle aprobă contul abia după ce se uită un om
-     peste site. Până atunci spunem exact asta, în loc să livrăm pe gratis. */
-  if (screen === 'soon') {
-    return (
-      <div className="vc">
-        <style>{CSS}</style>
-      {homeDialog}
-        <div className="vc-head"><div className="vc-headIn">
-          <button className="vc-mark" onClick={askHome}>VOCAL</button>
-        </div></div>
-        <div className="vc-wrap" ref={top} data-bar="0">
-          <div className="vc-panel">
-            <div className="vc-err">
-              <div className="vc-errIcon"><Clock size={30} /></div>
-              <h1 className="vc-errTitle">Plata se activează în curând</h1>
-              <p className="vc-errText">
-                Melodia ta e generată și rămâne salvată. Scrie-ne la base.vocalmd@gmail.com
-                și îți trimitem varianta completă imediat ce plata e deschisă.
-              </p>
-            </div>
-            <div className="vc-nav" ref={navRef}>
-              <button className="vc-ghost" style={{ flex: 1 }} onClick={() => setScreen('demo')}>
-                <ArrowLeft size={16} /> Înapoi la melodie
-              </button>
-            </div>
-          </div>
-          <Footer />
-        </div>
-      </div>
-    );
-  }
-
-  /* ────────── biblioteca ────────── */
   if (screen === 'library') {
     return (
       <div className="vc">
@@ -1385,7 +1436,9 @@ export default function Vocal() {
                     <span>Link dedicat cu piesa și versurile, gata de trimis persoanei dragi</span></li>
                 </ul>
                 <div className="vc-nav" ref={navRef} style={{ marginTop: 0 }}>
-                  <button className="vc-buy" onClick={() => setScreen('soon')}><Gift size={20} /> Primește melodia — 30 €</button>
+                  <button className="vc-buy" disabled={busy || waitingPayment} onClick={buy}>
+                    <Gift size={20} /> {waitingPayment ? 'Se confirmă plata…' : 'Primește melodia — 30 €'}
+                  </button>
                 </div>
                 <div className="vc-offerTrust">
                   <span className="vc-trustBit"><ShieldCheck size={13} /> Plată securizată</span>
@@ -1399,7 +1452,9 @@ export default function Vocal() {
         </div>
         {showBar && (
           <div className="vc-bar"><div className="vc-barIn">
-            <button className="vc-next" onClick={() => setScreen('soon')}><Gift size={18} /> Primește melodia — 30 €</button>
+            <button className="vc-next" disabled={busy || waitingPayment} onClick={buy}>
+              <Gift size={18} /> {waitingPayment ? 'Se confirmă plata…' : 'Primește melodia — 30 €'}
+            </button>
           </div></div>
         )}
       </div>

@@ -16,6 +16,7 @@ import { logEvent, setStatus } from '@/lib/orders';
 import { getDuration, makePreview } from '@/lib/pipeline/audio';
 import { briefFromOrder } from '@/lib/pipeline/brief';
 import { buildStyle } from '@/lib/pipeline/prompt';
+import { mailEnabled, sendPreviewReady } from '@/lib/mail';
 import { SunoError, createTask, downloadTrack, waitForTask } from '@/lib/pipeline/suno';
 import { absPath, ensureOrderDir, trackRelPath } from '@/lib/storage';
 
@@ -122,6 +123,16 @@ export async function handleRender(job: Job): Promise<void> {
       variants: tracks.length,
       dir,
     });
+
+    /* Emailul se trimite doar la prima înregistrare: la a doua, omul e cu
+       siguranță în pagină, se uită la ea. Un email la fiecare reluare ar fi
+       spam pe care nu l-a cerut nimeni.
+       O eroare de email nu are voie să strice o melodie deja generată. */
+    if (render.generation === 1 && mailEnabled()) {
+      const fresh = await db.query.orders.findFirst({ where: eq(orders.id, order.id) });
+      await sendPreviewReady(fresh ?? order).catch((err) =>
+        console.error(`Nu am putut trimite emailul pentru ${order.publicId}:`, err));
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await db

@@ -17,6 +17,7 @@
  */
 import { chromium } from 'playwright';
 import { execFileSync } from 'node:child_process';
+import { createHmac } from 'node:crypto';
 import { mkdirSync, rmSync } from 'node:fs';
 
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3000';
@@ -41,7 +42,9 @@ const ok = (name, cond, extra = '') => {
   console.log(`${cond ? '  ✓' : '  ✗'} ${name}${extra ? ' — ' + extra : ''}`);
 };
 
-sql('truncate orders cascade; truncate jobs; truncate rate_limits;');
+// webhook_events nu atârnă de comenzi, deci nu pleacă în cascadă — dar dacă
+// rămâne, a doua rulare vede evenimentele ca deja procesate și nu face nimic.
+sql('truncate orders cascade; truncate jobs; truncate rate_limits; truncate webhook_events;');
 rmSync(DIR, { recursive: true, force: true });
 
 const browser = await chromium.launch({
@@ -278,16 +281,79 @@ await shot('trei-inregistrari');
 ok('reluările s-au terminat',
   (await page.locator('.vc-takesFoot').textContent()).includes('folosit toate'));
 
-/* ─── cumpărarea, cât timp Paddle nu e legat ─── */
+/* ─── butonul de cumpărare ─── */
 
+/* Cheile din test sunt inventate, deci Paddle refuză. Ce contează e că refuzul
+   se vede ca mesaj, nu ca pagină ruptă — și, mai ales, că browserul nu poate
+   marca singur comanda ca plătită. */
 await page.getByRole('button', { name: /Primește melodia/ }).first().click();
-await page.locator('.vc-errTitle').waitFor({ timeout: 5000 });
-ok('cumpărarea spune adevărul despre plată',
-  (await page.locator('.vc-errTitle').textContent()).includes('Plata se activează'));
+await page.locator('.vc-alert').waitFor({ timeout: 15000 });
+ok('un eșec la plată se vede ca mesaj, nu strică pagina',
+  (await page.locator('.vc-alert').textContent()).length > 10);
+ok('browserul nu poate marca singur comanda ca plătită',
+  sql(`select status from orders where public_id='${id}'`) === 'preview_ready');
 
-/* ─── după plată ─── */
+/* ─── plata, prin webhook semnat ca al lui Paddle ─── */
 
-sql(`update orders set status='paid', paid_at=now() where public_id='${id}'`);
+const SECRET = process.env.PADDLE_WEBHOOK_SECRET ?? 'pdl_ntfset_test_secret';
+
+/** Semnătura pe care o pune Paddle: hmac peste „timp:corp". */
+function paddleSigned(body) {
+  const ts = Math.floor(Date.now() / 1000);
+  const h1 = createHmac('sha256', SECRET).update(`${ts}:${body}`).digest('hex');
+  return `ts=${ts};h1=${h1}`;
+}
+
+/** Id unic per rulare, ca două rulări să nu se calce pe idempotență. */
+const RUN = Date.now().toString(36);
+
+const paidEvent = (eventId) => JSON.stringify({
+  event_id: eventId,
+  event_type: 'transaction.completed',
+  occurred_at: new Date().toISOString(),
+  notification_id: eventId,
+  data: {
+    id: 'txn_test_' + eventId,
+    status: 'completed',
+    customer_id: 'ctm_test',
+    custom_data: { orderId: id },
+    details: { totals: { grand_total: '3000', currency_code: 'EUR' } },
+  },
+});
+
+const body1 = paidEvent(`evt_${RUN}_1`);
+const hook1 = await page.request.post(`${BASE}/api/webhooks/paddle`, {
+  headers: { 'Content-Type': 'application/json', 'Paddle-Signature': paddleSigned(body1) },
+  data: body1,
+});
+ok('webhook-ul semnat corect e acceptat', hook1.status() === 200);
+ok('comanda devine plătită', sql(`select status from orders where public_id='${id}'`) === 'paid');
+ok('plata e înregistrată cu suma corectă',
+  sql(`select amount_cents||' '||currency from payments p join orders o on o.id=p.order_id
+       where o.public_id='${id}'`) === '3000 EUR');
+ok('livrarea a intrat în coadă',
+  sql(`select count(*) from jobs where type='deliver'`) === '1');
+ok('comanda plătită se păstrează 24 de luni',
+  Number(sql(`select round(extract(epoch from (expires_at - now()))/86400) from orders
+              where public_id='${id}'`)) > 700);
+
+/* Paddle retrimite până primește 200: a doua livrare nu are voie să facă nimic. */
+const hook2 = await page.request.post(`${BASE}/api/webhooks/paddle`, {
+  headers: { 'Content-Type': 'application/json', 'Paddle-Signature': paddleSigned(body1) },
+  data: body1,
+});
+ok('același eveniment trimis de două ori nu se procesează de două ori',
+  hook2.status() === 200 && sql(`select count(*) from jobs where type='deliver'`) === '1');
+
+/* O semnătură falsificată nu are voie să deblocheze nimic. */
+const body3 = paidEvent(`evt_${RUN}_fals`);
+const hook3 = await page.request.post(`${BASE}/api/webhooks/paddle`, {
+  headers: { 'Content-Type': 'application/json', 'Paddle-Signature': 'ts=1;h1=mincinos' },
+  data: body3,
+});
+ok('webhook-ul cu semnătură falsă e refuzat', hook3.status() === 401);
+ok('evenimentul fals nu a fost înregistrat',
+  sql(`select count(*) from webhook_events where event_id='evt_${RUN}_fals'`) === '0');
 const state = await page.evaluate(async (oid) => {
   const r = await fetch(`/api/orders/${oid}`, { credentials: 'same-origin' });
   return r.json();
@@ -303,6 +369,41 @@ const lib = await page.evaluate(async () => {
 });
 ok('biblioteca listează comanda', lib.orders?.some((o) => o.publicId === id));
 
+const key0 = process.env.EXPORT_KEY ?? 'cheie-de-test-12345';
+const soldNow = await page.request.get(`${BASE}/api/export/comenzi.csv?key=${key0}`);
+ok('comanda plătită apare la vândute',
+  soldNow.status() === 200 && (await soldNow.text()).includes(id));
+
+/* ─── rambursarea închide accesul ─── */
+
+const refundBody = JSON.stringify({
+  event_id: `evt_${RUN}_refund`,
+  event_type: 'adjustment.created',
+  occurred_at: new Date().toISOString(),
+  data: {
+    id: 'adj_test',
+    action: 'refund',
+    transaction_id: `txn_test_evt_${RUN}_1`,
+    details: { totals: { grand_total: '3000', currency_code: 'EUR' } },
+  },
+});
+const hook4 = await page.request.post(`${BASE}/api/webhooks/paddle`, {
+  headers: { 'Content-Type': 'application/json', 'Paddle-Signature': paddleSigned(refundBody) },
+  data: refundBody,
+});
+ok('rambursarea e acceptată', hook4.status() === 200);
+ok('plata e marcată rambursată',
+  sql(`select p.status from payments p join orders o on o.id=p.order_id where o.public_id='${id}'`) === 'refunded');
+ok('comanda se întoarce la previzualizare',
+  sql(`select status from orders where public_id='${id}'`) === 'preview_ready');
+const fullUrl = state.tracks?.[0]?.fullUrl;
+if (fullUrl) {
+  const afterRefund = await page.request.get(fullUrl);
+  ok('fișierul integral nu se mai descarcă după rambursare', afterRefund.status() === 402);
+} else {
+  ok('fișierul integral nu se mai descarcă după rambursare', false, 'lipsește linkul');
+}
+
 /* ─── exportul pentru foaia de calcul ─── */
 
 const key = process.env.EXPORT_KEY ?? 'cheie-de-test-12345';
@@ -313,9 +414,11 @@ ok('exportul are antet și cel puțin un rând', csv.split('\r\n').length >= 2);
 ok('exportul conține comanda de test', csv.includes(id));
 ok('exportul fără cheie e refuzat',
   (await page.request.get(`${BASE}/api/export/incercari.csv`)).status() === 403);
+// „comenzi" se verifică în două momente, pentru că răspunsul trebuie să se
+// schimbe: o comandă rambursată nu mai e o vânzare.
 const exp2 = await page.request.get(`${BASE}/api/export/comenzi.csv?key=${key}`);
-ok('exportul „comenzi" listează doar plătite',
-  exp2.status() === 200 && (await exp2.text()).includes(id));
+ok('comanda rambursată nu mai apare la vândute',
+  exp2.status() === 200 && !(await exp2.text()).includes(id));
 
 /* ─── paginile legale ─── */
 
