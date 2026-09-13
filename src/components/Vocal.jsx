@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 import { api } from '@/lib/client';
 import { openCheckout } from '@/lib/paddle-client';
 import {
@@ -90,6 +91,34 @@ const STORY_EXAMPLE =
   'Anul acesta facem 10 ani de la nuntă. Am construit totul de la zero împreună, de când stăteam în chirie într-o garsonieră mică, până la viața aglomerată de acum cu doi copii. Chiar dacă suntem mereu pe fugă, diminețile când îmi pregătește cafeaua mă fac să uit de stres. Vreau să-i mulțumesc pentru toată răbdarea și să știe că o iubesc la fel de mult.';
 
 const STEPS = ['Stilul', 'Personalizare', 'Pentru cine', 'Povestea', 'Limba', 'Gata'];
+
+/**
+ * Melodii făcute pentru alți oameni, de ascultat pe prima pagină.
+ *
+ * Până acum, ca să auzi ceva trebuia să treci prin tot formularul. Cine intră
+ * prima dată n-avea de unde ști ce cumpără — și nici cineva care ne verifică
+ * site-ul nu avea ce vedea.
+ */
+const DEMOS = [
+  {
+    file: 'la-multi-ani-bogdan',
+    title: 'La mulți ani, Bogdan!',
+    meta: 'Zi de naștere · pentru un prieten',
+    length: '2:41',
+  },
+  {
+    file: 'primul-nostru-dans',
+    title: 'Primul nostru dans',
+    meta: 'Nuntă · pentru miri',
+    length: '2:03',
+  },
+  {
+    file: 'puiul-mamei',
+    title: 'Puiul mamei',
+    meta: 'Din suflet · pentru mamă',
+    length: '1:55',
+  },
+];
 
 /* ══════════════════════════════════════════════════════════════
    STIL
@@ -383,6 +412,24 @@ button.vc-mark:hover { opacity: .68; }
 .vc-checkLinks { font-size: 12px; line-height: 1.5; color: var(--gray); margin: 8px 0 0; padding-left: 34px; }
 .vc-checkLinks a { color: var(--violet); font-weight: 500; }
 
+/* ─── melodii demo pe prima pagină ─── */
+.vc-demos { margin-top: 16px; }
+.vc-demosTitle { font-size: 15px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 3px; }
+.vc-demosSub { font-size: 13px; line-height: 1.55; color: var(--gray); margin: 0 0 14px; }
+.vc-demoList { display: grid; gap: 10px; }
+.vc-demo { display: flex; align-items: center; gap: 12px; background: var(--page); border: 1px solid var(--line); border-radius: 16px; padding: 10px; text-align: left; width: 100%; transition: border-color .15s, box-shadow .15s; }
+.vc-demo:hover { border-color: var(--line-2); box-shadow: 0 4px 14px rgba(22,22,29,.06); }
+.vc-demo[data-on="1"] { border-color: var(--violet); box-shadow: 0 4px 16px rgba(108,92,231,.16); }
+.vc-demoArt { position: relative; width: 58px; height: 58px; border-radius: 12px; overflow: hidden; flex: none; background: var(--tile); }
+.vc-demoArt img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vc-demoPlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(22,22,29,.42); color: #fff; transition: background .15s; }
+.vc-demo:hover .vc-demoPlay { background: rgba(22,22,29,.55); }
+.vc-demoInfo { flex: 1; min-width: 0; }
+.vc-demoName { font-size: 14px; font-weight: 600; margin: 0 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vc-demoMeta { font-size: 12px; color: var(--gray); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vc-demoLen { font-size: 12px; font-weight: 600; color: var(--gray); font-variant-numeric: tabular-nums; flex: none; padding-right: 4px; }
+.vc-demoFoot { font-size: 12px; line-height: 1.55; color: var(--gray); margin: 12px 0 0; text-align: center; }
+
 /* ─── modul pliabil (sugestiile de poveste) ─── */
 .vc-modFold summary { list-style: none; cursor: pointer; display: flex; gap: 11px; align-items: flex-start; margin: 0; }
 .vc-modFold summary::-webkit-details-marker { display: none; }
@@ -640,6 +687,21 @@ export default function Vocal({ initialOrderId = null }) {
   const [copied, setCopied] = useState(false);
   const [confirmHome, setConfirmHome] = useState(false);
   const [library, setLibrary] = useState([]);
+  /* Demo-urile de pe pagina de start. Fișierele nu se descarcă până nu apeși:
+     sunt câteva megaocteți pe care majoritatea vizitatorilor nu-i cer. */
+  const [demo, setDemo] = useState(null);
+  const demoRefs = useRef({});
+
+  const toggleDemo = (file) => {
+    const el = demoRefs.current[file];
+    if (!el) return;
+    Object.entries(demoRefs.current).forEach(([k, other]) => {
+      if (k !== file && other) { other.pause(); other.currentTime = 0; }
+    });
+    if (demo === file) { el.pause(); setDemo(null); return; }
+    setDemo(file);
+    el.play().catch(() => setDemo(null));
+  };
 
   const top = useRef(null);
   const storyBox = useRef(null);
@@ -1035,7 +1097,7 @@ export default function Vocal({ initialOrderId = null }) {
             <p className="vc-heroEyebrow">Melodii 100% personalizate</p>
             <h1 className="vc-heroTitle">Transformă povestea voastră într-o melodie de neuitat.</h1>
             <p className="vc-heroText">
-              Spui povestea voastră, iar inteligența artificială scrie versurile și le cântă.
+              Spui povestea voastră, iar versurile și vocea sunt generate automat.
               În câteva minute ai o melodie făcută numai pentru omul drag ție.
             </p>
 
@@ -1046,9 +1108,50 @@ export default function Vocal({ initialOrderId = null }) {
             </div>
             <p className="vc-heroNote">
               Versurile și un minut din melodie sunt <b>gratuite</b>.<br />
-              Melodia completă — <b>două fișiere MP3</b>, descărcabile pe loc — costă{' '}
-              <b>30 €</b>, plată unică. O iei doar dacă îți place ce auzi.
+              Melodia completă — <b>două fișiere MP3</b>, descărcabile pe loc.
             </p>
+
+            <div className="vc-heroSep" />
+
+            <div className="vc-demos">
+              <p className="vc-demosTitle">Ascultă trei melodii făcute deja</p>
+              <p className="vc-demosSub">
+                Pentru alți oameni, la comenzile lor. A ta va fi despre povestea ta.
+              </p>
+
+              <div className="vc-demoList">
+                {DEMOS.map((t) => (
+                  <button key={t.file} className="vc-demo" data-on={demo === t.file ? '1' : '0'}
+                    onClick={() => toggleDemo(t.file)}
+                    aria-label={`${demo === t.file ? 'Oprește' : 'Ascultă'} ${t.title}`}>
+                    <span className="vc-demoArt">
+                      {/* Copertele sunt 360×360 într-un loc de 58: le micșorează Next. */}
+                      <Image src={`/demo/${t.file}.jpg`} alt="" width={58} height={58} />
+                      <span className="vc-demoPlay">
+                        {demo === t.file
+                          ? <Pause size={18} fill="currentColor" />
+                          : <Play size={18} fill="currentColor" style={{ marginLeft: 2 }} />}
+                      </span>
+                    </span>
+                    <span className="vc-demoInfo">
+                      <p className="vc-demoName">{t.title}</p>
+                      <p className="vc-demoMeta">{t.meta}</p>
+                    </span>
+                    <span className="vc-demoLen">{t.length}</span>
+                    <audio
+                      ref={(el) => { demoRefs.current[t.file] = el; }}
+                      src={`/demo/${t.file}.mp3`}
+                      preload="none"
+                      onEnded={() => setDemo(null)}
+                    />
+                  </button>
+                ))}
+              </div>
+
+              <p className="vc-demoFoot">
+                Melodia completă: <b>30 €</b>, plată unică.
+              </p>
+            </div>
 
             <div className="vc-heroSep" />
 
