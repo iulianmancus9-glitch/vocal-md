@@ -86,6 +86,12 @@ await page.getByRole('button', { name: 'Aniversare de cuplu', exact: true }).cli
 await page.locator('.vc-nav .vc-next').click();
 
 await page.locator('.vc-input').first().fill('Zece ani împreună');
+
+// Sugestiile stau pliate până le ceri.
+ok('sugestiile sunt ascunse la început',
+  !(await page.getByRole('button', { name: /Mulțumesc pentru tot/ }).isVisible()));
+await page.locator('.vc-modFold summary').click();
+await page.waitForTimeout(300);
 await page.getByRole('button', { name: /Mulțumesc pentru tot/ }).click();
 await page.waitForTimeout(500);
 ok('sugestia completează povestea', (await page.locator('.vc-area').inputValue()).length > 30);

@@ -114,10 +114,20 @@ const CSS = `
 .vc input, .vc textarea { font: inherit; }
 .vc :focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 8px; }
 
-.vc-head { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,.93); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
-.vc-headIn { max-width: 640px; margin: 0 auto; padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; }
-.vc-mark { font-size: 17px; font-weight: 700; letter-spacing: .16em; padding-left: .16em; }
-.vc-headNote { font-size: 12.5px; color: var(--gray); font-weight: 500; }
+.vc-head { position: sticky; top: 0; z-index: 30; background: rgba(255,255,255,.86); backdrop-filter: saturate(170%) blur(14px); border-bottom: 1px solid var(--line); }
+.vc-headIn { max-width: 640px; margin: 0 auto; padding: 13px 18px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+.vc-mark { display: inline-flex; align-items: center; gap: 9px; padding: 0; transition: opacity .15s; }
+button.vc-mark:hover { opacity: .68; }
+.vc-markBars { display: flex; align-items: flex-end; gap: 2.5px; height: 16px; }
+.vc-markBars i { width: 3px; border-radius: 2px; }
+.vc-markBars i:nth-child(1) { height: 8px;  background: #3BBDF5; }
+.vc-markBars i:nth-child(2) { height: 16px; background: #6C5CE7; }
+.vc-markBars i:nth-child(3) { height: 11px; background: #8B5CF6; }
+.vc-markText { font-size: 15.5px; font-weight: 700; letter-spacing: .15em; line-height: 1; }
+.vc-markMd { margin-left: .16em; color: var(--violet); }
+
+.vc-headNote { font-size: 11.5px; font-weight: 600; color: var(--gray); letter-spacing: .01em; background: var(--tile); border-radius: 999px; padding: 5px 11px; white-space: nowrap; }
 .vc-wrap { max-width: 640px; margin: 0 auto; padding: 16px 18px 40px; }
 .vc-wrap[data-bar="1"] { padding-bottom: 104px; }
 
@@ -355,8 +365,6 @@ const CSS = `
 .vc-heroCta { display: flex; }
 .vc-heroNote { font-size: 12.5px; line-height: 1.5; color: var(--ink-2); text-align: center; margin: 11px 0 0; }
 .vc-heroSep { height: 1px; background: rgba(108,92,231,.13); margin: 18px 0 16px; }
-.vc-mark { transition: opacity .15s; }
-button.vc-mark:hover { opacity: .62; }
 
 /* ─── dialog de confirmare ─── */
 .vc-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(22,22,29,.44); backdrop-filter: blur(3px); display: grid; place-items: center; padding: 20px; animation: vcfade .16s ease; }
@@ -374,6 +382,16 @@ button.vc-mark:hover { opacity: .62; }
 .vc-check:has(.vc-checkIn:focus-visible) { outline: 2px solid var(--violet); outline-offset: 2px; }
 .vc-checkLinks { font-size: 12px; line-height: 1.5; color: var(--gray); margin: 8px 0 0; padding-left: 34px; }
 .vc-checkLinks a { color: var(--violet); font-weight: 500; }
+
+/* ─── modul pliabil (sugestiile de poveste) ─── */
+.vc-modFold summary { list-style: none; cursor: pointer; display: flex; gap: 11px; align-items: flex-start; margin: 0; }
+.vc-modFold summary::-webkit-details-marker { display: none; }
+.vc-modFold summary:hover .vc-modTitle { color: var(--violet); }
+.vc-foldArrow { margin-left: auto; flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--tile); display: grid; place-items: center; transition: transform .22s ease, background .15s; align-self: center; }
+.vc-foldArrow::before { content: ''; width: 6px; height: 6px; border-right: 2px solid var(--gray); border-bottom: 2px solid var(--gray); transform: rotate(45deg) translate(-1px,-1px); }
+.vc-modFold[open] .vc-foldArrow { transform: rotate(180deg); background: var(--violet-l); }
+.vc-modFold[open] .vc-foldArrow::before { border-color: var(--violet); }
+.vc-modFold summary:focus-visible { outline: 2px solid var(--violet); outline-offset: 3px; border-radius: 10px; }
 
 /* ─── alegerea între înregistrări ─── */
 .vc-takes { margin-bottom: 14px; }
@@ -465,6 +483,29 @@ function Segmented({ options, value, onPick, emoji }) {
         </button>
       ))}
     </div>
+  );
+}
+
+/**
+ * Sigla. Trei bare ca un egalizator, apoi „VOCAL MD".
+ *
+ * „MD" lipsea, deși brandul și domeniul așa se numesc — omul a tastat vocal.md
+ * ca să ajungă aici și găsea altceva scris. Barele sunt culorile din gradientul
+ * mărcii, luate una câte una: la 3 pixeli lățime, un gradient întreg n-ar arăta
+ * decât o singură nuanță.
+ */
+function Brand({ onClick }) {
+  const inner = (
+    <>
+      <span className="vc-markBars" aria-hidden="true"><i /><i /><i /></span>
+      <span className="vc-markText">VOCAL<span className="vc-markMd">MD</span></span>
+    </>
+  );
+  if (!onClick) return <span className="vc-mark">{inner}</span>;
+  return (
+    <button className="vc-mark" onClick={onClick} aria-label="Vocal MD — înapoi la început">
+      {inner}
+    </button>
   );
 }
 
@@ -965,7 +1006,7 @@ export default function Vocal({ initialOrderId = null }) {
       <div className="vc">
         <style>{CSS}</style>
         <div className="vc-head"><div className="vc-headIn">
-          <span className="vc-mark">VOCAL</span>
+          <Brand />
         </div></div>
         <div className="vc-wrap"><div className="vc-panel">
           <div className="vc-wait">
@@ -986,7 +1027,7 @@ export default function Vocal({ initialOrderId = null }) {
         {homeDialog}
 
         <div className="vc-head"><div className="vc-headIn">
-          <button className="vc-mark" onClick={askHome}>VOCAL</button>
+          <Brand onClick={askHome} />
         </div></div>
 
         <div className="vc-wrap" ref={top}>
@@ -1035,7 +1076,7 @@ export default function Vocal({ initialOrderId = null }) {
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <button className="vc-mark" onClick={askHome}>VOCAL</button><span className="vc-headNote">Ultimul pas</span>
+          <Brand onClick={askHome} /><span className="vc-headNote">Ultimul pas</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-hero">
@@ -1116,7 +1157,7 @@ export default function Vocal({ initialOrderId = null }) {
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <button className="vc-mark" onClick={askHome}>VOCAL</button>
+          <Brand onClick={askHome} />
           <span className="vc-headNote">Comanda {order?.publicId ?? ''}</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
@@ -1176,7 +1217,7 @@ export default function Vocal({ initialOrderId = null }) {
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <button className="vc-mark" onClick={askHome}>VOCAL</button><span className="vc-headNote">Biblioteca</span>
+          <Brand onClick={askHome} /><span className="vc-headNote">Biblioteca</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-panel">
@@ -1242,7 +1283,7 @@ export default function Vocal({ initialOrderId = null }) {
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <button className="vc-mark" onClick={askHome}>VOCAL</button><span className="vc-headNote">Ceva n-a mers</span>
+          <Brand onClick={askHome} /><span className="vc-headNote">Ceva n-a mers</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-panel">
@@ -1296,7 +1337,7 @@ export default function Vocal({ initialOrderId = null }) {
       <div className="vc">
         <style>{CSS}</style>
       {homeDialog}
-        <div className="vc-head"><div className="vc-headIn"><button className="vc-mark" onClick={askHome}>VOCAL</button></div></div>
+        <div className="vc-head"><div className="vc-headIn"><Brand onClick={askHome} /></div></div>
         <div className="vc-wrap"><div className="vc-panel">
           <div className="vc-wait">
             <div className="vc-waitRing"><PenLine size={30} /></div>
@@ -1318,7 +1359,7 @@ export default function Vocal({ initialOrderId = null }) {
       <div className="vc">
         <style>{CSS}</style>
       {homeDialog}
-        <div className="vc-head"><div className="vc-headIn"><button className="vc-mark" onClick={askHome}>VOCAL</button></div></div>
+        <div className="vc-head"><div className="vc-headIn"><Brand onClick={askHome} /></div></div>
         <div className="vc-wrap"><div className="vc-panel">
           <div className="vc-wait">
             <div className="vc-waitRing"><Disc3 size={32} /></div>
@@ -1347,7 +1388,7 @@ export default function Vocal({ initialOrderId = null }) {
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <button className="vc-mark" onClick={askHome}>VOCAL</button><span className="vc-headNote">Melodia ta</span>
+          <Brand onClick={askHome} /><span className="vc-headNote">Melodia ta</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar={showBar ? '1' : '0'}>
           <div className="vc-hero">
@@ -1480,7 +1521,7 @@ export default function Vocal({ initialOrderId = null }) {
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <button className="vc-mark" onClick={askHome}>VOCAL</button><span className="vc-headNote">Versurile</span>
+          <Brand onClick={askHome} /><span className="vc-headNote">Versurile</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar={showBar ? '1' : '0'}>
           <div className="vc-hero">
@@ -1598,7 +1639,7 @@ export default function Vocal({ initialOrderId = null }) {
       {homeDialog}
 
       <div className="vc-head"><div className="vc-headIn">
-        <button className="vc-mark" onClick={askHome}>VOCAL</button>
+        <Brand onClick={askHome} />
         <span className="vc-headNote">Pasul {step + 1} din 6</span>
       </div></div>
 
@@ -1744,18 +1785,20 @@ export default function Vocal({ initialOrderId = null }) {
                   onChange={(e) => set('story', e.target.value)}
                   placeholder={d.mode === 'ai' ? STORY_EXAMPLE : '[Strofa 1]\n…'} />
                 <p className="vc-meter">{d.story.length} / 2000</p>
-                {d.mode === 'ai' && (
-                  <p className="vc-tip">
-                    <b>Un detaliu mic creează cea mai mare emoție.</b> „Cafeaua pregătită în diminețile aglomerate”
-                    spune mult mai multe într-o piesă decât un simplu „îți mulțumesc pentru tot”.
-                  </p>
-                )}
               </Module>
               </div>
 
               {d.mode === 'ai' && (
-                <Module icon={Sparkles} title="Nu știi de unde să începi?" text="Alege o direcție și îți completăm un început, pe care îl poți schimba.">
-                  <div className="vc-opts" style={{ gridTemplateColumns: 'repeat(2, minmax(0,1fr))' }}>
+                <details className="vc-mod vc-modFold">
+                  <summary className="vc-modHead">
+                    <span className="vc-modIcon"><Sparkles size={17} /></span>
+                    <div>
+                      <p className="vc-modTitle">Nu știi de unde să începi?</p>
+                      <p className="vc-modText">Alege o direcție și îți completăm un început, pe care îl poți schimba.</p>
+                    </div>
+                    <span className="vc-foldArrow" aria-hidden="true" />
+                  </summary>
+                  <div className="vc-opts" style={{ gridTemplateColumns: 'repeat(2, minmax(0,1fr))', marginTop: 14 }}>
                     {INSPIRATION.map((i) => (
                       <button key={i.label} className="vc-opt" onClick={() => {
                         set('story', i.text);
@@ -1768,7 +1811,7 @@ export default function Vocal({ initialOrderId = null }) {
                       </button>
                     ))}
                   </div>
-                </Module>
+                </details>
               )}
               <Need items={missing4} />
             </>

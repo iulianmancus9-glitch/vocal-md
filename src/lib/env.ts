@@ -61,6 +61,16 @@ const schema = z.object({
   // limita zilnică pe IP trebuie să lase loc pentru câteva comenzi întregi.
   MAX_RENDERS_PER_IP_PER_DAY: z.coerce.number().int().positive().default(9),
   MAX_RENDERS_PER_EMAIL_PER_DAY: z.coerce.number().int().positive().default(6),
+
+  /**
+   * Adrese IP care nu sunt limitate deloc — ale tale, ca să poți testa.
+   * Separate prin virgulă.
+   *
+   * Atenție la adresele care nu-ți aparțin doar ție: dacă folosești un VPN sau
+   * Cloudflare WARP, IP-ul e împărțit cu alți oameni, iar scutirea li se aplică
+   * și lor. Pe unul ca ăsta, oricine poate consuma credite nelimitat.
+   */
+  RATE_LIMIT_EXEMPT_IPS: z.string().default(''),
   MAX_LYRICS_PER_IP_PER_DAY: z.coerce.number().int().positive().default(20),
 
   RETENTION_UNPAID_DAYS: z.coerce.number().int().positive().default(30),

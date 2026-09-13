@@ -51,6 +51,16 @@ async function bump(bucket: string, limit: number): Promise<LimitResult> {
   return { ok: count <= limit, remaining: Math.max(0, limit - count), limit };
 }
 
+/** IP-urile scutite, citite o dată. */
+let exempt: Set<string> | undefined;
+
+function isExempt(ip: string): boolean {
+  exempt ??= new Set(
+    env.RATE_LIMIT_EXEMPT_IPS.split(',').map((v) => v.trim()).filter(Boolean),
+  );
+  return exempt.has(ip);
+}
+
 /**
  * Verifică limita pe IP și, dacă avem emailul, și pe email. Trece doar ce trece
  * pe amândouă — altfel ar fi de ajuns un email nou la fiecare încercare.
@@ -59,6 +69,9 @@ export async function checkLimit(
   action: LimitAction,
   { ip, email }: { ip: string; email?: string | null },
 ): Promise<LimitResult> {
+  // Adresele tale nu se numără deloc: nici contor, nici plafon.
+  if (isExempt(ip)) return { ok: true, remaining: Number.MAX_SAFE_INTEGER, limit: 0 };
+
   const day = today();
 
   const ipLimit =
