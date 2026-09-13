@@ -14,13 +14,28 @@ docker compose version
 
 ## 2. Codul
 
+Depozitul e public, deci nu ai nevoie de parolă, iar ramura noastră e cea
+principală, deci nu trebuie ales nimic:
+
 ```bash
 cd /root
-git clone <adresa-repo> vocal-md
+git clone https://github.com/iulianmancus9-glitch/vocal-md.git
 cd vocal-md
 ```
 
-## 3. Configurarea
+## 3. Configurarea, automat
+
+```bash
+./deploy/setup.sh
+```
+
+Scriptul îți cere cele două chei API (sau le găsește singur, dacă ai testat
+pipeline-ul pe acest server), inventează parolele care trebuie inventate,
+scrie `.env` și pornește totul.
+
+Restul secțiunii de mai jos e doar pentru cine vrea s-o facă de mână.
+
+## 3b. Configurarea, de mână
 
 ```bash
 cp .env.example .env
@@ -42,6 +57,8 @@ Paddle și Resend rămân goale deocamdată — site-ul pornește fără ele. Bu
 cumpărare spune că plata se activează în curând, în loc să livreze degeaba.
 
 ## 4. Pornirea
+
+Dacă ai folosit `setup.sh`, e deja pornit. Altfel:
 
 ```bash
 docker compose up -d --build
