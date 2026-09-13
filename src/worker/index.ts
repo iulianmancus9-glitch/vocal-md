@@ -10,6 +10,7 @@
 import { hostname } from 'node:os';
 import { sql } from 'drizzle-orm';
 import { db, pool } from '@/lib/db';
+import { assertConfig } from '@/lib/env';
 import type { Job } from '@/lib/db/schema';
 import { claimNext, completeJob, enqueue, failJob, requeueStaleJobs } from '@/lib/queue/queue';
 import { handleCleanup } from '@/lib/queue/handlers/cleanup';
@@ -81,6 +82,9 @@ async function waitForDb(): Promise<void> {
 
 async function loop(): Promise<void> {
   console.log(`Worker ${WORKER_ID} pornit.`);
+  // Înaintea oricărei reîncercări: dacă lipsește o cheie din .env, trebuie să se
+  // vadă acum, nu să se ascundă într-o buclă de „baza nu răspunde".
+  assertConfig();
   await waitForDb();
 
   try {

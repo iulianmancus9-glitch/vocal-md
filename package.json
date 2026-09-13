@@ -18,7 +18,8 @@
     "db:migrate": "tsx src/lib/db/migrate.ts",
     "db:studio": "drizzle-kit studio",
     "db:verify": "tsx scripts/verify-schema.ts",
-    "test:e2e": "node scripts/e2e.mjs"
+    "test:e2e": "node scripts/e2e.mjs",
+    "check:docker": "node scripts/check-docker-build.mjs"
   },
   "dependencies": {
     "@paddle/paddle-node-sdk": "^3.10.0",

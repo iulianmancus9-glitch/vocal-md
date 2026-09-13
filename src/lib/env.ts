@@ -50,7 +50,11 @@ const schema = z.object({
   SEED_DEMO: bool.default(false),
 });
 
-function load() {
+export type Env = z.infer<typeof schema>;
+
+let cached: Env | undefined;
+
+function load(): Env {
   const parsed = schema.safeParse(process.env);
   if (!parsed.success) {
     const lines = parsed.error.issues.map((i) => `  · ${i.path.join('.')}: ${i.message}`);
@@ -59,8 +63,38 @@ function load() {
   return parsed.data;
 }
 
-export const env = load();
-export type Env = typeof env;
+function config(): Env {
+  cached ??= load();
+  return cached;
+}
+
+/**
+ * Configurarea, citită la prima folosire — nu la încărcarea modulului.
+ *
+ * `next build` importă fiecare rută ca să-i adune configurarea, iar construirea
+ * imaginii Docker se face înainte să existe vreun .env. Dacă am verifica la
+ * import, build-ul ar cădea cu „APP_SECRET lipsește" deși cheile urmau oricum
+ * să vină abia la pornire.
+ */
+export const env: Env = new Proxy({} as Env, {
+  get: (_t, key: string) => config()[key as keyof Env],
+  has: (_t, key: string) => key in config(),
+  ownKeys: () => Reflect.ownKeys(config()),
+  getOwnPropertyDescriptor: (_t, key) => ({
+    ...Object.getOwnPropertyDescriptor(config(), key),
+    configurable: true,
+  }),
+});
+
+/**
+ * Verifică acum toată configurarea și aruncă dacă lipsește ceva.
+ *
+ * Se cheamă la pornirea worker-ului: acolo o cheie lipsă trebuie să oprească
+ * procesul cu un mesaj clar, nu să se ascundă într-o reîncercare la nesfârșit.
+ */
+export function assertConfig(): void {
+  config();
+}
 
 /** Versiunea documentelor legale acceptate de client, stocată la fiecare comandă. */
 export const LEGAL_VERSION = '2026-09-13';
