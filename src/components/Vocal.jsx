@@ -74,7 +74,7 @@ const LANGUAGES = [
 
 const PERKS = [
   { Icon: PenLine, text: 'Versuri scrise de la zero' },
-  { Icon: Mic2,    text: 'Voce plină de emoție' },
+  { Icon: Download, text: 'Două fișiere MP3, ale tale' },
   { Icon: Clock,   text: 'Gata în câteva minute' },
 ];
 
@@ -994,8 +994,8 @@ export default function Vocal({ initialOrderId = null }) {
             <p className="vc-heroEyebrow">Melodii 100% personalizate</p>
             <h1 className="vc-heroTitle">Transformă povestea voastră într-o melodie de neuitat.</h1>
             <p className="vc-heroText">
-              Spune-ne povestea voastră. Noi scriem versurile, le dăm viață pe note muzicale,
-              iar tu dăruiești o melodie creată exclusiv pentru omul drag ție.
+              Spui povestea voastră, iar inteligența artificială scrie versurile și le cântă.
+              În câteva minute ai o melodie făcută numai pentru omul drag ție.
             </p>
 
             <div className="vc-heroCta">
@@ -1005,7 +1005,8 @@ export default function Vocal({ initialOrderId = null }) {
             </div>
             <p className="vc-heroNote">
               Versurile și un minut din melodie sunt <b>gratuite</b>.<br />
-              Melodia completă costă <b>30 €</b>, plată unică — o iei doar dacă îți place ce auzi.
+              Melodia completă — <b>două fișiere MP3</b>, descărcabile pe loc — costă{' '}
+              <b>30 €</b>, plată unică. O iei doar dacă îți place ce auzi.
             </p>
 
             <div className="vc-heroSep" />
