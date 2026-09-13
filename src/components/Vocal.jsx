@@ -551,7 +551,8 @@ function Footer() {
       <a className="vc-footLink" href="/legal/ro/confidentialitate" target="_blank" rel="noopener noreferrer">
         Confidențialitate
       </a>
-      <span className="vc-footLink">Wade Production S.R.L.</span>
+      <a className="vc-footLink" href="mailto:base.vocalmd@gmail.com">base.vocalmd@gmail.com</a>
+      <span className="vc-footLink">S.R.L. „WADE PRODUCTION” · IDNO 1025600056881</span>
     </div>
   );
 }
@@ -1003,8 +1004,8 @@ export default function Vocal({ initialOrderId = null }) {
               </button>
             </div>
             <p className="vc-heroNote">
-              Versurile și un minut din melodie sunt gratuite.<br />
-              Plătești doar dacă îți place ce auzi.
+              Versurile și un minut din melodie sunt <b>gratuite</b>.<br />
+              Melodia completă costă <b>30 €</b>, plată unică — o iei doar dacă îți place ce auzi.
             </p>
 
             <div className="vc-heroSep" />
