@@ -374,6 +374,27 @@ button.vc-mark:hover { opacity: .62; }
 .vc-checkLinks { font-size: 12px; line-height: 1.5; color: var(--gray); margin: 8px 0 0; padding-left: 34px; }
 .vc-checkLinks a { color: var(--violet); font-weight: 500; }
 
+/* ─── alegerea între înregistrări ─── */
+.vc-takes { margin-bottom: 14px; }
+.vc-takesLabel { font-size: 12.5px; line-height: 1.55; color: var(--gray); margin: 0 0 9px; }
+.vc-takesRow { display: flex; gap: 7px; flex-wrap: wrap; }
+.vc-takeTab { display: flex; align-items: center; gap: 7px; border: 1.5px solid var(--line-2); border-radius: 12px; padding: 8px 13px; font-size: 13px; font-weight: 600; color: var(--ink-2); transition: border-color .15s, background .15s, color .15s; }
+.vc-takeTab:hover:not(:disabled) { border-color: var(--violet); color: var(--violet); }
+.vc-takeTab[data-on="1"] { background: var(--grad); border-color: transparent; color: #fff; box-shadow: 0 3px 10px rgba(108,92,231,.26); }
+.vc-takeTab:disabled { opacity: .55; cursor: not-allowed; }
+.vc-takeTabNote { font-size: 11px; font-weight: 500; opacity: .75; }
+.vc-takesFoot { font-size: 12px; line-height: 1.55; color: var(--gray); margin: 10px 0 0; }
+
+/* ─── variantele anterioare de versuri ─── */
+.vc-hist { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 14px; }
+.vc-hist summary { font-size: 13px; font-weight: 600; color: var(--violet); cursor: pointer; list-style: none; display: flex; align-items: center; gap: 7px; }
+.vc-hist summary::-webkit-details-marker { display: none; }
+.vc-hist summary::after { content: '▾'; font-size: 11px; transition: transform .2s; }
+.vc-hist[open] summary::after { transform: rotate(180deg); }
+.vc-histItem { background: var(--tile); border-radius: 13px; padding: 13px 14px; margin-top: 10px; }
+.vc-histTitle { font-size: 13.5px; font-weight: 600; margin: 0 0 4px; }
+.vc-histText { font-size: 12.5px; line-height: 1.55; color: var(--gray); margin: 0 0 11px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
 /* ─── mesaj de eroare ─── */
 .vc-alert { display: flex; gap: 10px; align-items: flex-start; background: #FEF2F2; border: 1px solid #FECACA; color: #B42318; border-radius: 13px; padding: 13px 14px; font-size: 13px; line-height: 1.55; margin-top: 14px; }
 .vc-alert svg { flex: none; margin-top: 1px; }
@@ -559,6 +580,7 @@ export default function Vocal() {
   const [saving, setSaving] = useState(false);
   const [waitFrom, setWaitFrom] = useState(0);
   const [tick, setTick] = useState(0);
+  const [finishing, setFinishing] = useState(false);
 
   const [take, setTake] = useState(null);
   const [playing, setPlaying] = useState(false);
@@ -580,7 +602,13 @@ export default function Vocal() {
   const style = STYLES.find((s) => s.id === d.style);
   const opts = d.style ? OPTIONS[d.style] : null;
 
-  useEffect(() => { top.current?.scrollIntoView({ block: 'start' }); }, [step, screen]);
+  /* Pe telefon, cine apasă „Creează melodia ta" a derulat deja jumătate de
+     pagină. Fără asta, formularul se deschide la mijloc și primul pas nu se
+     vede. `scrollIntoView` nu era de ajuns: cadrul următor readuce poziția. */
+  useEffect(() => {
+    const id = requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'auto' }));
+    return () => cancelAnimationFrame(id);
+  }, [step, screen]);
 
   /* bara de jos apare doar când butonul din pagină nu se vede */
   useEffect(() => {
@@ -612,7 +640,28 @@ export default function Vocal() {
       expired: 'error',
     };
     const next = map[state.status];
-    if (next) setScreen((cur) => (cur === next ? cur : next));
+    if (!next) return;
+
+    setScreen((cur) => {
+      if (cur === next) return cur;
+
+      // O oprire trebuie văzută oriunde ai fi.
+      if (next === 'error') return 'error';
+
+      // Mutăm ecranul doar când omul așteaptă ceva. Dacă s-a dus singur pe
+      // versuri ca să se uite la variante, nu-l aruncăm înapoi la melodie
+      // pentru că serverul a răspuns între timp.
+      const waiting = cur === 'writing' || cur === 'making';
+      if (!waiting) return cur;
+
+      // Melodia a ajuns înaintea barei: o umplem repede, apoi arătăm variantele.
+      if (next === 'demo' || next === 'lyrics') {
+        setFinishing(true);
+        setTimeout(() => { setFinishing(false); setScreen(next); }, 650);
+        return cur;
+      }
+      return next;
+    });
   }, [editing]);
 
   /* Întrebăm serverul cât timp are ceva de lucru. Trei secunde e des cât să
@@ -640,16 +689,25 @@ export default function Vocal() {
      ca melodia să existe. */
   useEffect(() => {
     if (screen !== 'making' && screen !== 'writing') return;
-    const t = setInterval(() => setTick(Date.now()), 400);
+    const t = setInterval(() => setTick(Date.now()), 300);
     return () => clearInterval(t);
   }, [screen]);
 
+  const waitSeconds = screen === 'making' ? 99 : 30;
+  const elapsed = waitFrom ? (Math.max(tick, waitFrom) - waitFrom) / 1000 : 0;
+
+  /* Bara nu măsoară nimic real — Suno nu ne spune cât a făcut. Ce poate face
+     cinstit e să arate că timpul trece, fără să ajungă la capăt înaintea
+     melodiei. Când melodia chiar a ajuns, `finishing` o duce repede la 100. */
   const progress = (() => {
+    if (finishing) return 100;
     if (!waitFrom || (screen !== 'making' && screen !== 'writing')) return 0;
-    const total = screen === 'making' ? 165 : 35;
-    const elapsed = (Math.max(tick, waitFrom) - waitFrom) / 1000;
-    return Math.max(0, Math.min(96, Math.round((elapsed / total) * 100)));
+    return Math.max(0, Math.min(96, Math.round((elapsed / waitSeconds) * 100)));
   })();
+
+  /* Dacă bara s-a umplut și încă nu a venit nimic, spunem asta, în loc s-o
+     lăsăm blocată la 96 fără nicio explicație. */
+  const overtime = !finishing && waitFrom > 0 && elapsed > waitSeconds;
 
   /* ─── ascultarea previzualizărilor ─── */
 
@@ -763,6 +821,26 @@ export default function Vocal() {
     setWaitFrom(Date.now());
     setScreen('making');
     setOrder((o) => ({ ...o, status: 'rendering' }));
+  });
+
+  /* Încă o înregistrare a aceluiași text. Costă credite, deci e limitată. */
+  const askNewRecording = () => run(async () => {
+    await api.newRecording(orderId);
+    setPlaying(false); setTake(null); setAt(0);
+    setWaitFrom(Date.now());
+    setScreen('making');
+    setOrder((o) => ({ ...o, status: 'rendering', rendersLeft: Math.max(0, (o?.rendersLeft ?? 1) - 1) }));
+  });
+
+  /* Alegerea rămâne pe server: e melodia pe care o primește la livrare. */
+  const chooseRecording = (renderId) => run(async () => {
+    setPlaying(false); setTake(null); setAt(0);
+    applyState(await api.chooseRecording(orderId, renderId));
+  });
+
+  const restoreLyrics = (version) => run(async () => {
+    setEditing(false);
+    applyState(await api.restoreLyrics(orderId, version));
   });
 
   const openLibrary = () => run(async () => {
@@ -1171,8 +1249,9 @@ export default function Vocal() {
             <div className="vc-waitRing"><PenLine size={30} /></div>
             <h2 className="vc-waitTitle">Se scriu versurile</h2>
             <p className="vc-waitText">
-              Citim povestea ta și compunem textul. Durează câteva zeci de secunde —
-              lasă pagina deschisă.
+              {overtime
+                ? 'Mai durează câteva clipe — textul e pe ultima sută de metri. Lasă pagina deschisă.'
+                : 'Citim povestea ta și compunem textul. Durează câteva zeci de secunde — lasă pagina deschisă.'}
             </p>
             <div className="vc-waitRail"><div className="vc-waitFill" style={{ width: `${progress}%` }} /></div>
           </div>
@@ -1191,7 +1270,11 @@ export default function Vocal() {
           <div className="vc-wait">
             <div className="vc-waitRing"><Disc3 size={32} /></div>
             <h2 className="vc-waitTitle">Se înregistrează melodia</h2>
-            <p className="vc-waitText">Vocea, instrumentele și mixajul. Durează două-trei minute — lasă pagina deschisă.</p>
+            <p className="vc-waitText">
+              {overtime
+                ? 'Mai durează câteva clipe — se lucrează la mixaj. Nu închide pagina, melodia vine.'
+                : 'Vocea, instrumentele și mixajul. Durează două-trei minute — lasă pagina deschisă.'}
+            </p>
             <div className="vc-waitRail"><div className="vc-waitFill" style={{ width: `${progress}%` }} /></div>
           </div>
         </div></div>
@@ -1202,6 +1285,7 @@ export default function Vocal() {
   /* ────────── demo + ofertă ────────── */
   if (screen === 'demo') {
     const tracks = order?.tracks ?? [];
+    const recordings = order?.recordings ?? [];
     // Previzualizarea e tăiată la 60 de secunde, dar dacă piesa e mai scurtă
     // playerul trebuie să arate durata adevărată, nu una promisă.
     const previewLen = Math.min(60, Math.max(...tracks.map((t) => t.duration || 60), 60));
@@ -1219,6 +1303,28 @@ export default function Vocal() {
             <p className="vc-heroText">Am pregătit două interpretări ale aceleiași piese. Ascultă-le pe amândouă — le primești pe ambele, integral.</p>
           </div>
           <div className="vc-panel">
+            {recordings.length > 1 && (
+              <div className="vc-takes">
+                <p className="vc-takesLabel">
+                  Ai {recordings.length} înregistrări ale aceleiași piese. Alege-o pe cea care
+                  îți place — pe ea o primești.
+                </p>
+                <div className="vc-takesRow">
+                  {recordings.map((r) => (
+                    <button key={r.id} className="vc-takeTab" disabled={busy}
+                      data-on={r.id === order?.currentRenderId ? '1' : '0'}
+                      aria-pressed={r.id === order?.currentRenderId}
+                      onClick={() => chooseRecording(r.id)}>
+                      Înregistrarea {r.generation}
+                      {r.lyricsVersion !== order?.lyricsVersion && (
+                        <span className="vc-takeTabNote">alt text</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {tracks.map((t) => (
               <React.Fragment key={t.variant}>
                 <audio
@@ -1242,6 +1348,23 @@ export default function Vocal() {
                 />
               </React.Fragment>
             ))}
+
+            <div className="vc-two" style={{ marginTop: 14 }}>
+              <button className="vc-ghost" onClick={() => setScreen('lyrics')}>
+                <ListMusic size={16} /> Vezi versurile
+              </button>
+              <button className="vc-ghost" disabled={busy || (order?.rendersLeft ?? 0) === 0}
+                onClick={askNewRecording}
+                style={(order?.rendersLeft ?? 0) === 0 ? { opacity: .5, cursor: 'not-allowed' } : undefined}>
+                <RefreshCw size={16} /> Altă înregistrare
+              </button>
+            </div>
+            <p className="vc-takesFoot">
+              {(order?.rendersLeft ?? 0) > 0
+                ? `Mai poți cere ${order.rendersLeft} ${order.rendersLeft === 1 ? 'înregistrare' : 'înregistrări'}, gratuit. Cele de până acum rămân, nu se pierd.`
+                : 'Ai folosit toate înregistrările gratuite. Alege dintre cele de mai sus pe cea care îți place.'}
+            </p>
+            <Alert text={apiError} />
 
             <div className="vc-offer">
               <div className="vc-offerIn">
@@ -1286,6 +1409,15 @@ export default function Vocal() {
   /* ────────── versuri ────────── */
   if (screen === 'lyrics') {
     const left = order?.regensLeft ?? 0;
+    const history = order?.lyricsHistory ?? [];
+    const older = history.filter((v) => !v.isCurrent).reverse();
+    // După ce piesa a fost cântată, textul nu se mai schimbă pe loc — dar se
+    // poate reveni la o variantă veche, iar apoi cere o înregistrare nouă.
+    const sung = ['rendering', 'preview_ready', 'paid', 'delivered'].includes(order?.status);
+    // Textul de acum diferă de cel din înregistrarea aleasă: are rost să-l cânte.
+    const chosen = (order?.recordings ?? []).find((r) => r.id === order?.currentRenderId);
+    const textChanged = sung && chosen && chosen.lyricsVersion !== order?.lyricsVersion;
+    const canRecord = textChanged && (order?.rendersLeft ?? 0) > 0;
     return (
       <div className="vc">
         <style>{CSS}</style>
@@ -1297,34 +1429,85 @@ export default function Vocal() {
           <div className="vc-hero">
             <p className="vc-heroEyebrow">Pasul următor</p>
             <h1 className="vc-heroTitle">{order?.songTitle || d.title || 'Versurile tale sunt gata'}</h1>
-            <p className="vc-heroText">Citește-le cu atenție — exact așa vor fi înregistrate. Poți modifica orice cuvânt sau poți cere o variantă nouă.</p>
+            <p className="vc-heroText">
+              {sung
+                ? 'Textul pe care l-ai aprobat. Dacă îți place mai mult o variantă anterioară, o poți readuce și cere o înregistrare nouă pe ea.'
+                : 'Citește-le cu atenție — exact așa vor fi înregistrate. Poți modifica orice cuvânt sau poți cere o variantă nouă.'}
+            </p>
           </div>
           <div className="vc-panel">
             {editing
               ? <textarea className="vc-lyricsEdit" value={lyrics} onChange={(e) => setLyrics(e.target.value)} />
               : <div className="vc-lyrics">{lyrics}</div>}
-            <div className="vc-two">
-              <button className="vc-ghost" disabled={saving}
-                onClick={() => (editing ? finishEditing() : setEditing(true))}>
-                <Pencil size={16} /> {saving ? 'Se salvează…' : editing ? 'Am terminat' : 'Modifică acest text'}
-              </button>
-              <button className="vc-ghost" disabled={left === 0 || busy || editing}
-                onClick={askNewLyrics}
-                style={left === 0 ? { opacity: .5, cursor: 'not-allowed' } : undefined}>
-                <RefreshCw size={16} /> Altă variantă
-              </button>
-            </div>
-            <p style={{ fontSize: 12, color: '#767686', margin: '12px 0 0', lineHeight: 1.55 }}>
-              {left > 0
-                ? `Mai ai ${left} ${left === 1 ? 'variantă gratuită' : 'variante gratuite'} de versuri.`
-                : 'Ai folosit variantele gratuite — dar poți modifica textul direct, oricât vrei.'}
-            </p>
+            {!sung && (
+              <>
+                <div className="vc-two">
+                  <button className="vc-ghost" disabled={saving}
+                    onClick={() => (editing ? finishEditing() : setEditing(true))}>
+                    <Pencil size={16} /> {saving ? 'Se salvează…' : editing ? 'Am terminat' : 'Modifică acest text'}
+                  </button>
+                  <button className="vc-ghost" disabled={left === 0 || busy || editing}
+                    onClick={askNewLyrics}
+                    style={left === 0 ? { opacity: .5, cursor: 'not-allowed' } : undefined}>
+                    <RefreshCw size={16} /> Altă variantă
+                  </button>
+                </div>
+                <p style={{ fontSize: 12, color: '#767686', margin: '12px 0 0', lineHeight: 1.55 }}>
+                  {left > 0
+                    ? `Mai ai ${left} ${left === 1 ? 'variantă gratuită' : 'variante gratuite'} de versuri.`
+                    : 'Ai folosit variantele gratuite — dar poți modifica textul direct, oricât vrei.'}
+                </p>
+              </>
+            )}
+
+            {textChanged && (
+              <div className="vc-safe" style={{ background: 'var(--violet-t)', color: 'var(--ink-2)' }}>
+                <Sparkles size={16} color="#6C5CE7" />
+                <span>
+                  {canRecord
+                    ? 'Textul de acum e altul decât cel din înregistrarea pe care o asculți. Înregistrează-l ca să-l auzi cântat.'
+                    : 'Textul de acum e altul decât cel din înregistrarea pe care o asculți, dar ai folosit toate înregistrările.'}
+                </span>
+              </div>
+            )}
+
+            {older.length > 0 && (
+              <details className="vc-hist">
+                <summary>
+                  Variantele anterioare ({older.length})
+                </summary>
+                {older.map((v) => (
+                  <div className="vc-histItem" key={v.version}>
+                    <p className="vc-histTitle">{v.title || `Varianta ${v.version}`}</p>
+                    <p className="vc-histText">
+                      {v.lyrics.split('\n').map((l) => l.trim())
+                        .filter((l) => l && !l.startsWith('['))
+                        .slice(0, 2).join(' · ')}
+                    </p>
+                    <button className="vc-ghost" style={{ width: '100%' }} disabled={busy}
+                      onClick={() => restoreLyrics(v.version)}>
+                      <RotateCcw size={15} /> Readu varianta asta
+                    </button>
+                  </div>
+                ))}
+              </details>
+            )}
             <Alert text={apiError} />
             <div className="vc-nav" ref={navRef}>
               <button className="vc-back" onClick={askHome} aria-label="Înapoi"><ArrowLeft size={19} /></button>
+              {!sung ? (
               <button className="vc-next" disabled={busy || saving} onClick={approveLyrics}>
-              <Check size={18} /> {busy ? 'Se trimite…' : 'Aprobă și înregistrează'}
-            </button>
+                <Check size={18} /> {busy ? 'Se trimite…' : 'Aprobă și înregistrează'}
+              </button>
+            ) : canRecord ? (
+              <button className="vc-next" disabled={busy} onClick={askNewRecording}>
+                <Mic2 size={18} /> {busy ? 'Se trimite…' : 'Înregistrează varianta asta'}
+              </button>
+            ) : (
+              <button className="vc-next" onClick={() => setScreen('demo')}>
+                <Play size={18} fill="currentColor" /> Înapoi la melodie
+              </button>
+            )}
             </div>
           </div>
           <Footer />
@@ -1332,9 +1515,19 @@ export default function Vocal() {
         {showBar && (
           <div className="vc-bar"><div className="vc-barIn">
             <button className="vc-back" onClick={askHome} aria-label="Înapoi"><ArrowLeft size={19} /></button>
-            <button className="vc-next" disabled={busy || saving} onClick={approveLyrics}>
-              <Check size={18} /> {busy ? 'Se trimite…' : 'Aprobă și înregistrează'}
-            </button>
+            {!sung ? (
+              <button className="vc-next" disabled={busy || saving} onClick={approveLyrics}>
+                <Check size={18} /> {busy ? 'Se trimite…' : 'Aprobă și înregistrează'}
+              </button>
+            ) : canRecord ? (
+              <button className="vc-next" disabled={busy} onClick={askNewRecording}>
+                <Mic2 size={18} /> {busy ? 'Se trimite…' : 'Înregistrează varianta asta'}
+              </button>
+            ) : (
+              <button className="vc-next" onClick={() => setScreen('demo')}>
+                <Play size={18} fill="currentColor" /> Înapoi la melodie
+              </button>
+            )}
           </div></div>
         )}
       </div>

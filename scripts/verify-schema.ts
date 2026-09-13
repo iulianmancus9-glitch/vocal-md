@@ -9,11 +9,11 @@
  */
 import { eq, sql } from 'drizzle-orm';
 import { db, pool } from '@/lib/db';
-import { jobs, lyricsVersions, orderEvents, orderTracks, orders } from '@/lib/db/schema';
+import { jobs, lyricsVersions, orderEvents, orderTracks, orders, renders } from '@/lib/db/schema';
 import { newAccessToken, newPublicId } from '@/lib/db/ids';
 import { claimNext, completeJob, enqueue, failJob } from '@/lib/queue/queue';
 import { unpaidExpiry } from '@/lib/orders';
-import { signDownload, verifyDownload } from '@/lib/storage';
+import { signDownload, trackRelPath, verifyDownload } from '@/lib/storage';
 
 let pass = 0, fail = 0;
 const ok = (name: string, cond: boolean, extra = '') => {
@@ -93,43 +93,69 @@ async function main() {
   const j3 = await enqueue(second!.type, order!.id);
   ok('un job nou de același tip e permis după ce cel vechi s-a terminat', j3 !== null);
 
-  /* ─── task-ul Suno e unic, dar NULL se repetă liber ─── */
-  await db.update(orders).set({ sunoTaskId: 'task-abc' }).where(eq(orders.id, order!.id));
-  const [o2] = await db.insert(orders).values({
-    publicId: newPublicId(), accessToken: newAccessToken(), expiresAt: unpaidExpiry(),
+  /* ─── înregistrări multiple pentru aceeași comandă ─── */
+  const [r1] = await db.insert(renders).values({
+    orderId: order!.id, generation: 1, lyricsVersion: 1, sunoTaskId: 'task-abc',
   }).returning();
-  let duplicateRejected = false;
+  const [r2] = await db.insert(renders).values({
+    orderId: order!.id, generation: 2, lyricsVersion: 1,
+  }).returning();
+  ok('o comandă poate avea mai multe înregistrări', r1 !== undefined && r2 !== undefined);
+
+  let sameGeneration = false;
   try {
-    await db.update(orders).set({ sunoTaskId: 'task-abc' }).where(eq(orders.id, o2!.id));
-  } catch { duplicateRejected = true; }
-  ok('două comenzi nu pot împărți același suno_task_id', duplicateRejected);
-  const nulls = await db.select({ n: sql<number>`count(*)::int` }).from(orders)
+    await db.insert(renders).values({ orderId: order!.id, generation: 1, lyricsVersion: 1 });
+  } catch { sameGeneration = true; }
+  ok('aceeași generație nu se poate crea de două ori', sameGeneration);
+
+  let duplicateTask = false;
+  try {
+    await db.update(renders).set({ sunoTaskId: 'task-abc' }).where(eq(renders.id, r2!.id));
+  } catch { duplicateTask = true; }
+  ok('două înregistrări nu pot împărți același task Suno', duplicateTask);
+  const nulls = await db.select({ n: sql<number>`count(*)::int` }).from(renders)
     .where(sql`suno_task_id is null`);
-  ok('mai multe comenzi pot avea suno_task_id NULL', (nulls[0]!.n ?? 0) >= 1);
+  ok('mai multe înregistrări pot avea task NULL', (nulls[0]!.n ?? 0) >= 1);
+
+  /* aceeași variantă, în înregistrări diferite, e în regulă */
+  await db.insert(orderTracks).values({ orderId: order!.id, renderId: r1!.id, variant: 1, fullPath: 'a' });
+  await db.insert(orderTracks).values({ orderId: order!.id, renderId: r2!.id, variant: 1, fullPath: 'b' });
+  let sameVariant = false;
+  try {
+    await db.insert(orderTracks).values({ orderId: order!.id, renderId: r1!.id, variant: 1, fullPath: 'c' });
+  } catch { sameVariant = true; }
+  ok('varianta 1 poate exista în fiecare înregistrare', true);
+  ok('dar nu de două ori în aceeași înregistrare', sameVariant);
 
   /* ─── ștergerea unei comenzi ia cu ea tot ce atârnă de ea ─── */
   await db.insert(lyricsVersions).values({
     orderId: order!.id, version: 1, source: 'ai', lyrics: '[Refren]\nAna...',
   });
-  await db.insert(orderTracks).values({ orderId: order!.id, variant: 1, fullPath: 'x/1.mp3' });
   await db.insert(orderEvents).values({ orderId: order!.id, type: 'test' });
 
   await db.delete(orders).where(eq(orders.id, order!.id));
   const left = await db.select({ n: sql<number>`count(*)::int` }).from(lyricsVersions);
   const tracksLeft = await db.select({ n: sql<number>`count(*)::int` }).from(orderTracks);
+  const rendersLeft = await db.select({ n: sql<number>`count(*)::int` }).from(renders);
   const jobsLeft = await db.select({ n: sql<number>`count(*)::int` }).from(jobs);
   ok('versurile se șterg în cascadă', left[0]!.n === 0);
   ok('piesele se șterg în cascadă', tracksLeft[0]!.n === 0);
+  ok('înregistrările se șterg în cascadă', rendersLeft[0]!.n === 0);
   ok('joburile se șterg în cascadă', jobsLeft[0]!.n === 0);
 
   /* ─── linkurile semnate ─── */
-  const { exp, sig } = signDownload('abc123', 1, 'preview');
-  ok('linkul propriu se validează', verifyDownload('abc123', 1, 'preview', exp, sig));
+  const { exp, sig } = signDownload('abc123', 1, 1, 'preview');
+  ok('linkul propriu se validează', verifyDownload('abc123', 1, 1, 'preview', exp, sig));
   ok('nu poți transforma preview în integral schimbând URL-ul',
-    !verifyDownload('abc123', 1, 'full', exp, sig));
-  ok('nu poți folosi linkul altei comenzi', !verifyDownload('altcineva', 1, 'preview', exp, sig));
+    !verifyDownload('abc123', 1, 1, 'full', exp, sig));
+  ok('nu poți asculta altă înregistrare cu același link',
+    !verifyDownload('abc123', 2, 1, 'preview', exp, sig));
+  ok('nu poți folosi linkul altei comenzi',
+    !verifyDownload('altcineva', 1, 1, 'preview', exp, sig));
   ok('linkul expirat e refuzat',
-    !verifyDownload('abc123', 1, 'preview', Math.floor(Date.now() / 1000) - 10, sig));
+    !verifyDownload('abc123', 1, 1, 'preview', Math.floor(Date.now() / 1000) - 10, sig));
+  ok('calea poartă generația, deci înregistrările nu se suprascriu',
+    trackRelPath('abc123', 1, 1, 'full') !== trackRelPath('abc123', 2, 1, 'full'));
 
   console.log(`\n${pass} verificări trecute, ${fail} eșuate.`);
   await pool.end();

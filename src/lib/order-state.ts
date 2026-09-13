@@ -1,12 +1,12 @@
 /**
  * Ce vede browserul despre o comandă.
  *
- * Tot ce nu-i trebuie clientului rămâne pe server: secretul de acces, id-ul de
- * task Suno, adresele de la care descărcăm, mesajele tehnice de eroare.
+ * Tot ce nu-i trebuie clientului rămâne pe server: secretul de acces, id-urile
+ * de task Suno, adresele de la care descărcăm, mesajele tehnice de eroare.
  */
 import { asc, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { orderTracks, type Order } from '@/lib/db/schema';
+import { lyricsVersions, orderTracks, renders, type Order } from '@/lib/db/schema';
 import { downloadUrl } from '@/lib/storage';
 
 export interface TrackState {
@@ -17,17 +17,43 @@ export interface TrackState {
   fullUrl: string | null;
 }
 
+export interface RecordingState {
+  id: string;
+  generation: number;
+  lyricsVersion: number;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  createdAt: string;
+  tracks: TrackState[];
+}
+
+export interface LyricsVersionState {
+  version: number;
+  title: string | null;
+  lyrics: string;
+  source: string;
+  createdAt: string;
+  isCurrent: boolean;
+}
+
 export interface OrderState {
   publicId: string;
   status: Order['status'];
   paid: boolean;
   songTitle: string | null;
   lyrics: string | null;
+  lyricsVersion: number;
   regensLeft: number;
+  rendersLeft: number;
   /** Mesajul pentru om, când comanda s-a oprit. */
   problem: string | null;
-  tracks: TrackState[];
   createdAt: string;
+  currentRenderId: string | null;
+  /** Toate înregistrările reușite, cea mai nouă la final. */
+  recordings: RecordingState[];
+  /** Piesele înregistrării alese — ce ascultă clientul acum. */
+  tracks: TrackState[];
+  /** Variantele de versuri, ca să se poată întoarce la una mai veche. */
+  lyricsHistory: LyricsVersionState[];
 }
 
 const PAID_STATUSES: Order['status'][] = ['paid', 'delivered'];
@@ -48,11 +74,36 @@ function problemFor(order: Order): string | null {
 export async function orderState(order: Order): Promise<OrderState> {
   const paid = PAID_STATUSES.includes(order.status);
 
-  const tracks = await db
-    .select()
-    .from(orderTracks)
-    .where(eq(orderTracks.orderId, order.id))
-    .orderBy(asc(orderTracks.variant));
+  const [recordingRows, trackRows, versionRows] = await Promise.all([
+    db.select().from(renders).where(eq(renders.orderId, order.id)).orderBy(asc(renders.generation)),
+    db.select().from(orderTracks).where(eq(orderTracks.orderId, order.id))
+      .orderBy(asc(orderTracks.variant)),
+    db.select().from(lyricsVersions).where(eq(lyricsVersions.orderId, order.id))
+      .orderBy(asc(lyricsVersions.version)),
+  ]);
+
+  const toTrack = (t: typeof trackRows[number], generation: number): TrackState => ({
+    variant: t.variant,
+    duration: t.durationSeconds,
+    previewUrl: t.previewPath ? downloadUrl(order.publicId, generation, t.variant, 'preview') : null,
+    // După plată, toate înregistrările se pot descărca — sunt deja generate,
+    // iar un client care a plătit n-are de ce să rămână blocat pe una singură.
+    fullUrl: paid && t.fullPath ? downloadUrl(order.publicId, generation, t.variant, 'full') : null,
+  });
+
+  const recordings: RecordingState[] = recordingRows
+    .filter((r) => r.status === 'done')
+    .map((r) => ({
+      id: r.id,
+      generation: r.generation,
+      lyricsVersion: r.lyricsVersion,
+      status: r.status,
+      createdAt: r.createdAt.toISOString(),
+      tracks: trackRows.filter((t) => t.renderId === r.id).map((t) => toTrack(t, r.generation)),
+    }));
+
+  const chosen =
+    recordings.find((r) => r.id === order.currentRenderId) ?? recordings[recordings.length - 1];
 
   return {
     publicId: order.publicId,
@@ -60,14 +111,21 @@ export async function orderState(order: Order): Promise<OrderState> {
     paid,
     songTitle: order.songTitle,
     lyrics: order.lyrics,
+    lyricsVersion: order.lyricsVersion,
     regensLeft: order.regensLeft,
+    rendersLeft: order.rendersLeft,
     problem: problemFor(order),
     createdAt: order.createdAt.toISOString(),
-    tracks: tracks.map((t) => ({
-      variant: t.variant,
-      duration: t.durationSeconds,
-      previewUrl: t.previewPath ? downloadUrl(order.publicId, t.variant, 'preview') : null,
-      fullUrl: paid && t.fullPath ? downloadUrl(order.publicId, t.variant, 'full') : null,
+    currentRenderId: chosen?.id ?? null,
+    recordings,
+    tracks: chosen?.tracks ?? [],
+    lyricsHistory: versionRows.map((v) => ({
+      version: v.version,
+      title: v.title,
+      lyrics: v.lyrics,
+      source: v.source,
+      createdAt: v.createdAt.toISOString(),
+      isCurrent: v.version === order.lyricsVersion,
     })),
   };
 }

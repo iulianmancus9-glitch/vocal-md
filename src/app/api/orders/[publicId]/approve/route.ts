@@ -4,10 +4,13 @@
  * De aici încolo se cheltuiesc credite Suno, deci e singurul loc din fluxul
  * gratuit unde limita pe IP și pe email chiar contează.
  */
+import { and, eq } from 'drizzle-orm';
+import { db } from '@/lib/db';
+import { renders } from '@/lib/db/schema';
 import { fail, guard, ok } from '@/lib/api';
-import { logEvent, setStatus } from '@/lib/orders';
-import { enqueue } from '@/lib/queue/queue';
+import { logEvent } from '@/lib/orders';
 import { checkLimit, clientIp } from '@/lib/rate-limit';
+import { startRender } from '@/lib/renders';
 import { loadOrder } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -37,6 +40,15 @@ export async function POST(
       return fail('Comanda nu are versuri.', 409);
     }
 
+    // Aprobarea pornește doar prima înregistrare. Următoarele trec prin /render,
+    // care scade `renders_left` — altfel limita n-ar însemna nimic.
+    const already = await db.query.renders.findFirst({
+      where: and(eq(renders.orderId, order.id), eq(renders.status, 'done')),
+    });
+    if (already) {
+      return fail('Melodia a fost deja înregistrată. Cere o înregistrare nouă.', 409);
+    }
+
     const limit = await checkLimit('render', {
       ip: clientIp(req.headers),
       email: order.email,
@@ -48,12 +60,10 @@ export async function POST(
       );
     }
 
-    const job = await enqueue('render', order.id);
-    if (!job) return ok({ status: 'rendering' });
+    const { render, reason } = await startRender(order);
+    if (!render) return fail(reason ?? 'Nu am putut porni înregistrarea.', 409);
 
-    await setStatus(order.id, 'rendering', { failureCode: null, failureMessage: null });
     await logEvent(order.id, 'lyrics_approved', { retry: order.status === 'failed' });
-
     return ok({ status: 'rendering' });
   });
 }

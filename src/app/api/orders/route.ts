@@ -8,7 +8,7 @@
 import { db } from '@/lib/db';
 import { newAccessToken, newPublicId } from '@/lib/db/ids';
 import { orders } from '@/lib/db/schema';
-import { LEGAL_VERSION } from '@/lib/env';
+import { LEGAL_VERSION, env } from '@/lib/env';
 import { fail, guard, ok } from '@/lib/api';
 import { orderState } from '@/lib/order-state';
 import { logEvent, unpaidExpiry } from '@/lib/orders';
@@ -63,6 +63,8 @@ export async function POST(req: Request) {
         legalVersion: LEGAL_VERSION,
         consentIp: ip,
         consentUserAgent: req.headers.get('user-agent')?.slice(0, 400) ?? null,
+        regensLeft: env.MAX_LYRICS_REGENS,
+        rendersLeft: env.MAX_EXTRA_RENDERS,
         expiresAt: unpaidExpiry(now),
       })
       .returning();

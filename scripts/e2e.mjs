@@ -42,11 +42,21 @@ const ok = (name, cond, extra = '') => {
 };
 
 sql('truncate orders cascade; truncate jobs; truncate rate_limits;');
+rmSync(DIR, { recursive: true, force: true });
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
 });
 const page = await browser.newPage({ viewport: { width: 400, height: 900 } });
+/** Cu SHOTS=1 se salvează câteva capturi, ca să se poată privi rezultatul. */
+const SHOTS = process.env.SHOTS === '1';
+const shotDir = process.env.SHOT_DIR ?? '.';
+let shotNo = 0;
+const shot = async (name) => {
+  if (!SHOTS) return;
+  await page.screenshot({ path: `${shotDir}/${String(++shotNo).padStart(2, '0')}-${name}.png`, fullPage: true });
+};
+
 const jsErrors = [];
 page.on('pageerror', (e) => jsErrors.push(String(e)));
 
@@ -106,17 +116,27 @@ ok('limita pe IP a fost numărată', Number(sql("select count from rate_limits l
 
 /* ─── worker-ul termină versurile ─── */
 
+/* Worker-ul scrie fiecare variantă în `lyrics_versions`, nu doar pe comandă —
+   altfel istoricul ar fi gol și nu s-ar putea reveni la nimic. Simulăm două
+   variante, ca a doua să fie cea curentă și prima să rămână în istoric. */
+const LYRICS_1 = '[Strofa 1]\nO primă încercare de text,\nAna, aici era altfel scris.\n\n[Refren]\nAna, Ana, prima variantă.';
 const LYRICS = '[Strofa 1]\nZece ani de dimineți cu tine,\nAna, tu ai dus tot greul bine.\n\n[Refren]\nAna, Ana, drumul nostru-i scris.';
-sql(`update orders set status='lyrics_ready', song_title='Zece ani cu Ana',
-     lyrics=$$${LYRICS}$$, lyrics_ready_at=now() where public_id='${id}'`);
+
+sql(`insert into lyrics_versions (order_id, version, source, title, lyrics)
+     select id, 1, 'ai', 'Prima variantă', $$${LYRICS_1}$$ from orders where public_id='${id}'`);
+sql(`insert into lyrics_versions (order_id, version, source, title, lyrics)
+     select id, 2, 'ai_regen', 'Zece ani cu Ana', $$${LYRICS}$$ from orders where public_id='${id}'`);
+sql(`update orders set status='lyrics_ready', song_title='Zece ani cu Ana', lyrics_version=2,
+     regens_left=1, lyrics=$$${LYRICS}$$, lyrics_ready_at=now() where public_id='${id}'`);
 
 await page.locator('.vc-lyrics').waitFor({ timeout: 12000 });
 ok('pagina trece singură la versuri',
   (await page.locator('.vc-lyrics').textContent()).includes('Ana'));
 ok('titlul vine de la server',
   (await page.locator('.vc-heroTitle').textContent()).includes('Zece ani cu Ana'));
-ok('se văd variantele gratuite rămase',
-  (await page.locator('.vc-panel').textContent()).includes('2 variante gratuite'));
+ok('se vede câte variante gratuite au rămas',
+  (await page.locator('.vc-panel').textContent()).includes('1 variantă gratuită'));
+ok('istoricul apare încă de la ecranul de versuri', await page.locator('.vc-hist').count() === 1);
 
 /* ─── aprobarea ─── */
 
@@ -130,18 +150,35 @@ ok('s-a pus exact un job de render', sql("select count(*) from jobs where type='
 
 rmSync(`${DIR}/${id}`, { recursive: true, force: true });
 mkdirSync(`${DIR}/${id}`, { recursive: true });
-for (const v of [1, 2]) {
-  const full = `${DIR}/${id}/varianta-${v}-integrala.mp3`;
-  const prev = `${DIR}/${id}/varianta-${v}-preview.mp3`;
-  execFileSync('ffmpeg', ['-y', '-f', 'lavfi', '-i', `sine=frequency=${300 + v * 140}:duration=150`,
-    '-b:a', '192k', full], { stdio: 'ignore' });
-  execFileSync('ffmpeg', ['-y', '-i', full, '-t', '60', '-af', 'afade=t=out:st=57:d=3',
-    '-b:a', '128k', prev], { stdio: 'ignore' });
-  sql(`insert into order_tracks (order_id, variant, full_path, preview_path, duration_seconds)
-       select id, ${v}, '${id}/varianta-${v}-integrala.mp3', '${id}/varianta-${v}-preview.mp3', 150
-       from orders where public_id='${id}'`);
+/** Ce face worker-ul: descarcă piesele și marchează înregistrarea terminată. */
+function deliverRecording(generation) {
+  const renderId = sql(`select r.id from renders r join orders o on o.id=r.order_id
+                        where o.public_id='${id}' and r.generation=${generation}`);
+  for (const v of [1, 2]) {
+    const base = `${DIR}/${id}/inregistrarea-${generation}-varianta-${v}`;
+    execFileSync('ffmpeg', ['-y', '-f', 'lavfi', '-i',
+      `sine=frequency=${200 + generation * 90 + v * 140}:duration=150`, '-b:a', '192k',
+      `${base}-integrala.mp3`], { stdio: 'ignore' });
+    execFileSync('ffmpeg', ['-y', '-i', `${base}-integrala.mp3`, '-t', '60',
+      '-af', 'afade=t=out:st=57:d=3', '-b:a', '128k', `${base}-preview.mp3`], { stdio: 'ignore' });
+    sql(`insert into order_tracks (order_id, render_id, variant, full_path, preview_path, duration_seconds)
+         select o.id, '${renderId}', ${v},
+                '${id}/inregistrarea-${generation}-varianta-${v}-integrala.mp3',
+                '${id}/inregistrarea-${generation}-varianta-${v}-preview.mp3', 150
+         from orders o where o.public_id='${id}'`);
+  }
+  sql(`update renders set status='done', completed_at=now() where id='${renderId}'`);
+  // Worker-ul ar închide și jobul; fără asta, indexul anti-dublură refuză pe drept
+  // o a doua înregistrare, crezând că prima încă se lucrează.
+  sql(`update jobs set status='done', finished_at=now()
+       where type='render' and status in ('queued','running')
+         and order_id=(select id from orders where public_id='${id}')`);
+  sql(`update orders set status='preview_ready', preview_ready_at=coalesce(preview_ready_at, now()),
+       current_render_id='${renderId}' where public_id='${id}'`);
+  return renderId;
 }
-sql(`update orders set status='preview_ready', preview_ready_at=now() where public_id='${id}'`);
+
+deliverRecording(1);
 
 await page.locator('.vc-take').first().waitFor({ timeout: 12000 });
 ok('pagina trece singură la previzualizare', await page.locator('.vc-take').count() === 2);
@@ -173,6 +210,74 @@ ok('integrala e refuzată înainte de plată', r3.status() === 403);
 const r4 = await page.request.get(src.replace(/sig=[^&]+/, 'sig=mincinos'));
 ok('semnătura falsificată e refuzată', r4.status() === 403);
 
+/* ─── încă o înregistrare, și întoarcerea la cea veche ─── */
+
+const before = await page.locator('audio').first().getAttribute('src');
+await page.getByRole('button', { name: /Altă înregistrare/ }).click();
+await page.locator('.vc-waitTitle', { hasText: 'Se înregistrează' }).waitFor({ timeout: 10000 });
+ok('reluarea pornește o înregistrare nouă',
+  sql(`select count(*) from renders r join orders o on o.id=r.order_id where o.public_id='${id}'`) === '2');
+ok('reluările rămase au scăzut',
+  sql(`select renders_left from orders where public_id='${id}'`) === '1');
+
+deliverRecording(2);
+await page.locator('.vc-takeTab').first().waitFor({ timeout: 14000 });
+ok('apar ambele înregistrări de ales', await page.locator('.vc-takeTab').count() === 2);
+const after = await page.locator('audio').first().getAttribute('src');
+ok('se ascultă înregistrarea nouă', after !== before && after.includes('/2/'));
+
+await page.locator('.vc-takeTab').first().click();
+await page.waitForTimeout(1500);
+const back = await page.locator('audio').first().getAttribute('src');
+ok('te poți întoarce la prima înregistrare', back.includes('/1/'));
+ok('alegerea e ținută minte de server',
+  sql(`select r.generation from renders r join orders o on o.id=r.order_id
+       where o.current_render_id=r.id and o.public_id='${id}'`) === '1');
+
+/* ─── istoricul versurilor ─── */
+
+await page.getByRole('button', { name: /Vezi versurile/ }).click();
+await page.locator('.vc-lyrics').waitFor({ timeout: 5000 });
+ok('după înregistrare, textul nu se mai poate edita',
+  await page.getByRole('button', { name: /Modifică acest text/ }).count() === 0);
+ok('se vede istoricul variantelor', await page.locator('.vc-hist').count() === 1);
+await page.locator('.vc-hist summary').click();
+await page.waitForTimeout(300);
+await shot('istoric-versuri');
+await page.getByRole('button', { name: /Readu varianta asta/ }).first().click();
+await page.waitForTimeout(1500);
+ok('readucerea unei variante creează o versiune nouă, fără să piardă nimic',
+  Number(sql(`select count(*) from lyrics_versions lv join orders o on o.id=lv.order_id
+              where o.public_id='${id}'`)) >= 3);
+
+// Portița: dacă readucerea ar da comanda înapoi în „lyrics_ready", aprobarea ar
+// porni înregistrări la nesfârșit, fără să scadă limita.
+ok('readucerea nu întoarce comanda în starea de dinainte de înregistrare',
+  sql(`select status from orders where public_id='${id}'`) === 'preview_ready');
+const rendersBefore = sql(`select count(*) from renders r join orders o on o.id=r.order_id
+                           where o.public_id='${id}'`);
+await page.evaluate(async (oid) => {
+  await fetch(`/api/orders/${oid}/approve`, { method: 'POST', credentials: 'same-origin' });
+}, id);
+const rendersAfter = sql(`select count(*) from renders r join orders o on o.id=r.order_id
+                          where o.public_id='${id}'`);
+ok('aprobarea nu mai poate porni o înregistrare pe gratis', rendersBefore === rendersAfter);
+
+ok('butonul cere înregistrarea textului readus',
+  await page.getByRole('button', { name: /Înregistrează varianta asta/ }).count() > 0);
+
+await page.getByRole('button', { name: /Înregistrează varianta asta/ }).first().click();
+await page.locator('.vc-waitTitle', { hasText: 'Se înregistrează' }).waitFor({ timeout: 10000 });
+ok('textul readus consumă o reluare, ca oricare alta',
+  sql(`select renders_left from orders where public_id='${id}'`) === '0');
+
+deliverRecording(3);
+await page.locator('.vc-take').first().waitFor({ timeout: 14000 });
+ok('a treia înregistrare apare lângă celelalte', await page.locator('.vc-takeTab').count() === 3);
+await shot('trei-inregistrari');
+ok('reluările s-au terminat',
+  (await page.locator('.vc-takesFoot').textContent()).includes('folosit toate'));
+
 /* ─── cumpărarea, cât timp Paddle nu e legat ─── */
 
 await page.getByRole('button', { name: /Primește melodia/ }).first().click();
@@ -197,6 +302,20 @@ const lib = await page.evaluate(async () => {
   return r.json();
 });
 ok('biblioteca listează comanda', lib.orders?.some((o) => o.publicId === id));
+
+/* ─── exportul pentru foaia de calcul ─── */
+
+const key = process.env.EXPORT_KEY ?? 'cheie-de-test-12345';
+const exp1 = await page.request.get(`${BASE}/api/export/incercari.csv?key=${key}`);
+const csv = await exp1.text();
+ok('exportul „incercari" răspunde', exp1.status() === 200);
+ok('exportul are antet și cel puțin un rând', csv.split('\r\n').length >= 2);
+ok('exportul conține comanda de test', csv.includes(id));
+ok('exportul fără cheie e refuzat',
+  (await page.request.get(`${BASE}/api/export/incercari.csv`)).status() === 403);
+const exp2 = await page.request.get(`${BASE}/api/export/comenzi.csv?key=${key}`);
+ok('exportul „comenzi" listează doar plătite',
+  exp2.status() === 200 && (await exp2.text()).includes(id));
 
 /* ─── paginile legale ─── */
 

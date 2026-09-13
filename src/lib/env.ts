@@ -36,12 +36,31 @@ const schema = z.object({
   PADDLE_WEBHOOK_SECRET: z.string().default(''),
   SONG_PRICE_EUR: z.coerce.number().positive().default(30),
 
+  /**
+   * Cheia pentru exportul în Google Sheets. Stă în adresa pe care o pune omul în
+   * foaie, deci e separată de tot restul: nu dă acces la nimic altceva și se
+   * poate schimba fără să afecteze site-ul.
+   */
+  EXPORT_KEY: z.string().default(''),
+
   RESEND_API_KEY: z.string().default(''),
   MAIL_FROM: z.string().default('Vocal MD <comenzi@vocal.md>'),
   MAIL_REPLY_TO: z.string().default('base.vocalmd@gmail.com'),
 
-  MAX_RENDERS_PER_IP_PER_DAY: z.coerce.number().int().positive().default(3),
-  MAX_RENDERS_PER_EMAIL_PER_DAY: z.coerce.number().int().positive().default(2),
+  /**
+   * Câte înregistrări în plus poate cere un client, peste prima.
+   *
+   * Fiecare e o generare Suno completă, plătită de noi, pe o comandă care poate
+   * foarte bine să nu se cumpere. 2 înseamnă că o comandă neconvertită ne poate
+   * costa de trei ori mai mult decât înainte.
+   */
+  MAX_EXTRA_RENDERS: z.coerce.number().int().min(0).max(5).default(2),
+  MAX_LYRICS_REGENS: z.coerce.number().int().min(0).max(5).default(2),
+
+  // O comandă poate consuma acum până la 1 + MAX_EXTRA_RENDERS generări, deci
+  // limita zilnică pe IP trebuie să lase loc pentru câteva comenzi întregi.
+  MAX_RENDERS_PER_IP_PER_DAY: z.coerce.number().int().positive().default(9),
+  MAX_RENDERS_PER_EMAIL_PER_DAY: z.coerce.number().int().positive().default(6),
   MAX_LYRICS_PER_IP_PER_DAY: z.coerce.number().int().positive().default(20),
 
   RETENTION_UNPAID_DAYS: z.coerce.number().int().positive().default(30),

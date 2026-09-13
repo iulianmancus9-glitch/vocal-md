@@ -71,6 +71,7 @@ if [ -z "${SKIP_ENV:-}" ]; then
   # ─── 4. secretele pe care le inventăm noi ────────────────────
   APP_SECRET=$(openssl rand -hex 32)
   DB_PASS=$(openssl rand -hex 16)
+  EXPORT_KEY=$(openssl rand -hex 20)
 
   read -r -p "
 Adresa site-ului [https://vocal.md]: " APP_URL
@@ -92,6 +93,7 @@ Adresa site-ului [https://vocal.md]: " APP_URL
   set_var OPENROUTER_API_KEY "$OPENROUTER"
   set_var SUNO_API_KEY "$SUNO"
   set_var SUNO_CALLBACK_URL "${APP_URL}/api/suno/callback"
+  set_var EXPORT_KEY "$EXPORT_KEY"
 
   chmod 600 .env
   good ".env scris (parolele generate automat, nu trebuie să le știi pe de rost)"
@@ -111,25 +113,41 @@ for i in $(seq 1 60); do
     echo
     docker compose ps
     echo
+    KEY=$(grep -E '^EXPORT_KEY=' .env | cut -d= -f2-)
+    SITE=$(grep -E '^APP_URL=' .env | cut -d= -f2-)
+
     bold "Mai rămâne un singur pas: Caddy."
-    cat <<'NEXT'
-
-  Deschide configurarea Caddy:
-
-      nano /etc/caddy/Caddyfile
-
-  Adaugă blocul din deploy/Caddyfile (dacă vocal.md e deja acolo, înlocuiește-l),
-  apoi:
-
-      caddy validate --config /etc/caddy/Caddyfile
-      systemctl reload caddy
-
-  După asta intră pe adresa site-ului și fă prima melodie. Ca să vezi ce se
-  întâmplă în spate, lasă deschis într-un alt terminal:
-
-      cd /root/vocal-md && docker compose logs -f worker
-
-NEXT
+    echo
+    echo "  Dacă Caddy rulează în container (verifici cu: docker ps | grep caddy),"
+    echo "  configurarea lui e montată din afară — de obicei /srv/Caddyfile — iar"
+    echo "  adresa site-ului trebuie dată pe nume de container, nu 127.0.0.1:"
+    echo
+    echo "      reverse_proxy vocal-md-web-1:3000"
+    echo
+    echo "  și cele două containere trebuie puse în aceeași rețea:"
+    echo
+    echo "      docker network connect vocal-md_default NUMELE_CONTAINERULUI_CADDY"
+    echo
+    echo "  Dacă Caddy e instalat pe server, editezi /etc/caddy/Caddyfile și"
+    echo "  folosești reverse_proxy 127.0.0.1:3000. Blocul complet, în ambele"
+    echo "  variante, e în deploy/Caddyfile."
+    echo
+    bold "Pentru foaia ta de calcul"
+    echo
+    echo "  În Google Sheets, celula A1 din fiecare filă:"
+    echo
+    echo "    Comenzi platite:"
+    printf '    =IMPORTDATA("%s/api/export/comenzi.csv?key=%s")\n' "$SITE" "$KEY"
+    echo
+    echo "    Toate incercarile:"
+    printf '    =IMPORTDATA("%s/api/export/incercari.csv?key=%s")\n' "$SITE" "$KEY"
+    echo
+    bold "Prima melodie"
+    echo
+    echo "  Intră pe $SITE și comandă. Ca să vezi ce se întâmplă în spate:"
+    echo
+    echo "      cd /root/vocal-md && docker compose logs -f worker"
+    echo
     exit 0
   fi
   printf '.'

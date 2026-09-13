@@ -31,4 +31,9 @@ export const api = {
   saveLyrics: (id, lyrics) =>
     call(`/api/orders/${id}/lyrics`, { method: 'PATCH', body: JSON.stringify({ lyrics }) }),
   approve: (id) => call(`/api/orders/${id}/approve`, { method: 'POST' }),
+  newRecording: (id) => call(`/api/orders/${id}/render`, { method: 'POST' }),
+  chooseRecording: (id, renderId) =>
+    call(`/api/orders/${id}/recording`, { method: 'POST', body: JSON.stringify({ renderId }) }),
+  restoreLyrics: (id, version) =>
+    call(`/api/orders/${id}/lyrics/restore`, { method: 'POST', body: JSON.stringify({ version }) }),
 };

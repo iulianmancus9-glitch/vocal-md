@@ -93,6 +93,8 @@ export const paymentStatus = pgEnum('payment_status', [
 
 export const emailStatus = pgEnum('email_status', ['queued', 'sent', 'failed']);
 
+export const renderStatus = pgEnum('render_status', ['pending', 'running', 'done', 'failed']);
+
 /* ══════════════════════════════════════════════════════════════
    COMENZI
    ══════════════════════════════════════════════════════════════ */
@@ -137,7 +139,15 @@ export const orders = pgTable(
     lyricsVersion: integer('lyrics_version').notNull().default(0),
     /** Câte variante noi de versuri mai poate cere clientul, gratuit. */
     regensLeft: integer('regens_left').notNull().default(2),
-    sunoTaskId: text('suno_task_id'),
+    /**
+     * Câte înregistrări în plus mai poate cere, după prima.
+     *
+     * Fiecare costă credite Suno reale, deci e o manetă de business, nu doar de
+     * interfață: se reglează din MAX_EXTRA_RENDERS fără a atinge codul.
+     */
+    rendersLeft: integer('renders_left').notNull().default(2),
+    /** Înregistrarea pe care o ascultă acum clientul. */
+    currentRenderId: uuid('current_render_id'),
     sunoModel: text('suno_model'),
 
     /* ─── consimțăminte, pentru partea juridică ─── */
@@ -168,9 +178,6 @@ export const orders = pgTable(
     index('orders_email_idx').on(t.email),
     index('orders_expires_at_idx').on(t.expiresAt),
     index('orders_created_at_idx').on(t.createdAt),
-    uniqueIndex('orders_suno_task_id_key')
-      .on(t.sunoTaskId)
-      .where(sql`${t.sunoTaskId} is not null`),
   ],
 );
 
@@ -206,11 +213,52 @@ export const lyricsVersions = pgTable(
 );
 
 /* ══════════════════════════════════════════════════════════════
+   ÎNREGISTRĂRI
+   ══════════════════════════════════════════════════════════════ */
+
+/**
+ * O înregistrare = un task Suno = două interpretări cântate.
+ *
+ * Clientul poate cere mai multe înregistrări ale aceluiași text, sau ale unui
+ * text modificat între timp. Fiecare rămâne, cu piesele ei, ca să se poată
+ * întoarce la ea dacă i-a plăcut mai mult decât ce a venit după.
+ *
+ * `lyricsVersion` leagă înregistrarea de textul exact care a fost cântat —
+ * altfel, după o editare a versurilor, n-am mai ști ce s-a auzit în fiecare.
+ */
+export const renders = pgTable(
+  'renders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+    /** 1, 2, 3… în ordinea în care au fost cerute. */
+    generation: integer('generation').notNull(),
+    lyricsVersion: integer('lyrics_version').notNull(),
+    sunoTaskId: text('suno_task_id'),
+    sunoModel: text('suno_model'),
+    styleString: text('style_string'),
+    status: renderStatus('status').notNull().default('pending'),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('renders_order_generation_key').on(t.orderId, t.generation),
+    uniqueIndex('renders_suno_task_key')
+      .on(t.sunoTaskId)
+      .where(sql`${t.sunoTaskId} is not null`),
+    index('renders_order_idx').on(t.orderId),
+  ],
+);
+
+/* ══════════════════════════════════════════════════════════════
    PIESE
    ══════════════════════════════════════════════════════════════ */
 
 /**
- * Cele două interpretări pe care le întoarce Suno pentru o comandă.
+ * Cele două interpretări pe care le întoarce Suno pentru o înregistrare.
  * `source_url` expiră la ei în 14 zile, de asta descărcăm fișierele la noi imediat.
  */
 export const orderTracks = pgTable(
@@ -220,6 +268,9 @@ export const orderTracks = pgTable(
     orderId: uuid('order_id')
       .notNull()
       .references(() => orders.id, { onDelete: 'cascade' }),
+    renderId: uuid('render_id')
+      .notNull()
+      .references(() => renders.id, { onDelete: 'cascade' }),
     variant: smallint('variant').notNull(), // 1 sau 2
     sunoAudioId: text('suno_audio_id'),
 
@@ -235,7 +286,7 @@ export const orderTracks = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('order_tracks_order_variant_key').on(t.orderId, t.variant),
+    uniqueIndex('order_tracks_render_variant_key').on(t.renderId, t.variant),
     index('order_tracks_order_idx').on(t.orderId),
   ],
 );
@@ -434,6 +485,7 @@ export type NewOrder = typeof orders.$inferInsert;
 export type OrderStatus = Order['status'];
 export type LyricsVersion = typeof lyricsVersions.$inferSelect;
 export type OrderTrack = typeof orderTracks.$inferSelect;
+export type Render = typeof renders.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
 export type JobType = Job['type'];
@@ -445,6 +497,7 @@ export type OrderEvent = typeof orderEvents.$inferSelect;
 
 export const ordersRelations = relations(orders, ({ many }) => ({
   lyricsVersions: many(lyricsVersions),
+  renders: many(renders),
   tracks: many(orderTracks),
   payments: many(payments),
   emails: many(emails),
@@ -456,8 +509,14 @@ export const lyricsVersionsRelations = relations(lyricsVersions, ({ one }) => ({
   order: one(orders, { fields: [lyricsVersions.orderId], references: [orders.id] }),
 }));
 
+export const rendersRelations = relations(renders, ({ one, many }) => ({
+  order: one(orders, { fields: [renders.orderId], references: [orders.id] }),
+  tracks: many(orderTracks),
+}));
+
 export const orderTracksRelations = relations(orderTracks, ({ one }) => ({
   order: one(orders, { fields: [orderTracks.orderId], references: [orders.id] }),
+  render: one(renders, { fields: [orderTracks.renderId], references: [renders.id] }),
 }));
 
 export const paymentsRelations = relations(payments, ({ one }) => ({

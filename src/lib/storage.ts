@@ -23,9 +23,20 @@ export async function ensureOrderDir(publicId: string): Promise<string> {
 
 export type TrackKind = 'full' | 'preview';
 
-/** Calea relativă păstrată în `order_tracks`; absolutul se calculează la citire. */
-export function trackRelPath(publicId: string, variant: number, kind: TrackKind): string {
-  return `${publicId}/varianta-${variant}-${kind === 'full' ? 'integrala' : 'preview'}.mp3`;
+/**
+ * Calea relativă păstrată în `order_tracks`; absolutul se calculează la citire.
+ *
+ * Numele poartă generația, altfel a doua înregistrare ar scrie peste prima și
+ * clientul n-ar mai putea reveni la ce i-a plăcut.
+ */
+export function trackRelPath(
+  publicId: string,
+  generation: number,
+  variant: number,
+  kind: TrackKind,
+): string {
+  const what = kind === 'full' ? 'integrala' : 'preview';
+  return `${publicId}/inregistrarea-${generation}-varianta-${variant}-${what}.mp3`;
 }
 
 export function absPath(relPath: string): string {
@@ -38,6 +49,10 @@ function sign(payload: string): string {
   return createHmac('sha256', env.APP_SECRET).update(payload).digest('base64url');
 }
 
+function payloadFor(publicId: string, generation: number, variant: number, kind: TrackKind, exp: number) {
+  return `${publicId}:${generation}:${variant}:${kind}:${exp}`;
+}
+
 /**
  * Semnătura leagă comanda, varianta, tipul fișierului și momentul expirării.
  * Schimbarea oricăruia invalidează linkul, deci nu se poate „promova" o
@@ -45,33 +60,36 @@ function sign(payload: string): string {
  */
 export function signDownload(
   publicId: string,
+  generation: number,
   variant: number,
   kind: TrackKind,
   ttlSeconds = env.DOWNLOAD_LINK_TTL,
 ): { exp: number; sig: string } {
   const exp = Math.floor(Date.now() / 1000) + ttlSeconds;
-  return { exp, sig: sign(`${publicId}:${variant}:${kind}:${exp}`) };
+  return { exp, sig: sign(payloadFor(publicId, generation, variant, kind, exp)) };
 }
 
 export function verifyDownload(
   publicId: string,
+  generation: number,
   variant: number,
   kind: TrackKind,
   exp: number,
   sig: string,
 ): boolean {
   if (!Number.isFinite(exp) || exp * 1000 < Date.now()) return false;
-  const expected = Buffer.from(sign(`${publicId}:${variant}:${kind}:${exp}`));
+  const expected = Buffer.from(sign(payloadFor(publicId, generation, variant, kind, exp)));
   const given = Buffer.from(sig);
   return expected.length === given.length && timingSafeEqual(expected, given);
 }
 
 export function downloadUrl(
   publicId: string,
+  generation: number,
   variant: number,
   kind: TrackKind,
   ttlSeconds?: number,
 ): string {
-  const { exp, sig } = signDownload(publicId, variant, kind, ttlSeconds);
-  return `${env.APP_URL}/api/audio/${publicId}/${variant}/${kind}?exp=${exp}&sig=${sig}`;
+  const { exp, sig } = signDownload(publicId, generation, variant, kind, ttlSeconds);
+  return `${env.APP_URL}/api/audio/${publicId}/${generation}/${variant}/${kind}?exp=${exp}&sig=${sig}`;
 }

@@ -46,7 +46,8 @@ Nouă tabele. Firul unei comenzi:
 
 ```
 orders ──┬── lyrics_versions   fiecare generare sau editare a versurilor
-         ├── order_tracks      cele două variante cântate, plus previzualizările
+         ├── renders ──┬────── o înregistrare = un task Suno = două variante
+         │             └── order_tracks   piesele ei, cu previzualizările
          ├── payments          tranzacția Paddle
          ├── emails            ce i-am trimis clientului și dacă a plecat
          └── order_events      urma auditabilă: ce s-a întâmplat și când
@@ -65,7 +66,14 @@ draft → lyrics_pending → lyrics_ready → rendering → preview_ready → pa
 Ramurile scurte: `refused` (filtru de conținut), `failed` (eroare tehnică),
 `expired` (retenție).
 
-Patru decizii care nu sunt evidente din schemă:
+Cinci decizii care nu sunt evidente din schemă:
+
+**Fiecare încercare rămâne.** Clientul poate cere până la trei înregistrări ale
+aceleiași piese și poate reveni la oricare — de asta `renders` e un tabel, nu
+câteva coloane pe comandă, iar numele fișierelor poartă generația. Alegerea stă
+pe server (`current_render_id`), pentru că e melodia pe care o primește la
+livrare. Fiecare reluare costă credite Suno reale, deci numărul lor e o manetă
+de business: `MAX_EXTRA_RENDERS` în `.env`.
 
 **Banii nu se pot cheltui de două ori.** O previzualizare e gratuită pentru client,
 dar fiecare apăsare consumă credite Suno plătite de noi. Indexul parțial
@@ -130,6 +138,19 @@ npm run worker:dev        # coada, în alt terminal
 `APP_SECRET` se generează o singură dată: `openssl rand -hex 32`.
 
 ---
+
+## Mini-CRM în Google Sheets
+
+Două adrese care întorc CSV, protejate cu `EXPORT_KEY` din `.env`:
+
+```
+/api/export/comenzi.csv?key=…     ce s-a vândut
+/api/export/incercari.csv?key=…   cine a încercat și ce a primit
+```
+
+În Sheets se leagă cu `=IMPORTDATA("…")`, care reîmprospătează singur.
+`setup.sh` afișează formulele gata de lipit. Cheia apare în adresa pusă în foaie,
+deci e separată de tot restul și nu deschide nimic altceva.
 
 ## Testare
 

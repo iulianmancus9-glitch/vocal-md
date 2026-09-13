@@ -3,8 +3,8 @@
  *
  * Nimic nu stă în /public. Fiecare cerere trece pe aici, unde se verifică două
  * lucruri: semnătura linkului și, pentru varianta integrală, plata. Semnătura
- * acoperă comanda, varianta, tipul fișierului și expirarea, deci nu se poate
- * schimba „preview" în „full" în bara de adrese.
+ * acoperă comanda, înregistrarea, varianta, tipul fișierului și expirarea, deci
+ * nu se poate schimba „preview" în „full" în bara de adrese.
  *
  * Răspundem la cereri cu interval (Range), ca mutarea cursorului în player să nu
  * ceară de fiecare dată tot fișierul.
@@ -15,7 +15,7 @@ import { Readable } from 'node:stream';
 import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { orderTracks, orders } from '@/lib/db/schema';
+import { orderTracks, orders, renders } from '@/lib/db/schema';
 import { absPath, verifyDownload, type TrackKind } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
@@ -24,14 +24,20 @@ const PAID_STATUSES = ['paid', 'delivered'];
 
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ publicId: string; variant: string; kind: string }> },
+  { params }: {
+    params: Promise<{ publicId: string; generation: string; variant: string; kind: string }>;
+  },
 ) {
-  const { publicId, variant: variantRaw, kind: kindRaw } = await params;
+  const { publicId, generation: generationRaw, variant: variantRaw, kind: kindRaw } = await params;
   const url = new URL(req.url);
 
+  const generation = Number(generationRaw);
   const variant = Number(variantRaw);
   const kind = kindRaw as TrackKind;
 
+  if (!Number.isInteger(generation) || generation < 1 || generation > 10) {
+    return new Response('Not found', { status: 404 });
+  }
   if (!Number.isInteger(variant) || variant < 1 || variant > 4) {
     return new Response('Not found', { status: 404 });
   }
@@ -41,7 +47,7 @@ export async function GET(
 
   const exp = Number(url.searchParams.get('exp'));
   const sig = url.searchParams.get('sig') ?? '';
-  if (!verifyDownload(publicId, variant, kind, exp, sig)) {
+  if (!verifyDownload(publicId, generation, variant, kind, exp, sig)) {
     return new Response('Link expirat sau invalid', { status: 403 });
   }
 
@@ -54,8 +60,13 @@ export async function GET(
     return new Response('Melodia completă se deblochează după plată.', { status: 402 });
   }
 
+  const render = await db.query.renders.findFirst({
+    where: and(eq(renders.orderId, order.id), eq(renders.generation, generation)),
+  });
+  if (!render) return new Response('Not found', { status: 404 });
+
   const track = await db.query.orderTracks.findFirst({
-    where: and(eq(orderTracks.orderId, order.id), eq(orderTracks.variant, variant)),
+    where: and(eq(orderTracks.renderId, render.id), eq(orderTracks.variant, variant)),
   });
 
   const rel = kind === 'full' ? track?.fullPath : track?.previewPath;
@@ -76,7 +87,8 @@ export async function GET(
     'Cache-Control': 'private, max-age=3600',
   });
   if (kind === 'full') {
-    const name = `${order.songTitle ?? 'melodie'}-varianta-${variant}.mp3`.replace(/[^\w.\-]+/g, '-');
+    const name = `${order.songTitle ?? 'melodie'}-varianta-${variant}.mp3`
+      .replace(/[^\w.\-]+/g, '-');
     headers.set('Content-Disposition', `attachment; filename="${name}"`);
   }
 
