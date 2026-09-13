@@ -201,7 +201,9 @@ const CSS = `
   font-family: Poppins, "Segoe UI", system-ui, sans-serif;
   background: var(--page); color: var(--ink); min-height: 100vh; -webkit-font-smoothing: antialiased;
 }
-.vc button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
+/* :where() ține resetul la specificitate zero. Fără el, „.vc button" (0-1-1) bate
+   „.vc-next", „.vc-tile", „.vc-opt" (0-1-0) și le șterge fundalul și chenarul. */
+.vc :where(button) { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; }
 .vc input, .vc textarea { font: inherit; }
 .vc :focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 8px; }
 
@@ -447,6 +449,22 @@ const CSS = `
 .vc-devBtn { font-size: 11px; color: var(--gray); border: 1px dashed var(--line-2); border-radius: 8px; padding: 5px 10px; transition: color .15s, border-color .15s; }
 .vc-devBtn:hover { color: var(--violet); border-color: var(--violet); }
 
+/* ─── banner de start ─── */
+.vc-heroCta { display: flex; }
+.vc-heroNote { font-size: 12.5px; line-height: 1.5; color: var(--ink-2); text-align: center; margin: 11px 0 0; }
+.vc-heroSep { height: 1px; background: rgba(108,92,231,.13); margin: 18px 0 16px; }
+.vc-mark { transition: opacity .15s; }
+button.vc-mark:hover { opacity: .62; }
+
+/* ─── dialog de confirmare ─── */
+.vc-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(22,22,29,.44); backdrop-filter: blur(3px); display: grid; place-items: center; padding: 20px; animation: vcfade .16s ease; }
+.vc-dialog { background: var(--page); border-radius: 20px; padding: 22px 20px 18px; width: 100%; max-width: 360px; box-shadow: 0 18px 50px rgba(22,22,29,.28); animation: vcrise .2s cubic-bezier(.34,1.3,.64,1); }
+.vc-dialogTitle { font-size: 18px; font-weight: 700; letter-spacing: -.02em; margin: 0 0 8px; }
+.vc-dialogText { font-size: 13.5px; line-height: 1.6; color: var(--ink-2); margin: 0 0 18px; }
+.vc-dialogBtns { display: flex; gap: 10px; }
+@keyframes vcfade { from { opacity: 0; } }
+@keyframes vcrise { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+
 @media (prefers-reduced-motion: reduce) { .vc *, .vc *::before, .vc *::after { animation: none !important; transition: none !important; } }
 
 @media (min-width: 760px) {
@@ -590,7 +608,8 @@ function Footer({ onOpen, onJump }) {
         <button className="vc-devBtn" onClick={() => onJump('done')}>Livrare</button>
         <button className="vc-devBtn" onClick={() => onJump('library')}>Biblioteca</button>
         <button className="vc-devBtn" onClick={() => onJump('error')}>Eroare</button>
-        <button className="vc-devBtn" onClick={() => onJump('wizard')}>Start</button>
+        <button className="vc-devBtn" onClick={() => onJump('intro')}>Start</button>
+      <button className="vc-devBtn" onClick={() => onJump('wizard')}>Formular</button>
       </div>
     )}
     </>
@@ -602,7 +621,7 @@ function Footer({ onOpen, onJump }) {
    ══════════════════════════════════════════════════════════════ */
 
 export default function Vocal() {
-  const [screen, setScreen] = useState('wizard');
+  const [screen, setScreen] = useState('intro');
   const [step, setStep] = useState(0);
   const [d, setD] = useState({
     style: null, sub: null, mood: null, voice: null,
@@ -625,9 +644,11 @@ export default function Vocal() {
   const [copied, setCopied] = useState(false);
   const [legalTab, setLegalTab] = useState('terms');
   const [legalLang, setLegalLang] = useState('ro');
-  const [back, setBack] = useState('wizard');
+  const [back, setBack] = useState('intro');
+  const [confirmHome, setConfirmHome] = useState(false);
 
   const top = useRef(null);
+  const storyBox = useRef(null);
   const navRef = useRef(null);
   const [showBar, setShowBar] = useState(false);
 
@@ -702,15 +723,106 @@ export default function Vocal() {
 
   const goNext = () => (step === 5 ? setScreen('email') : setStep(step + 1));
 
+  /* apăsarea pe siglă nu aruncă niciodată munca omului fără să întrebe */
+  const askHome = () => { if (screen !== 'intro') setConfirmHome(true); };
+
+  const goHome = () => {
+    setConfirmHome(false);
+    setD({
+      style: null, sub: null, mood: null, voice: null,
+      recipient: null, recipientOther: '', names: [''], occasion: null, occasionOther: '',
+      mode: 'ai', title: '', story: '', lang: 'Română',
+    });
+    setStep(0); setLyrics(DEMO_LYRICS); setRegens(2); setEditing(false);
+    setTake(null); setPlaying(false); setAt(0);
+    setEmail(''); setAgree(false); setNews(false);
+    setScreen('intro');
+  };
+
+  /* după livrare nu se pierde nimic, deci nici nu speriem degeaba */
+  const delivered = screen === 'done' || screen === 'library';
+
+  const homeDialog = confirmHome && (
+    <div className="vc-overlay" role="dialog" aria-modal="true" aria-labelledby="vcHomeTitle"
+      onClick={() => setConfirmHome(false)}>
+      <div className="vc-dialog" onClick={(e) => e.stopPropagation()}>
+        <p className="vc-dialogTitle" id="vcHomeTitle">Înapoi la început?</p>
+        <p className="vc-dialogText">
+          {delivered
+            ? 'Melodia ta rămâne în bibliotecă. Te ducem la pagina de start.'
+            : 'Se pierde ce ai completat până acum și o iei de la prima întrebare.'}
+        </p>
+        <div className="vc-dialogBtns">
+          <button className="vc-ghost" style={{ flex: 1 }} onClick={() => setConfirmHome(false)}>
+            Rămân aici
+          </button>
+          <button className="vc-next" style={{ height: 48, fontSize: 14.5 }} onClick={goHome}>
+            Înapoi la început
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   /* ────────── pagini legale ────────── */
+  /* pagina de start: bannerul singur, cu un singur lucru de făcut.
+     Pașii apar abia după apăsare, iar bannerul nu se mai întoarce. */
+  if (screen === 'intro') {
+    return (
+      <div className="vc">
+        <style>{CSS}</style>
+        {homeDialog}
+
+        <div className="vc-head"><div className="vc-headIn">
+          <button className="vc-mark" onClick={askHome}>VOCAL</button>
+        </div></div>
+
+        <div className="vc-wrap" ref={top}>
+          <div className="vc-hero">
+            <p className="vc-heroEyebrow">Melodii 100% personalizate</p>
+            <h1 className="vc-heroTitle">Transformă povestea voastră într-o melodie de neuitat.</h1>
+            <p className="vc-heroText">
+              Spune-ne povestea voastră. Noi scriem versurile, le dăm viață pe note muzicale,
+              iar tu dăruiești o melodie creată exclusiv pentru omul drag ție.
+            </p>
+
+            <div className="vc-heroCta">
+              <button className="vc-next" onClick={() => { setStep(0); setScreen('wizard'); }}>
+                <Sparkles size={18} /> Creează melodia ta
+              </button>
+            </div>
+            <p className="vc-heroNote">
+              Versurile și un minut din melodie sunt gratuite.<br />
+              Plătești doar dacă îți place ce auzi.
+            </p>
+
+            <div className="vc-heroSep" />
+
+            <div className="vc-perks">
+              {PERKS.map(({ Icon, text }) => (
+                <div className="vc-perk" key={text}>
+                  <span className="vc-perkIcon"><Icon size={17} /></span>
+                  <p className="vc-perkText">{text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Footer onOpen={openLegal} onJump={setScreen} />
+        </div>
+      </div>
+    );
+  }
+
   if (screen === 'legal') {
     const L = LEGAL[legalLang];
     const doc = L[legalTab];
     return (
       <div className="vc">
         <style>{CSS}</style>
+      {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <span className="vc-mark">VOCAL</span>
+          <button className="vc-mark" onClick={askHome}>VOCAL</button>
           <div className="vc-langBtns">
             {['ro', 'en'].map((l) => (
               <button key={l} className="vc-langBtn" data-on={legalLang === l ? '1' : '0'} onClick={() => setLegalLang(l)}>
@@ -756,8 +868,9 @@ export default function Vocal() {
     return (
       <div className="vc">
         <style>{CSS}</style>
+      {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <span className="vc-mark">VOCAL</span><span className="vc-headNote">Ultimul pas</span>
+          <button className="vc-mark" onClick={askHome}>VOCAL</button><span className="vc-headNote">Ultimul pas</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-hero">
@@ -817,8 +930,9 @@ export default function Vocal() {
     return (
       <div className="vc">
         <style>{CSS}</style>
+      {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <span className="vc-mark">VOCAL</span><span className="vc-headNote">Comanda #8F4C21</span>
+          <button className="vc-mark" onClick={askHome}>VOCAL</button><span className="vc-headNote">Comanda #8F4C21</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-panel">
@@ -890,8 +1004,9 @@ export default function Vocal() {
     return (
       <div className="vc">
         <style>{CSS}</style>
+      {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <span className="vc-mark">VOCAL</span><span className="vc-headNote">Biblioteca</span>
+          <button className="vc-mark" onClick={askHome}>VOCAL</button><span className="vc-headNote">Biblioteca</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-panel">
@@ -947,8 +1062,9 @@ export default function Vocal() {
     return (
       <div className="vc">
         <style>{CSS}</style>
+      {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <span className="vc-mark">VOCAL</span><span className="vc-headNote">Ceva n-a mers</span>
+          <button className="vc-mark" onClick={askHome}>VOCAL</button><span className="vc-headNote">Ceva n-a mers</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-panel">
@@ -990,7 +1106,8 @@ export default function Vocal() {
     return (
       <div className="vc">
         <style>{CSS}</style>
-        <div className="vc-head"><div className="vc-headIn"><span className="vc-mark">VOCAL</span></div></div>
+      {homeDialog}
+        <div className="vc-head"><div className="vc-headIn"><button className="vc-mark" onClick={askHome}>VOCAL</button></div></div>
         <div className="vc-wrap"><div className="vc-panel">
           <div className="vc-wait">
             <div className="vc-waitRing"><Disc3 size={32} /></div>
@@ -1008,8 +1125,9 @@ export default function Vocal() {
     return (
       <div className="vc">
         <style>{CSS}</style>
+      {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <span className="vc-mark">VOCAL</span><span className="vc-headNote">Melodia ta</span>
+          <button className="vc-mark" onClick={askHome}>VOCAL</button><span className="vc-headNote">Melodia ta</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar={showBar ? '1' : '0'}>
           <div className="vc-hero">
@@ -1070,8 +1188,9 @@ export default function Vocal() {
     return (
       <div className="vc">
         <style>{CSS}</style>
+      {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <span className="vc-mark">VOCAL</span><span className="vc-headNote">Versurile</span>
+          <button className="vc-mark" onClick={askHome}>VOCAL</button><span className="vc-headNote">Versurile</span>
         </div></div>
         <div className="vc-wrap" ref={top} data-bar={showBar ? '1' : '0'}>
           <div className="vc-hero">
@@ -1118,30 +1237,14 @@ export default function Vocal() {
   return (
     <div className="vc">
       <style>{CSS}</style>
+      {homeDialog}
 
       <div className="vc-head"><div className="vc-headIn">
-        <span className="vc-mark">VOCAL</span>
+        <button className="vc-mark" onClick={askHome}>VOCAL</button>
         <span className="vc-headNote">Pasul {step + 1} din 6</span>
       </div></div>
 
       <div className="vc-wrap" ref={top} data-bar={showBar ? '1' : '0'}>
-        <div className="vc-hero">
-          <p className="vc-heroEyebrow">Melodii 100% personalizate</p>
-          <h1 className="vc-heroTitle">Transformă povestea voastră într-o melodie de neuitat.</h1>
-          <p className="vc-heroText">
-            Spune-ne povestea voastră. Noi scriem versurile, le dăm viață pe note muzicale,
-            iar tu dăruiești o melodie creată exclusiv pentru omul drag ție.
-          </p>
-          <div className="vc-perks">
-            {PERKS.map(({ Icon, text }) => (
-              <div className="vc-perk" key={text}>
-                <span className="vc-perkIcon"><Icon size={17} /></span>
-                <p className="vc-perkText">{text}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div className="vc-panel">
           <div className="vc-steps">
             {STEPS.map((s, i) => (
@@ -1273,6 +1376,7 @@ export default function Vocal() {
                   onChange={(e) => set('title', e.target.value)} placeholder="ex. Cântecul mamei" />
               </Module>
 
+              <div ref={storyBox} style={{ scrollMarginTop: 72 }}>
               <Module icon={Pencil}
                 title={d.mode === 'ai' ? 'Povestea voastră' : 'Versurile tale'}
                 text={d.mode === 'ai'
@@ -1289,12 +1393,18 @@ export default function Vocal() {
                   </p>
                 )}
               </Module>
+              </div>
 
               {d.mode === 'ai' && (
                 <Module icon={Sparkles} title="Nu știi de unde să începi?" text="Alege o direcție și îți completăm un început, pe care îl poți schimba.">
                   <div className="vc-opts" style={{ gridTemplateColumns: 'repeat(2, minmax(0,1fr))' }}>
                     {INSPIRATION.map((i) => (
-                      <button key={i.label} className="vc-opt" onClick={() => set('story', i.text)}>
+                      <button key={i.label} className="vc-opt" onClick={() => {
+                        set('story', i.text);
+                        // pe telefon caseta a rămas sus, în afara ecranului: îl ducem la ea
+                        requestAnimationFrame(() =>
+                          storyBox.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                      }}>
                         <span style={{ fontSize: 15, lineHeight: 1 }}>{i.emoji}</span>
                         <span className="vc-optLabel">{i.label}</span>
                       </button>
