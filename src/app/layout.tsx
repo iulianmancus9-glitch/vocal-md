@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { Poppins } from 'next/font/google';
 import './globals.css';
 import CookieBanner from '@/components/CookieBanner';
+import { UI } from '@/lib/i18n';
+import { pageLang } from '@/lib/lang';
 
 /**
  * Fontul se descarcă la build și se servește de la noi.
@@ -20,18 +22,27 @@ const poppins = Poppins({
   variable: '--font-poppins',
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(process.env.APP_URL ?? 'https://vocal.md'),
-  title: 'Vocal MD — melodii personalizate',
-  description:
-    'Spui povestea, noi scriem versurile și le cântăm. Asculți un minut gratuit și plătești doar dacă îți place.',
-  openGraph: {
-    title: 'Vocal MD — melodii personalizate',
-    description: 'Versuri gratuite, un minut de ascultat gratuit, plătești doar dacă îți place.',
-    locale: 'ro_RO',
-    type: 'website',
-  },
-};
+/**
+ * Titlul și descrierea urmează limba paginii.
+ *
+ * Contează mai mult decât pare: fila browserului e primul lucru pe care îl
+ * vede cineva care ne verifică site-ul, iar un titlu pe care nu-l poate citi
+ * îl lasă să ghicească ce vindem.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const t = UI[await pageLang()];
+  return {
+    metadataBase: new URL(process.env.APP_URL ?? 'https://vocal.md'),
+    title: t.metaTitle,
+    description: t.metaDesc,
+    openGraph: {
+      title: t.metaTitle,
+      description: t.metaOgDesc,
+      locale: t.metaLocale,
+      type: 'website',
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -39,12 +50,13 @@ export const viewport: Viewport = {
   themeColor: '#ffffff',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const lang = await pageLang();
   return (
-    <html lang="ro" className={poppins.variable}>
+    <html lang={lang} className={poppins.variable}>
       <body>
         {children}
-        <CookieBanner />
+        <CookieBanner lang={lang} />
       </body>
     </html>
   );

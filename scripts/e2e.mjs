@@ -51,6 +51,11 @@ const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH || undefined,
 });
 const page = await browser.newPage({ viewport: { width: 400, height: 900 } });
+
+/* Textele căutate mai jos sunt cele românești, deci pagina trebuie cerută în
+   română — altfel testul ar depinde de `DEFAULT_LANG` și s-ar rupe în ziua în
+   care se schimbă limba implicită a site-ului, fără ca ceva să fie stricat. */
+await page.context().addCookies([{ name: 'lang', value: 'ro', url: BASE }]);
 /** Cu SHOTS=1 se salvează câteva capturi, ca să se poată privi rezultatul. */
 const SHOTS = process.env.SHOTS === '1';
 const shotDir = process.env.SHOT_DIR ?? '.';
@@ -431,6 +436,59 @@ ok('comanda rambursată nu mai apare la vândute',
 for (const doc of ['termeni', 'rambursare', 'confidentialitate']) {
   const r = await page.request.get(`${BASE}/legal/ro/${doc}`);
   ok(`pagina legală „${doc}" răspunde`, r.status() === 200);
+}
+
+/* ─── site-ul în engleză ─── */
+
+/* Engleza e limba pe care o vede un vizitator nou, deci merită mai mult decât
+   încredere. Nu reluăm tot formularul în engleză: ce se putea strica la
+   traducere sunt etichetele, iar drumul prin server e același. */
+{
+  const en = await browser.newPage({ viewport: { width: 400, height: 900 } });
+  const enErrors = [];
+  en.on('pageerror', (e) => enErrors.push(String(e)));
+  await en.context().addCookies([{ name: 'lang', value: 'en', url: BASE }]);
+  await en.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await en.waitForTimeout(400);
+
+  ok('pagina de start se dă în engleză',
+    await en.getByRole('button', { name: /Create your song/i }).count() === 1);
+  ok('fișa produsului spune ce se livrează',
+    (await en.locator('.vc-spec').textContent()).includes('Two MP3 files'));
+  ok('se spune că vocile sunt sintetice',
+    (await en.locator('.vc-demoFoot').textContent()).toLowerCase().includes('synthetic'));
+  ok('bannerul de cookie-uri e în engleză',
+    await en.getByRole('button', { name: 'Necessary only' }).count() === 1);
+  ok('comutatorul oferă româna', await en.locator('.vc-lang').first().textContent() === 'Română');
+
+  /* Etichetele alegerilor se traduc, dar valorile trimise serverului nu: zod le
+     verifică drept enumerări românești, iar promptul lui Suno se face din ele. */
+  await en.getByRole('button', { name: 'Necessary only' }).click();
+  await en.getByRole('button', { name: /Create your song/i }).click();
+  await en.getByRole('button', { name: /Heartfelt/ }).first().click();
+  await en.locator('.vc-nav .vc-next').click();
+  await en.waitForTimeout(300);
+  ok('sub-stilurile apar traduse',
+    await en.getByRole('button', { name: 'Acoustic ballad', exact: true }).count() === 1);
+  ok('stările de spirit apar traduse',
+    await en.getByRole('button', { name: 'Grateful', exact: true }).count() === 1);
+
+  /* Comutatorul nu aruncă ce a completat omul: schimbă doar limba paginii. */
+  await en.getByRole('button', { name: 'Acoustic ballad', exact: true }).click();
+  await en.locator('.vc-lang').first().click();
+  await en.waitForTimeout(800);
+  ok('comutarea păstrează pasul și alegerea',
+    (await en.locator('.vc-stepNow').textContent()) === 'Personalizare'
+    && await en.getByRole('button', { name: 'Baladă acustică', exact: true })
+         .getAttribute('data-on') === '1');
+
+  ok('engleza nu produce erori JS', enErrors.length === 0, enErrors.join(' | '));
+  await en.close();
+}
+
+for (const doc of ['termeni', 'rambursare', 'confidentialitate']) {
+  const r = await page.request.get(`${BASE}/legal/en/${doc}`);
+  ok(`documentul „${doc}" există și în engleză`, r.status() === 200);
 }
 
 console.log('  → erori JS:', jsErrors.length ? jsErrors : 'niciuna');

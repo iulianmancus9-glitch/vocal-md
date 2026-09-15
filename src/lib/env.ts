@@ -71,6 +71,12 @@ const schema = z.object({
    * și lor. Pe unul ca ăsta, oricine poate consuma credite nelimitat.
    */
   RATE_LIMIT_EXEMPT_IPS: z.string().default(''),
+
+  /**
+   * Limba paginii pentru vizitatorii al căror browser nu cere nici română,
+   * nici engleză. Vezi `src/lib/lang.ts` pentru ordinea completă.
+   */
+  DEFAULT_LANG: z.enum(['ro', 'en']).default('en'),
   MAX_LYRICS_PER_IP_PER_DAY: z.coerce.number().int().positive().default(20),
 
   RETENTION_UNPAID_DAYS: z.coerce.number().int().positive().default(30),

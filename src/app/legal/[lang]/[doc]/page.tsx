@@ -9,6 +9,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import HtmlLang from '@/components/HtmlLang';
 import { DOCS, LANGS, LINK_LABELS, getDoc, isDoc, isLang } from '@/lib/legal';
 import './legal.css';
 
@@ -36,6 +37,7 @@ export default async function LegalPage({ params }: Params) {
 
   return (
     <div className="lg">
+      <HtmlLang lang={lang} />
       <header className="lg-head">
         <Link href="/" className="lg-mark">VOCAL</Link>
         <Link href={`/legal/${other}/${doc}`} className="lg-lang">

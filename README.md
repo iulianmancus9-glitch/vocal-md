@@ -139,6 +139,22 @@ npm run worker:dev        # coada, în alt terminal
 
 ---
 
+## Limba site-ului
+
+Site-ul e în română și engleză. Limba se alege pe server, în ordinea asta:
+
+1. cookie-ul `lang`, pus de butonul din antet — alegerea omului bate tot;
+2. antetul `Accept-Language` — un browser care cere română primește română;
+3. `DEFAULT_LANG` din `.env` — restul lumii.
+
+`DEFAULT_LANG=en` acum. Ca să se întoarcă româna implicită, se schimbă în `ro`
+și se repornește; nimic altceva.
+
+Se traduc doar etichetele văzute de om. Alegerile din formular — „Femeie",
+„Altcineva", „Română", stările de spirit — rămân în română oriunde, pentru că
+ele sunt protocolul: `validation.ts` le verifică drept enumerări exacte, iar
+promptul lui Suno se construiește din ele. Vezi `src/lib/i18n.ts`.
+
 ## Mini-CRM în Google Sheets
 
 Două adrese care întorc CSV, protejate cu `EXPORT_KEY` din `.env`:

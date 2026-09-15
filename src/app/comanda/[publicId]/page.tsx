@@ -8,6 +8,7 @@
 import { notFound } from 'next/navigation';
 import Vocal from '@/components/Vocal';
 import { loadOrder, remember } from '@/lib/session';
+import { pageLang } from '@/lib/lang';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,5 +28,5 @@ export default async function OrderPage({
   // Browserul ține minte comanda, ca linkul să nu mai fie nevoie a doua oară.
   if (t) await remember(publicId, order.accessToken);
 
-  return <Vocal initialOrderId={publicId} />;
+  return <Vocal initialOrderId={publicId} lang={await pageLang()} />;
 }

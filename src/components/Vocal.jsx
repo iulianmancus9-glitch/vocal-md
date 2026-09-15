@@ -16,6 +16,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { api } from '@/lib/client';
 import { openCheckout } from '@/lib/paddle-client';
+import { useRouter } from 'next/navigation';
+import { UI, label, styleLabel } from '@/lib/i18n';
 import {
   Check, ArrowLeft, ArrowRight, Heart, Users, PartyPopper, Music2, Star, Mic2,
   Disc3, Guitar, Piano, Flame, Radio, Pencil, PenLine, RefreshCw, Play, Pause,
@@ -73,24 +75,14 @@ const LANGUAGES = [
   { label: 'Rusă',     flag: '🇷🇺', note: 'Versuri în limba rusă' },
 ];
 
-const PERKS = [
-  { Icon: PenLine, text: 'Versuri generate de AI' },
-  { Icon: Download, text: 'Două fișiere MP3, ale tale' },
-  { Icon: Clock,   text: 'Gata în câteva minute' },
-];
+const PERK_ICONS = [PenLine, Download, Clock];
 
-const INSPIRATION = [
-  { emoji: '💛', label: 'Mulțumesc pentru tot', text: 'Vreau să-i mulțumesc pentru tot ce a făcut pentru mine de-a lungul anilor, fără să ceară nimic în schimb.' },
-  { emoji: '✨', label: 'Cum ne-am cunoscut',   text: 'Povestea zilei în care ne-am cunoscut și cum s-a schimbat totul de atunci.' },
-  { emoji: '🌙', label: 'Îmi lipsești',          text: 'Suntem departe unul de celălalt și vreau să știe cât de mult îmi lipsește.' },
-  { emoji: '💪', label: 'Ești puterea mea',      text: 'Despre cât de mult mă inspiră și cum mă ține pe picioare în zilele grele.' },
-  { emoji: '😄', label: 'Ceva amuzant',          text: 'O piesă veselă, cu glumele noastre și lucrurile caraghioase pe care le face.' },
-];
+const INSPIRATION_EMOJI = ['💛', '✨', '🌙', '💪', '😄'];
+const inspiration = (t) => INSPIRATION_EMOJI.map((emoji, i) => ({
+  emoji, label: t[`insp${i + 1}Label`], text: t[`insp${i + 1}Text`],
+}));
 
-const STORY_EXAMPLE =
-  'Anul acesta facem 10 ani de la nuntă. Am construit totul de la zero împreună, de când stăteam în chirie într-o garsonieră mică, până la viața aglomerată de acum cu doi copii. Chiar dacă suntem mereu pe fugă, diminețile când îmi pregătește cafeaua mă fac să uit de stres. Vreau să-i mulțumesc pentru toată răbdarea și să știe că o iubesc la fel de mult.';
-
-const STEPS = ['Stilul', 'Personalizare', 'Pentru cine', 'Povestea', 'Limba', 'Gata'];
+const steps = (t) => [t.step1, t.step2, t.step3, t.step4, t.step5, t.step6];
 
 /**
  * Melodii făcute pentru alți oameni, de ascultat pe prima pagină.
@@ -99,26 +91,14 @@ const STEPS = ['Stilul', 'Personalizare', 'Pentru cine', 'Povestea', 'Limba', 'G
  * prima dată n-avea de unde ști ce cumpără — și nici cineva care ne verifică
  * site-ul nu avea ce vedea.
  */
-const DEMOS = [
-  {
-    file: 'la-multi-ani-bogdan',
-    title: 'La mulți ani, Bogdan!',
-    meta: 'Zi de naștere · pentru un prieten',
-    length: '2:41',
-  },
-  {
-    file: 'primul-nostru-dans',
-    title: 'Primul nostru dans',
-    meta: 'Nuntă · pentru miri',
-    length: '2:03',
-  },
-  {
-    file: 'puiul-mamei',
-    title: 'Puiul mamei',
-    meta: 'Din suflet · pentru mamă',
-    length: '1:55',
-  },
+const DEMO_FILES = [
+  { file: 'la-multi-ani-bogdan', length: '2:41' },
+  { file: 'primul-nostru-dans',  length: '2:03' },
+  { file: 'puiul-mamei',         length: '1:55' },
 ];
+const demos = (t) => DEMO_FILES.map((d, i) => ({
+  ...d, title: t[`demo${i + 1}Title`], meta: t[`demo${i + 1}Meta`],
+}));
 
 /* ══════════════════════════════════════════════════════════════
    STIL
@@ -156,6 +136,11 @@ button.vc-mark:hover { opacity: .68; }
 .vc-markText { font-size: 15.5px; font-weight: 700; letter-spacing: .15em; line-height: 1; }
 .vc-markMd { margin-left: .16em; color: var(--violet); }
 
+/* Sigla împinge restul la dreapta, ca antetul să arate la fel fie că are una,
+   fie două piese lângă comutator. */
+.vc-headIn > .vc-mark:first-child { margin-right: auto; }
+.vc-lang { font-size: 11.5px; font-weight: 700; letter-spacing: .04em; color: var(--ink-2); background: var(--tile); border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; white-space: nowrap; transition: background .15s, color .15s; }
+.vc-lang:hover { background: var(--violet-l); color: var(--violet); }
 .vc-headNote { font-size: 11.5px; font-weight: 600; color: var(--gray); letter-spacing: .01em; background: var(--tile); border-radius: 999px; padding: 5px 11px; white-space: nowrap; }
 .vc-wrap { max-width: 640px; margin: 0 auto; padding: 16px 18px 40px; }
 .vc-wrap[data-bar="1"] { padding-bottom: 104px; }
@@ -506,21 +491,21 @@ function Module({ icon: Icon, title, text, children }) {
 }
 
 /* toate alegerile se pot anula printr-o a doua apăsare */
-function Choices({ options, value, onPick, cols = 2 }) {
+function Choices({ options, value, onPick, cols = 2, labelFor }) {
   return (
     <div className="vc-opts" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}>
       {options.map((o) => (
         <button key={o} className="vc-opt" data-on={value === o ? '1' : '0'}
           aria-pressed={value === o} onClick={() => onPick(value === o ? null : o)}>
           <span className="vc-radio">{value === o && <span className="vc-radioDot" />}</span>
-          <span className="vc-optLabel">{o}</span>
+          <span className="vc-optLabel">{labelFor ? labelFor(o) : o}</span>
         </button>
       ))}
     </div>
   );
 }
 
-function Segmented({ options, value, onPick, emoji }) {
+function Segmented({ options, value, onPick, emoji, labelFor }) {
   const i = options.indexOf(value);
   return (
     <div className="vc-seg" role="group">
@@ -531,7 +516,7 @@ function Segmented({ options, value, onPick, emoji }) {
       {options.map((o) => (
         <button key={o} className="vc-segBtn" data-on={value === o ? '1' : '0'}
           aria-pressed={value === o} onClick={() => onPick(value === o ? null : o)}>
-          {emoji?.[o] && <span className="vc-segEmoji">{emoji[o]}</span>}{o}
+          {emoji?.[o] && <span className="vc-segEmoji">{emoji[o]}</span>}{labelFor ? labelFor(o) : o}
         </button>
       ))}
     </div>
@@ -546,7 +531,7 @@ function Segmented({ options, value, onPick, emoji }) {
  * mărcii, luate una câte una: la 3 pixeli lățime, un gradient întreg n-ar arăta
  * decât o singură nuanță.
  */
-function Brand({ onClick }) {
+function Brand({ onClick, t }) {
   const inner = (
     <>
       <span className="vc-markBars" aria-hidden="true"><i /><i /><i /></span>
@@ -555,8 +540,22 @@ function Brand({ onClick }) {
   );
   if (!onClick) return <span className="vc-mark">{inner}</span>;
   return (
-    <button className="vc-mark" onClick={onClick} aria-label="Vocal MD — înapoi la început">
+    <button className="vc-mark" onClick={onClick} aria-label={t.brandBack}>
       {inner}
+    </button>
+  );
+}
+
+/**
+ * Comutatorul de limbă.
+ *
+ * Arată limba în care treci, nu cea în care ești: cine nu înțelege pagina
+ * caută cuvântul pe care îl recunoaște, nu o etichetă a stării curente.
+ */
+function LangSwitch({ t, onClick }) {
+  return (
+    <button className="vc-lang" onClick={onClick} aria-label={t.switchAria}>
+      {t.switchTo}
     </button>
   );
 }
@@ -571,12 +570,12 @@ function Alert({ text }) {
   );
 }
 
-function Need({ items }) {
+function Need({ items, t }) {
   if (!items.length) return null;
   return (
     <div className="vc-need">
       <Sparkles size={14} />
-      <span>Ca să mergem mai departe, mai alege: <b>{items.join(', ')}</b>.</span>
+      <span>{t.needPrefix} <b>{items.join(', ')}</b>.</span>
     </div>
   );
 }
@@ -595,7 +594,7 @@ const barColor = (i) => {
   return `rgb(${Math.round(59 + 80 * t)},${Math.round(189 - 97 * t)},${Math.round(245 + t)})`;
 };
 
-function Take({ name, meta, playing, at, active, dur = 60, onToggle, onSeek }) {
+function Take({ name, meta, playing, at, active, dur = 60, onToggle, onSeek, t }) {
   const ref = useRef(null);
   const seek = (e) => {
     const r = ref.current?.getBoundingClientRect();
@@ -606,14 +605,14 @@ function Take({ name, meta, playing, at, active, dur = 60, onToggle, onSeek }) {
   return (
     <div className="vc-take" data-on={active ? '1' : '0'}>
       <div className="vc-takeTop">
-        <button className="vc-playBtn" onClick={onToggle} aria-label={playing ? `Oprește ${name}` : `Ascultă ${name}`}>
+        <button className="vc-playBtn" onClick={onToggle} aria-label={playing ? t.stopAria(name) : t.playAria(name)}>
           {playing ? <Pause size={19} fill="currentColor" /> : <Play size={19} fill="currentColor" style={{ marginLeft: 2 }} />}
         </button>
         <div style={{ flex: 1 }}>
           <p className="vc-takeName">{name}</p>
           <p className="vc-takeMeta">{meta}</p>
         </div>
-        <span className="vc-tag">previzualizare</span>
+        <span className="vc-tag">{t.tagPreview}</span>
       </div>
       <div className="vc-scrub" ref={ref} onClick={seek}>
         <div className="vc-wave" aria-hidden="true">
@@ -632,17 +631,17 @@ function Take({ name, meta, playing, at, active, dur = 60, onToggle, onSeek }) {
 
 /* Documentele se deschid ca pagini proprii, în filă nouă: cine citește Termenii
    la pasul patru nu are voie să-și piardă povestea scrisă. */
-function Footer() {
+function Footer({ t, lang }) {
   return (
     <div className="vc-footer">
-      <a className="vc-footLink" href="/legal/ro/termeni" target="_blank" rel="noopener noreferrer">
-        Termeni și condiții
+      <a className="vc-footLink" href={`/legal/${lang}/termeni`} target="_blank" rel="noopener noreferrer">
+        {t.footTerms}
       </a>
-      <a className="vc-footLink" href="/legal/ro/rambursare" target="_blank" rel="noopener noreferrer">
-        Politica de rambursare
+      <a className="vc-footLink" href={`/legal/${lang}/rambursare`} target="_blank" rel="noopener noreferrer">
+        {t.footRefund}
       </a>
-      <a className="vc-footLink" href="/legal/ro/confidentialitate" target="_blank" rel="noopener noreferrer">
-        Confidențialitate
+      <a className="vc-footLink" href={`/legal/${lang}/confidentialitate`} target="_blank" rel="noopener noreferrer">
+        {t.footPrivacy}
       </a>
       <a className="vc-footLink" href="mailto:base.vocalmd@gmail.com">base.vocalmd@gmail.com</a>
       <span className="vc-footLink">S.R.L. „WADE PRODUCTION” · IDNO 1025600056881</span>
@@ -655,10 +654,14 @@ function Footer() {
    ══════════════════════════════════════════════════════════════ */
 
 /**
- * @param {{ initialOrderId?: string | null }} props
+ * @param {{ initialOrderId?: string | null, lang?: 'ro' | 'en' }} props
  *   `initialOrderId` vine din pagina deschisă dintr-un link de email.
+ *   `lang` e limba paginii, hotărâtă pe server din cookie sau din setarea
+ *   implicită. Alegerile trimise serverului rămân în română oricum — se
+ *   traduce doar eticheta văzută de om.
  */
-export default function Vocal({ initialOrderId = null }) {
+export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
+  const t = UI[lang] ?? UI.ro;
   const [screen, setScreen] = useState(initialOrderId ? 'loading' : 'intro');
   const [step, setStep] = useState(0);
   const [d, setD] = useState({
@@ -708,12 +711,23 @@ export default function Vocal({ initialOrderId = null }) {
     el.play().catch(() => setDemo(null));
   };
 
+  /* Comutatorul de limbă. `router.refresh()` cere serverului pagina în limba
+     nouă fără să reîncarce browserul, deci ce a completat omul în formular
+     rămâne pe loc. */
+  const router = useRouter();
+  const switchLang = () => {
+    const next = lang === 'ro' ? 'en' : 'ro';
+    document.cookie = `lang=${next};path=/;max-age=31536000;samesite=lax`;
+    router.refresh();
+  };
+
   const top = useRef(null);
   const storyBox = useRef(null);
   const navRef = useRef(null);
   const [showBar, setShowBar] = useState(false);
 
   const style = STYLES.find((s) => s.id === d.style);
+  const styleName = style ? styleLabel(lang, style.id, style).name : null;
   const opts = d.style ? OPTIONS[d.style] : null;
 
   /* Pe telefon, cine apasă „Creează melodia ta" a derulat deja jumătate de
@@ -883,19 +897,19 @@ export default function Vocal({ initialOrderId = null }) {
   const delName = (i) => setD((p) => ({ ...p, names: p.names.filter((_, k) => k !== i) }));
   const filledNames = d.names.map((n) => n.trim()).filter(Boolean);
 
-  const missing2 = [!d.sub && 'direcția muzicală', !d.mood && 'starea de spirit', !d.voice && 'cine cântă'].filter(Boolean);
+  const missing2 = [!d.sub && t.needDirection, !d.mood && t.needMood, !d.voice && t.needVoice].filter(Boolean);
   const missing3 = [
-    !d.recipient && 'persoana',
-    d.recipient === 'Altcineva' && !d.recipientOther.trim() && 'cine este persoana',
-    !filledNames.length && 'numele',
-    !d.occasion && 'ocazia',
-    d.occasion === 'Altă ocazie' && !d.occasionOther.trim() && 'ce ocazie este',
+    !d.recipient && t.needPerson,
+    d.recipient === 'Altcineva' && !d.recipientOther.trim() && t.needWhoIs,
+    !filledNames.length && t.needNames,
+    !d.occasion && t.needOccasion,
+    d.occasion === 'Altă ocazie' && !d.occasionOther.trim() && t.needWhatOccasion,
   ].filter(Boolean);
-  const missing4 = [!d.title.trim() && 'titlul piesei', !d.story.trim() && (d.mode === 'ai' ? 'povestea voastră' : 'versurile tale')].filter(Boolean);
-  const missing5 = [!d.lang && 'limba versurilor'].filter(Boolean);
+  const missing4 = [!d.title.trim() && t.needTitle, !d.story.trim() && (d.mode === 'ai' ? t.needStory : t.needOwnLyrics)].filter(Boolean);
+  const missing5 = [!d.lang && t.needSongLang].filter(Boolean);
 
   const canGo = [!!d.style, !missing2.length, !missing3.length, !missing4.length, !missing5.length, true][step];
-  const nextLabel = step === 5 ? 'Scrie versurile — gratuit' : 'Continuă';
+  const nextLabel = step === 5 ? t.writeLyrics : t.continueLabel;
 
   /* când pasul tocmai s-a completat, butonul dă un puls scurt */
   const [ready, setReady] = useState(false);
@@ -1009,9 +1023,7 @@ export default function Vocal({ initialOrderId = null }) {
             } else if (Date.now() - started > 90_000) {
               clearInterval(t);
               setWaitingPayment(false);
-              setApiError(
-                'Plata a fost trimisă, dar confirmarea întârzie. Îți scriem pe email imediat ce intră.',
-              );
+              setApiError(t.paymentLate);
             }
           } catch { /* o interogare pierdută nu e o eroare; încercăm iar */ }
         }, 2500);
@@ -1049,18 +1061,14 @@ export default function Vocal({ initialOrderId = null }) {
     <div className="vc-overlay" role="dialog" aria-modal="true" aria-labelledby="vcHomeTitle"
       onClick={() => setConfirmHome(false)}>
       <div className="vc-dialog" onClick={(e) => e.stopPropagation()}>
-        <p className="vc-dialogTitle" id="vcHomeTitle">Înapoi la început?</p>
-        <p className="vc-dialogText">
-          {delivered
-            ? 'Melodia ta rămâne în bibliotecă. Te ducem la pagina de start.'
-            : 'Se pierde ce ai completat până acum și o iei de la prima întrebare.'}
-        </p>
+        <p className="vc-dialogTitle" id="vcHomeTitle">{t.homeTitle}</p>
+        <p className="vc-dialogText">{delivered ? t.homeTextKept : t.homeTextLost}</p>
         <div className="vc-dialogBtns">
           <button className="vc-ghost" style={{ flex: 1 }} onClick={() => setConfirmHome(false)}>
-            Rămân aici
+            {t.homeStay}
           </button>
           <button className="vc-next" style={{ height: 48, fontSize: 14.5 }} onClick={goHome}>
-            Înapoi la început
+            {t.homeGo}
           </button>
         </div>
       </div>
@@ -1073,12 +1081,13 @@ export default function Vocal({ initialOrderId = null }) {
       <div className="vc">
         <style>{CSS}</style>
         <div className="vc-head"><div className="vc-headIn">
-          <Brand />
+          <Brand t={t} />
+          <LangSwitch t={t} onClick={switchLang} />
         </div></div>
         <div className="vc-wrap"><div className="vc-panel">
           <div className="vc-wait">
             <div className="vc-waitRing"><Disc3 size={32} /></div>
-            <h2 className="vc-waitTitle">Se deschide comanda ta</h2>
+            <h2 className="vc-waitTitle">{t.loadingTitle}</h2>
           </div>
         </div></div>
       </div>
@@ -1094,65 +1103,61 @@ export default function Vocal({ initialOrderId = null }) {
         {homeDialog}
 
         <div className="vc-head"><div className="vc-headIn">
-          <Brand onClick={askHome} />
+          <Brand onClick={askHome} t={t} />
+          <LangSwitch t={t} onClick={switchLang} />
         </div></div>
 
         <div className="vc-wrap" ref={top}>
           <div className="vc-hero">
-            <p className="vc-heroEyebrow">Melodii 100% personalizate</p>
-            <h1 className="vc-heroTitle">Transformă povestea voastră într-o melodie de neuitat.</h1>
-            <p className="vc-heroText">
-              Spui povestea voastră, iar versurile și vocea sunt generate automat.
-              În câteva minute ai o melodie făcută numai pentru omul drag ție.
-            </p>
+            <p className="vc-heroEyebrow">{t.heroEyebrow}</p>
+            <h1 className="vc-heroTitle">{t.heroTitle}</h1>
+            <p className="vc-heroText">{t.heroText}</p>
 
             <div className="vc-heroCta">
               <button className="vc-next" onClick={() => { setStep(0); setScreen('wizard'); }}>
-                <Sparkles size={18} /> Creează melodia ta
+                <Sparkles size={18} /> {t.ctaCreate}
               </button>
             </div>
             <div className="vc-spec">
-              <p className="vc-specTitle">Ce primești</p>
+              <p className="vc-specTitle">{t.specTitle}</p>
               <ul className="vc-specList">
-                <li><Download size={15} /><span><b>Două fișiere MP3</b> — două interpretări ale melodiei tale</span></li>
-                <li><Zap size={15} /><span>Descărcare <b>pe loc</b>, din pagină și pe email</span></li>
-                <li><Music2 size={15} /><span><b>30 €</b>, plată unică — fără abonament</span></li>
+                <li><Download size={15} /><span><b>{t.spec1a}</b>{t.spec1b}</span></li>
+                <li><Zap size={15} /><span>{t.spec2a}<b>{t.spec2b}</b>{t.spec2c}</span></li>
+                <li><Music2 size={15} /><span><b>{t.spec3a}</b>{t.spec3b}</span></li>
               </ul>
               <p className="vc-specFree">
-                Versurile și un minut din melodie sunt <b>gratuite</b>, înainte de plată.
+                {t.specFreeA}<b>{t.specFreeB}</b>{t.specFreeC}
               </p>
             </div>
 
             <div className="vc-heroSep" />
 
             <div className="vc-demos">
-              <p className="vc-demosTitle">Ascultă trei melodii făcute deja</p>
-              <p className="vc-demosSub">
-                Toate au fost generate de aceleași modele care o vor face și pe a ta.
-              </p>
+              <p className="vc-demosTitle">{t.demosTitle}</p>
+              <p className="vc-demosSub">{t.demosSub}</p>
 
               <div className="vc-demoList">
-                {DEMOS.map((t) => (
-                  <button key={t.file} className="vc-demo" data-on={demo === t.file ? '1' : '0'}
-                    onClick={() => toggleDemo(t.file)}
-                    aria-label={`${demo === t.file ? 'Oprește' : 'Ascultă'} ${t.title}`}>
+                {demos(t).map((track) => (
+                  <button key={track.file} className="vc-demo" data-on={demo === track.file ? '1' : '0'}
+                    onClick={() => toggleDemo(track.file)}
+                    aria-label={demo === track.file ? t.stopAria(track.title) : t.playAria(track.title)}>
                     <span className="vc-demoArt">
                       {/* Copertele sunt 360×360 într-un loc de 58: le micșorează Next. */}
-                      <Image src={`/demo/${t.file}.jpg`} alt="" width={58} height={58} />
+                      <Image src={`/demo/${track.file}.jpg`} alt="" width={58} height={58} />
                       <span className="vc-demoPlay">
-                        {demo === t.file
+                        {demo === track.file
                           ? <Pause size={18} fill="currentColor" />
                           : <Play size={18} fill="currentColor" style={{ marginLeft: 2 }} />}
                       </span>
                     </span>
                     <span className="vc-demoInfo">
-                      <p className="vc-demoName">{t.title}</p>
-                      <p className="vc-demoMeta">{t.meta}</p>
+                      <p className="vc-demoName">{track.title}</p>
+                      <p className="vc-demoMeta">{track.meta}</p>
                     </span>
-                    <span className="vc-demoLen">{t.length}</span>
+                    <span className="vc-demoLen">{track.length}</span>
                     <audio
-                      ref={(el) => { demoRefs.current[t.file] = el; }}
-                      src={`/demo/${t.file}.mp3`}
+                      ref={(el) => { demoRefs.current[track.file] = el; }}
+                      src={`/demo/${track.file}.mp3`}
                       preload="none"
                       onEnded={() => setDemo(null)}
                     />
@@ -1160,25 +1165,22 @@ export default function Vocal({ initialOrderId = null }) {
                 ))}
               </div>
 
-              <p className="vc-demoFoot">
-                Versurile și vocea sunt generate de modele AI. Nu clonăm și nu imităm
-                voci reale — vocile pe care le auzi sunt sintetice.
-              </p>
+              <p className="vc-demoFoot">{t.demoFoot}</p>
             </div>
 
             <div className="vc-heroSep" />
 
             <div className="vc-perks">
-              {PERKS.map(({ Icon, text }) => (
-                <div className="vc-perk" key={text}>
+              {PERK_ICONS.map((Icon, i) => (
+                <div className="vc-perk" key={i}>
                   <span className="vc-perkIcon"><Icon size={17} /></span>
-                  <p className="vc-perkText">{text}</p>
+                  <p className="vc-perkText">{t[`perk${i + 1}`]}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <Footer />
+          <Footer t={t} lang={lang} />
         </div>
       </div>
     );
@@ -1192,41 +1194,37 @@ export default function Vocal({ initialOrderId = null }) {
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <Brand onClick={askHome} /><span className="vc-headNote">Ultimul pas</span>
+          <Brand onClick={askHome} t={t} /><span className="vc-headNote">{t.headLast}</span>
+          <LangSwitch t={t} onClick={switchLang} />
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-hero">
-            <p className="vc-heroEyebrow">Aproape gata</p>
-            <h1 className="vc-heroTitle">Unde îți trimitem melodia?</h1>
-            <p className="vc-heroText">
-              Versurile se generează în câteva secunde. Lăsăm adresa ta de email ca să nu pierzi
-              nimic dacă închizi pagina — îți trimitem acolo și versurile, și melodia.
-            </p>
+            <p className="vc-heroEyebrow">{t.emailEyebrow}</p>
+            <h1 className="vc-heroTitle">{t.emailTitle}</h1>
+            <p className="vc-heroText">{t.emailText}</p>
           </div>
           <div className="vc-panel">
-            <Module icon={Mail} title="Adresa ta de email" text="Doar pentru livrarea melodiei. Fără reclame nesolicitate.">
+            <Module icon={Mail} title={t.emailModTitle} text={t.emailModText}>
               <input className="vc-input" type="email" inputMode="email" value={email}
-                onChange={(e) => setEmail(e.target.value)} placeholder="numele.tau@email.com" />
+                onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPlaceholder} />
             </Module>
 
             <label className="vc-check" data-on={agree ? '1' : '0'} htmlFor="vc-agree">
               <input className="vc-checkIn" type="checkbox" id="vc-agree"
                 checked={agree} onChange={(e) => setAgree(e.target.checked)} />
               <span className="vc-box">{agree && <Check size={14} strokeWidth={3} />}</span>
-              <span className="vc-checkText">
-                Am citit și accept Termenii și condițiile și Politica de confidențialitate.
-              </span>
+              <span className="vc-checkText">{t.agreeText}</span>
             </label>
 
             {/* Legăturile stau sub bifă, nu în ea: altfel aproape tot rândul devine
                 legătură, iar o apăsare pe mijloc deschide un document în loc să bifeze. */}
             <p className="vc-checkLinks">
-              <a href="/legal/ro/termeni" target="_blank" rel="noopener noreferrer">
-                Citește Termenii
+              <a href={`/legal/${lang}/termeni`} target="_blank" rel="noopener noreferrer">
+                {t.readTerms}
               </a>
               <span aria-hidden="true"> · </span>
-              <a href="/legal/ro/confidentialitate" target="_blank" rel="noopener noreferrer">
-                Citește Politica de confidențialitate
+              <a href={`/legal/${lang}/confidentialitate`} target="_blank" rel="noopener noreferrer">
+                {t.readPrivacy}
               </a>
             </p>
 
@@ -1234,30 +1232,28 @@ export default function Vocal({ initialOrderId = null }) {
               <input className="vc-checkIn" type="checkbox" id="vc-news"
                 checked={news} onChange={(e) => setNews(e.target.checked)} />
               <span className="vc-box">{news && <Check size={14} strokeWidth={3} />}</span>
-              <span className="vc-checkText">
-                Vreau să primesc ocazional idei de cadouri și oferte. Opțional, te poți dezabona oricând.
-              </span>
+              <span className="vc-checkText">{t.newsText}</span>
             </label>
 
             <div className="vc-safe" style={{ background: 'var(--violet-t)', color: 'var(--ink-2)' }}>
               <ShieldCheck size={16} color="#6C5CE7" />
-              <span>Nu îți cerem nicio plată acum. Versurile și minutul de ascultat rămân gratuite.</span>
+              <span>{t.noPayNow}</span>
             </div>
 
             <div className="vc-nav" ref={navRef}>
-              <button className="vc-back" onClick={() => { setScreen('wizard'); setStep(5); }} aria-label="Înapoi">
+              <button className="vc-back" onClick={() => { setScreen('wizard'); setStep(5); }} aria-label={t.backAria}>
                 <ArrowLeft size={19} />
               </button>
               <button className={nextCls} disabled={!okMail || !agree || busy} onClick={submitOrder}>
-                <Sparkles size={18} /> {busy ? 'Se trimite…' : 'Scrie versurile — gratuit'}
+                <Sparkles size={18} /> {busy ? t.sending : t.writeLyrics}
               </button>
             </div>
             {(!okMail || !agree) && (
-              <Need items={[!okMail && 'o adresă de email validă', !agree && 'acordul cu termenii'].filter(Boolean)} />
+              <Need t={t} items={[!okMail && t.needEmail, !agree && t.needAgree].filter(Boolean)} />
             )}
             <Alert text={apiError} />
           </div>
-          <Footer />
+          <Footer t={t} lang={lang} />
         </div>
       </div>
     );
@@ -1273,31 +1269,29 @@ export default function Vocal({ initialOrderId = null }) {
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <Brand onClick={askHome} />
-          <span className="vc-headNote">Comanda {order?.publicId ?? ''}</span>
+          <Brand onClick={askHome} t={t} />
+          <span className="vc-headNote">{t.headOrder(order?.publicId ?? '')}</span>
+          <LangSwitch t={t} onClick={switchLang} />
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-panel">
             <div className="vc-done">
               <div className="vc-doneIcon"><Check size={34} strokeWidth={3} /></div>
-              <h1 className="vc-doneTitle">Melodia e a ta.</h1>
-              <p className="vc-doneText">
-                Ți-am trimis totul și pe email, la {order?.email || email || 'adresa ta'}.
-                O poți descărca de aici oricând.
-              </p>
+              <h1 className="vc-doneTitle">{t.doneTitle}</h1>
+              <p className="vc-doneText">{t.doneText(order?.email || email || t.yourAddress)}</p>
             </div>
 
-            {tracks.map((t) => (
-              <div className="vc-track" key={t.variant}>
+            {tracks.map((track) => (
+              <div className="vc-track" key={track.variant}>
                 <span className="vc-trackIcon"><Music2 size={20} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p className="vc-trackName">
-                    {order?.songTitle || d.title || 'Melodia ta'} — varianta {t.variant}
+                    {order?.songTitle || d.title || t.yourSong} — {t.variantOf(track.variant)}
                   </p>
-                  <p className="vc-trackMeta">MP3 · {t.duration ? fmt(t.duration) : '—'}</p>
+                  <p className="vc-trackMeta">MP3 · {track.duration ? fmt(track.duration) : '—'}</p>
                 </div>
-                <a className="vc-dl" href={t.fullUrl ?? '#'} download
-                  aria-label={`Descarcă varianta ${t.variant}`}>
+                <a className="vc-dl" href={track.fullUrl ?? '#'} download
+                  aria-label={t.dlAria(track.variant)}>
                   <Download size={19} />
                 </a>
               </div>
@@ -1305,23 +1299,20 @@ export default function Vocal({ initialOrderId = null }) {
 
             <div className="vc-safe">
               <Check size={16} />
-              <span>
-                Factura ți-a fost trimisă de Paddle pe email. Melodia rămâne în biblioteca ta 24 de luni
-                și o poți descărca de oricâte ori vrei.
-              </span>
+              <span>{t.invoiceNote}</span>
             </div>
 
             <div className="vc-nav" ref={navRef}>
               <button className="vc-ghost" style={{ flex: 1 }} disabled={busy} onClick={openLibrary}>
-                <ListMusic size={16} /> Biblioteca mea
+                <ListMusic size={16} /> {t.myLibrary}
               </button>
               <button className="vc-ghost" style={{ flex: 1 }} onClick={goHome}>
-                <Sparkles size={16} /> Mai fac una
+                <Sparkles size={16} /> {t.makeAnother}
               </button>
             </div>
             <Alert text={apiError} />
           </div>
-          <Footer />
+          <Footer t={t} lang={lang} />
         </div>
       </div>
     );
@@ -1333,32 +1324,31 @@ export default function Vocal({ initialOrderId = null }) {
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <Brand onClick={askHome} /><span className="vc-headNote">Biblioteca</span>
+          <Brand onClick={askHome} t={t} /><span className="vc-headNote">{t.headLibrary}</span>
+          <LangSwitch t={t} onClick={switchLang} />
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-panel">
-            <h1 className="vc-q" style={{ marginTop: 4 }}>Melodiile tale</h1>
-            <p className="vc-qSub">Comenzile făcute de pe acest dispozitiv.</p>
+            <h1 className="vc-q" style={{ marginTop: 4 }}>{t.libTitle}</h1>
+            <p className="vc-qSub">{t.libSub}</p>
 
             {library.length === 0 && (
-              <p className="vc-qSub" style={{ marginTop: 14 }}>
-                Încă nu ai nicio melodie aici.
-              </p>
+              <p className="vc-qSub" style={{ marginTop: 14 }}>{t.libEmpty}</p>
             )}
 
             {library.map((it) => (
               <div className="vc-item" key={it.publicId}>
                 <div className="vc-itemTop">
                   <div style={{ minWidth: 0 }}>
-                    <p className="vc-itemName">{it.songTitle || 'Melodie fără titlu'}</p>
+                    <p className="vc-itemName">{it.songTitle || t.untitled}</p>
                     <p className="vc-itemMeta">
-                      {new Date(it.createdAt).toLocaleDateString('ro-RO', {
+                      {new Date(it.createdAt).toLocaleDateString(t.dateLocale, {
                         day: 'numeric', month: 'long', year: 'numeric',
                       })}
                     </p>
                   </div>
                   <span className="vc-state" data-t={it.paid ? 'paid' : 'demo'}>
-                    {it.paid ? 'CUMPĂRATĂ' : 'DOAR DEMO'}
+                    {it.paid ? t.statePaid : t.stateDemo}
                   </span>
                 </div>
 
@@ -1366,11 +1356,11 @@ export default function Vocal({ initialOrderId = null }) {
                   <div className="vc-itemAct">
                     <button className="vc-ghost" style={{ flex: 1 }}
                       onClick={() => { setOrderId(it.publicId); applyState(it); }}>
-                      <Play size={15} /> {it.paid ? 'Ascultă' : 'Ascultă demo'}
+                      <Play size={15} /> {it.paid ? t.listen : t.listenDemo}
                     </button>
                     {it.paid && it.tracks[0]?.fullUrl && (
                       <a className="vc-ghost" style={{ flex: 1 }} href={it.tracks[0].fullUrl} download>
-                        <Download size={15} /> Descarcă
+                        <Download size={15} /> {t.download}
                       </a>
                     )}
                   </div>
@@ -1380,11 +1370,11 @@ export default function Vocal({ initialOrderId = null }) {
 
             <div className="vc-nav" ref={navRef}>
               <button className={nextCls} onClick={goHome}>
-                <Sparkles size={18} /> Creează o melodie nouă
+                <Sparkles size={18} /> {t.newSong}
               </button>
             </div>
           </div>
-          <Footer />
+          <Footer t={t} lang={lang} />
         </div>
       </div>
     );
@@ -1399,47 +1389,43 @@ export default function Vocal({ initialOrderId = null }) {
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <Brand onClick={askHome} /><span className="vc-headNote">Ceva n-a mers</span>
+          <Brand onClick={askHome} t={t} /><span className="vc-headNote">{t.headError}</span>
+          <LangSwitch t={t} onClick={switchLang} />
         </div></div>
         <div className="vc-wrap" ref={top} data-bar="0">
           <div className="vc-panel">
             <div className="vc-err">
               <div className="vc-errIcon"><AlertTriangle size={32} /></div>
-              <h1 className="vc-errTitle">
-                {refused ? 'Nu putem face această melodie' : 'Înregistrarea nu a reușit'}
-              </h1>
-              <p className="vc-errText">
-                {order?.problem
-                  ?? 'Studioul nostru a răspuns cu o eroare la această piesă. Se întâmplă rar și de obicei se rezolvă din a doua încercare — versurile tale sunt salvate, nu le rescrii.'}
-              </p>
+              <h1 className="vc-errTitle">{refused ? t.errRefused : t.errFailed}</h1>
+              <p className="vc-errText">{order?.problem ?? t.errDefault}</p>
             </div>
 
             <div className="vc-safe">
               <ShieldCheck size={16} />
-              <span>Nu ți-a fost debitat niciun ban. Plata se face doar după ce asculți melodia.</span>
+              <span>{t.noCharge}</span>
             </div>
 
             <div className="vc-nav" ref={navRef}>
               {refused ? (
                 <button className={nextCls} onClick={goHome}>
-                  <Sparkles size={18} /> Începe altă melodie
+                  <Sparkles size={18} /> {t.startAnother}
                 </button>
               ) : (
                 <button className={nextCls} disabled={busy} onClick={approveLyrics}>
-                  <RotateCcw size={18} /> {busy ? 'Se reîncearcă…' : 'Încearcă din nou'}
+                  <RotateCcw size={18} /> {busy ? t.retrying : t.retry}
                 </button>
               )}
             </div>
             <button className="vc-ghost" style={{ width: '100%', marginTop: 9 }}
               disabled={busy} onClick={openLibrary}>
-              <ListMusic size={16} /> Vezi melodiile salvate
+              <ListMusic size={16} /> {t.seeSaved}
             </button>
             <Alert text={apiError} />
             <p style={{ fontSize: 12.5, color: '#767686', textAlign: 'center', marginTop: 14, lineHeight: 1.55 }}>
-              Dacă se repetă, scrie-ne la base.vocalmd@gmail.com și rezolvăm noi manual.
+              {t.contactNote}
             </p>
           </div>
-          <Footer />
+          <Footer t={t} lang={lang} />
         </div>
       </div>
     );
@@ -1453,16 +1439,12 @@ export default function Vocal({ initialOrderId = null }) {
       <div className="vc">
         <style>{CSS}</style>
       {homeDialog}
-        <div className="vc-head"><div className="vc-headIn"><Brand onClick={askHome} /></div></div>
+        <div className="vc-head"><div className="vc-headIn"><Brand onClick={askHome} t={t} /><LangSwitch t={t} onClick={switchLang} /></div></div>
         <div className="vc-wrap"><div className="vc-panel">
           <div className="vc-wait">
             <div className="vc-waitRing"><PenLine size={30} /></div>
-            <h2 className="vc-waitTitle">Se scriu versurile</h2>
-            <p className="vc-waitText">
-              {overtime
-                ? 'Mai durează câteva clipe — textul e pe ultima sută de metri. Lasă pagina deschisă.'
-                : 'Povestea ta se citește și textul se generează. Durează câteva zeci de secunde — lasă pagina deschisă.'}
-            </p>
+            <h2 className="vc-waitTitle">{t.writingTitle}</h2>
+            <p className="vc-waitText">{overtime ? t.writingLate : t.writingNormal}</p>
             <div className="vc-waitRail"><div className="vc-waitFill" style={{ width: `${progress}%` }} /></div>
           </div>
         </div></div>
@@ -1475,16 +1457,12 @@ export default function Vocal({ initialOrderId = null }) {
       <div className="vc">
         <style>{CSS}</style>
       {homeDialog}
-        <div className="vc-head"><div className="vc-headIn"><Brand onClick={askHome} /></div></div>
+        <div className="vc-head"><div className="vc-headIn"><Brand onClick={askHome} t={t} /><LangSwitch t={t} onClick={switchLang} /></div></div>
         <div className="vc-wrap"><div className="vc-panel">
           <div className="vc-wait">
             <div className="vc-waitRing"><Disc3 size={32} /></div>
-            <h2 className="vc-waitTitle">Se înregistrează melodia</h2>
-            <p className="vc-waitText">
-              {overtime
-                ? 'Mai durează câteva clipe — se lucrează la mixaj. Nu închide pagina, melodia vine.'
-                : 'Vocea, instrumentele și mixajul. Durează două-trei minute — lasă pagina deschisă.'}
-            </p>
+            <h2 className="vc-waitTitle">{t.makingTitle}</h2>
+            <p className="vc-waitText">{overtime ? t.makingLate : t.makingNormal}</p>
             <div className="vc-waitRail"><div className="vc-waitFill" style={{ width: `${progress}%` }} /></div>
           </div>
         </div></div>
@@ -1498,36 +1476,34 @@ export default function Vocal({ initialOrderId = null }) {
     const recordings = order?.recordings ?? [];
     // Previzualizarea e tăiată la 60 de secunde, dar dacă piesa e mai scurtă
     // playerul trebuie să arate durata adevărată, nu una promisă.
-    const previewLen = Math.min(60, Math.max(...tracks.map((t) => t.duration || 60), 60));
+    const previewLen = Math.min(60, Math.max(...tracks.map((x) => x.duration || 60), 60));
     return (
       <div className="vc">
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <Brand onClick={askHome} /><span className="vc-headNote">Melodia ta</span>
+          <Brand onClick={askHome} t={t} /><span className="vc-headNote">{t.headSong}</span>
+          <LangSwitch t={t} onClick={switchLang} />
         </div></div>
         <div className="vc-wrap" ref={top} data-bar={showBar ? '1' : '0'}>
           <div className="vc-hero">
-            <p className="vc-heroEyebrow">Gata</p>
-            <h1 className="vc-heroTitle">Ascultă cum sună povestea voastră.</h1>
-            <p className="vc-heroText">Am pregătit două interpretări ale aceleiași piese. Ascultă-le pe amândouă — le primești pe ambele, integral.</p>
+            <p className="vc-heroEyebrow">{t.demoEyebrow}</p>
+            <h1 className="vc-heroTitle">{t.demoTitle}</h1>
+            <p className="vc-heroText">{t.demoText}</p>
           </div>
           <div className="vc-panel">
             {recordings.length > 1 && (
               <div className="vc-takes">
-                <p className="vc-takesLabel">
-                  Ai {recordings.length} înregistrări ale aceleiași piese. Alege-o pe cea care
-                  îți place — pe ea o primești.
-                </p>
+                <p className="vc-takesLabel">{t.takesLabel(recordings.length)}</p>
                 <div className="vc-takesRow">
                   {recordings.map((r) => (
                     <button key={r.id} className="vc-takeTab" disabled={busy}
                       data-on={r.id === order?.currentRenderId ? '1' : '0'}
                       aria-pressed={r.id === order?.currentRenderId}
                       onClick={() => chooseRecording(r.id)}>
-                      Înregistrarea {r.generation}
+                      {t.recordingN(r.generation)}
                       {r.lyricsVersion !== order?.lyricsVersion && (
-                        <span className="vc-takeTabNote">alt text</span>
+                        <span className="vc-takeTabNote">{t.altText}</span>
                       )}
                     </button>
                   ))}
@@ -1535,84 +1511,79 @@ export default function Vocal({ initialOrderId = null }) {
               </div>
             )}
 
-            {tracks.map((t) => (
-              <React.Fragment key={t.variant}>
+            {tracks.map((track) => (
+              <React.Fragment key={track.variant}>
                 <audio
-                  ref={(el) => { audioRefs.current[t.variant] = el; }}
-                  src={t.previewUrl ?? undefined}
+                  ref={(el) => { audioRefs.current[track.variant] = el; }}
+                  src={track.previewUrl ?? undefined}
                   preload="metadata"
-                  onTimeUpdate={(e) => { if (take === t.variant) setAt(e.currentTarget.currentTime); }}
+                  onTimeUpdate={(e) => { if (take === track.variant) setAt(e.currentTarget.currentTime); }}
                   onEnded={() => setPlaying(false)}
                 />
                 <Take
-                  name={`Varianta ${t.variant}`}
-                  meta={t.variant === 1
-                    ? `${style?.name ?? 'Melodia ta'} · voce ${(d.voice || 'Femeie').toLowerCase()}`
-                    : `${style?.name ?? 'Melodia ta'} · interpretare alternativă`}
-                  playing={playing && take === t.variant}
+                  t={t}
+                  name={t.variantN(track.variant)}
+                  meta={track.variant === 1
+                    ? t.voiceMeta(styleName ?? t.yourSong, label(lang, 'voices', d.voice || 'Femeie'))
+                    : t.altTake(styleName ?? t.yourSong)}
+                  playing={playing && take === track.variant}
                   at={at}
-                  active={take === t.variant}
+                  active={take === track.variant}
                   dur={previewLen}
-                  onToggle={() => toggleTake(t.variant)}
-                  onSeek={(sec) => seekTake(t.variant, sec)}
+                  onToggle={() => toggleTake(track.variant)}
+                  onSeek={(sec) => seekTake(track.variant, sec)}
                 />
               </React.Fragment>
             ))}
 
             <div className="vc-two" style={{ marginTop: 14 }}>
               <button className="vc-ghost" onClick={() => setScreen('lyrics')}>
-                <ListMusic size={16} /> Vezi versurile
+                <ListMusic size={16} /> {t.seeLyrics}
               </button>
               <button className="vc-ghost" disabled={busy || (order?.rendersLeft ?? 0) === 0}
                 onClick={askNewRecording}
                 style={(order?.rendersLeft ?? 0) === 0 ? { opacity: .5, cursor: 'not-allowed' } : undefined}>
-                <RefreshCw size={16} /> Altă înregistrare
+                <RefreshCw size={16} /> {t.otherRecording}
               </button>
             </div>
             <p className="vc-takesFoot">
-              {(order?.rendersLeft ?? 0) > 0
-                ? `Mai poți cere ${order.rendersLeft} ${order.rendersLeft === 1 ? 'înregistrare' : 'înregistrări'}, gratuit. Cele de până acum rămân, nu se pierd.`
-                : 'Ai folosit toate înregistrările gratuite. Alege dintre cele de mai sus pe cea care îți place.'}
+              {(order?.rendersLeft ?? 0) > 0 ? t.rendersLeft(order.rendersLeft) : t.rendersNone}
             </p>
             <Alert text={apiError} />
 
             <div className="vc-offer">
               <div className="vc-offerIn">
-                <p className="vc-offerKicker">VARIANTA COMPLETĂ</p>
-                <h2 className="vc-offerTitle">Melodia întreagă, gata de dăruit</h2>
+                <p className="vc-offerKicker">{t.offerKicker}</p>
+                <h2 className="vc-offerTitle">{t.offerTitle}</h2>
                 <div className="vc-offerPrice">
-                  <span className="vc-priceNum">30 €</span>
-                  <span className="vc-priceNote">plată unică · fără abonament</span>
+                  <span className="vc-priceNum">{t.spec3a}</span>
+                  <span className="vc-priceNote">{t.priceNote}</span>
                 </div>
                 <ul className="vc-offerList">
-                  <li><span className="vc-offerCheck"><Check size={13} strokeWidth={3} /></span>
-                    <span>Piesa completă, de la prima până la ultima notă</span></li>
-                  <li><span className="vc-offerCheck"><Check size={13} strokeWidth={3} /></span>
-                    <span>Primești ambele variante integral, ca să o oferi pe cea mai bună</span></li>
-                  <li><span className="vc-offerCheck"><Check size={13} strokeWidth={3} /></span>
-                    <span>Fișier MP3 descărcabil pe telefon sau laptop, al tău pentru totdeauna</span></li>
-                  <li><span className="vc-offerCheck"><Check size={13} strokeWidth={3} /></span>
-                    <span>Link dedicat cu piesa și versurile, gata de trimis persoanei dragi</span></li>
+                  {[t.offer1, t.offer2, t.offer3, t.offer4].map((line) => (
+                    <li key={line}><span className="vc-offerCheck"><Check size={13} strokeWidth={3} /></span>
+                      <span>{line}</span></li>
+                  ))}
                 </ul>
                 <div className="vc-nav" ref={navRef} style={{ marginTop: 0 }}>
                   <button className="vc-buy" disabled={busy || waitingPayment} onClick={buy}>
-                    <Gift size={20} /> {waitingPayment ? 'Se confirmă plata…' : 'Primește melodia — 30 €'}
+                    <Gift size={20} /> {waitingPayment ? t.confirming : t.buyCta}
                   </button>
                 </div>
                 <div className="vc-offerTrust">
-                  <span className="vc-trustBit"><ShieldCheck size={13} /> Plată securizată</span>
-                  <span className="vc-trustBit"><Zap size={13} /> Livrare instant</span>
-                  <span className="vc-trustBit"><Download size={13} /> Descărcare nelimitată</span>
+                  <span className="vc-trustBit"><ShieldCheck size={13} /> {t.trust1}</span>
+                  <span className="vc-trustBit"><Zap size={13} /> {t.trust2}</span>
+                  <span className="vc-trustBit"><Download size={13} /> {t.trust3}</span>
                 </div>
               </div>
             </div>
           </div>
-          <Footer />
+          <Footer t={t} lang={lang} />
         </div>
         {showBar && (
           <div className="vc-bar"><div className="vc-barIn">
             <button className="vc-next" disabled={busy || waitingPayment} onClick={buy}>
-              <Gift size={18} /> {waitingPayment ? 'Se confirmă plata…' : 'Primește melodia — 30 €'}
+              <Gift size={18} /> {waitingPayment ? t.confirming : t.buyCta}
             </button>
           </div></div>
         )}
@@ -1637,17 +1608,14 @@ export default function Vocal({ initialOrderId = null }) {
         <style>{CSS}</style>
       {homeDialog}
         <div className="vc-head"><div className="vc-headIn">
-          <Brand onClick={askHome} /><span className="vc-headNote">Versurile</span>
+          <Brand onClick={askHome} t={t} /><span className="vc-headNote">{t.headLyrics}</span>
+          <LangSwitch t={t} onClick={switchLang} />
         </div></div>
         <div className="vc-wrap" ref={top} data-bar={showBar ? '1' : '0'}>
           <div className="vc-hero">
-            <p className="vc-heroEyebrow">Pasul următor</p>
-            <h1 className="vc-heroTitle">{order?.songTitle || d.title || 'Versurile tale sunt gata'}</h1>
-            <p className="vc-heroText">
-              {sung
-                ? 'Textul pe care l-ai aprobat. Dacă îți place mai mult o variantă anterioară, o poți readuce și cere o înregistrare nouă pe ea.'
-                : 'Citește-le cu atenție — exact așa vor fi înregistrate. Poți modifica orice cuvânt sau poți cere o variantă nouă.'}
-            </p>
+            <p className="vc-heroEyebrow">{t.lyricsEyebrow}</p>
+            <h1 className="vc-heroTitle">{order?.songTitle || d.title || t.lyricsFallback}</h1>
+            <p className="vc-heroText">{sung ? t.lyricsSung : t.lyricsFresh}</p>
           </div>
           <div className="vc-panel">
             {editing
@@ -1658,18 +1626,16 @@ export default function Vocal({ initialOrderId = null }) {
                 <div className="vc-two">
                   <button className="vc-ghost" disabled={saving}
                     onClick={() => (editing ? finishEditing() : setEditing(true))}>
-                    <Pencil size={16} /> {saving ? 'Se salvează…' : editing ? 'Am terminat' : 'Modifică acest text'}
+                    <Pencil size={16} /> {saving ? t.saving : editing ? t.editDone : t.editStart}
                   </button>
                   <button className="vc-ghost" disabled={left === 0 || busy || editing}
                     onClick={askNewLyrics}
                     style={left === 0 ? { opacity: .5, cursor: 'not-allowed' } : undefined}>
-                    <RefreshCw size={16} /> Altă variantă
+                    <RefreshCw size={16} /> {t.otherVersion}
                   </button>
                 </div>
                 <p style={{ fontSize: 12, color: '#767686', margin: '12px 0 0', lineHeight: 1.55 }}>
-                  {left > 0
-                    ? `Mai ai ${left} ${left === 1 ? 'variantă gratuită' : 'variante gratuite'} de versuri.`
-                    : 'Ai folosit variantele gratuite — dar poți modifica textul direct, oricât vrei.'}
+                  {left > 0 ? t.regensLeft(left) : t.regensNone}
                 </p>
               </>
             )}
@@ -1677,22 +1643,16 @@ export default function Vocal({ initialOrderId = null }) {
             {textChanged && (
               <div className="vc-safe" style={{ background: 'var(--violet-t)', color: 'var(--ink-2)' }}>
                 <Sparkles size={16} color="#6C5CE7" />
-                <span>
-                  {canRecord
-                    ? 'Textul de acum e altul decât cel din înregistrarea pe care o asculți. Înregistrează-l ca să-l auzi cântat.'
-                    : 'Textul de acum e altul decât cel din înregistrarea pe care o asculți, dar ai folosit toate înregistrările.'}
-                </span>
+                <span>{canRecord ? t.changedCanRecord : t.changedNoRecord}</span>
               </div>
             )}
 
             {older.length > 0 && (
               <details className="vc-hist">
-                <summary>
-                  Variantele anterioare ({older.length})
-                </summary>
+                <summary>{t.historySummary(older.length)}</summary>
                 {older.map((v) => (
                   <div className="vc-histItem" key={v.version}>
-                    <p className="vc-histTitle">{v.title || `Varianta ${v.version}`}</p>
+                    <p className="vc-histTitle">{v.title || t.versionN(v.version)}</p>
                     <p className="vc-histText">
                       {v.lyrics.split('\n').map((l) => l.trim())
                         .filter((l) => l && !l.startsWith('['))
@@ -1700,7 +1660,7 @@ export default function Vocal({ initialOrderId = null }) {
                     </p>
                     <button className="vc-ghost" style={{ width: '100%' }} disabled={busy}
                       onClick={() => restoreLyrics(v.version)}>
-                      <RotateCcw size={15} /> Readu varianta asta
+                      <RotateCcw size={15} /> {t.restoreVersion}
                     </button>
                   </div>
                 ))}
@@ -1708,38 +1668,38 @@ export default function Vocal({ initialOrderId = null }) {
             )}
             <Alert text={apiError} />
             <div className="vc-nav" ref={navRef}>
-              <button className="vc-back" onClick={askHome} aria-label="Înapoi"><ArrowLeft size={19} /></button>
+              <button className="vc-back" onClick={askHome} aria-label={t.backAria}><ArrowLeft size={19} /></button>
               {!sung ? (
               <button className="vc-next" disabled={busy || saving} onClick={approveLyrics}>
-                <Check size={18} /> {busy ? 'Se trimite…' : 'Aprobă și înregistrează'}
+                <Check size={18} /> {busy ? t.sending : t.approveRecord}
               </button>
             ) : canRecord ? (
               <button className="vc-next" disabled={busy} onClick={askNewRecording}>
-                <Mic2 size={18} /> {busy ? 'Se trimite…' : 'Înregistrează varianta asta'}
+                <Mic2 size={18} /> {busy ? t.sending : t.recordThis}
               </button>
             ) : (
               <button className="vc-next" onClick={() => setScreen('demo')}>
-                <Play size={18} fill="currentColor" /> Înapoi la melodie
+                <Play size={18} fill="currentColor" /> {t.backToSong}
               </button>
             )}
             </div>
           </div>
-          <Footer />
+          <Footer t={t} lang={lang} />
         </div>
         {showBar && (
           <div className="vc-bar"><div className="vc-barIn">
-            <button className="vc-back" onClick={askHome} aria-label="Înapoi"><ArrowLeft size={19} /></button>
+            <button className="vc-back" onClick={askHome} aria-label={t.backAria}><ArrowLeft size={19} /></button>
             {!sung ? (
               <button className="vc-next" disabled={busy || saving} onClick={approveLyrics}>
-                <Check size={18} /> {busy ? 'Se trimite…' : 'Aprobă și înregistrează'}
+                <Check size={18} /> {busy ? t.sending : t.approveRecord}
               </button>
             ) : canRecord ? (
               <button className="vc-next" disabled={busy} onClick={askNewRecording}>
-                <Mic2 size={18} /> {busy ? 'Se trimite…' : 'Înregistrează varianta asta'}
+                <Mic2 size={18} /> {busy ? t.sending : t.recordThis}
               </button>
             ) : (
               <button className="vc-next" onClick={() => setScreen('demo')}>
-                <Play size={18} fill="currentColor" /> Înapoi la melodie
+                <Play size={18} fill="currentColor" /> {t.backToSong}
               </button>
             )}
           </div></div>
@@ -1755,14 +1715,15 @@ export default function Vocal({ initialOrderId = null }) {
       {homeDialog}
 
       <div className="vc-head"><div className="vc-headIn">
-        <Brand onClick={askHome} />
-        <span className="vc-headNote">Pasul {step + 1} din 6</span>
-      </div></div>
+        <Brand onClick={askHome} t={t} />
+        <span className="vc-headNote">{t.headStep(step + 1)}</span>
+          <LangSwitch t={t} onClick={switchLang} />
+        </div></div>
 
       <div className="vc-wrap" ref={top} data-bar={showBar ? '1' : '0'}>
         <div className="vc-panel">
           <div className="vc-steps">
-            {STEPS.map((s, i) => (
+            {steps(t).map((s, i) => (
               <React.Fragment key={s}>
                 {i > 0 && <span className="vc-link" data-s={i <= step ? 'done' : ''} />}
                 <span className="vc-dot" data-s={i < step ? 'done' : i === step ? 'now' : ''}>
@@ -1771,13 +1732,13 @@ export default function Vocal({ initialOrderId = null }) {
               </React.Fragment>
             ))}
           </div>
-          <p className="vc-stepNow">{STEPS[step]}</p>
+          <p className="vc-stepNow">{steps(t)[step]}</p>
 
           {/* 1 — stil */}
           {step === 0 && (
             <>
-              <h2 className="vc-q">Ce fel de melodie vrei?</h2>
-              <p className="vc-qSub">Alege atmosfera piesei. Restul detaliilor le potrivim împreună la pasul următor.</p>
+              <h2 className="vc-q">{t.q1}</h2>
+              <p className="vc-qSub">{t.q1sub}</p>
               <div className="vc-grid">
                 {STYLES.map(({ id, name, desc, Icon }) => (
                   <button key={id} className="vc-tile" data-on={d.style === id ? '1' : '0'} aria-pressed={d.style === id}
@@ -1786,8 +1747,8 @@ export default function Vocal({ initialOrderId = null }) {
                       : { ...p, style: id, sub: null, mood: null, voice: null })}>
                     {d.style === id && <span className="vc-badge"><Check size={12} strokeWidth={3} /></span>}
                     <span className="vc-tileIcon"><Icon size={20} /></span>
-                    <p className="vc-tileName">{name}</p>
-                    <p className="vc-tileDesc">{desc}</p>
+                    <p className="vc-tileName">{styleLabel(lang, id, { name, desc }).name}</p>
+                    <p className="vc-tileDesc">{styleLabel(lang, id, { name, desc }).desc}</p>
                   </button>
                 ))}
               </div>
@@ -1797,46 +1758,50 @@ export default function Vocal({ initialOrderId = null }) {
           {/* 2 — personalizare */}
           {step === 1 && opts && (
             <>
-              <h2 className="vc-q">Cum să sune mai exact?</h2>
-              <p className="vc-qSub">Trei alegeri scurte care dau piesei caracterul ei.</p>
-              <Module icon={Music2} title="Direcția muzicală" text={`Nuanța din interiorul stilului ${style.name.toLowerCase()}.`}>
-                <Choices options={opts.sub} value={d.sub} onPick={(v) => set('sub', v)} />
+              <h2 className="vc-q">{t.q2}</h2>
+              <p className="vc-qSub">{t.q2sub}</p>
+              <Module icon={Music2} title={t.modDirection} text={t.modDirectionText(styleName ?? '')}>
+                <Choices options={opts.sub} value={d.sub} onPick={(v) => set('sub', v)}
+                  labelFor={(v) => label(lang, 'subs', v)} />
               </Module>
-              <Module icon={Wand2} title="Starea de spirit" text="Emoția pe care vrei s-o lase piesa după ce se termină.">
-                <Choices options={opts.mood} value={d.mood} onPick={(v) => set('mood', v)} />
+              <Module icon={Wand2} title={t.modMood} text={t.modMoodText}>
+                <Choices options={opts.mood} value={d.mood} onPick={(v) => set('mood', v)}
+                  labelFor={(v) => label(lang, 'moods', v)} />
               </Module>
-              <Module icon={Mic2} title="Cine cântă" text="Vocea care va interpreta versurile tale.">
-                <Segmented options={opts.voice} value={d.voice} onPick={(v) => set('voice', v)} emoji={VOICE_EMOJI} />
+              <Module icon={Mic2} title={t.modVoice} text={t.modVoiceText}>
+                <Segmented options={opts.voice} value={d.voice} onPick={(v) => set('voice', v)}
+                  emoji={VOICE_EMOJI} labelFor={(v) => label(lang, 'voices', v)} />
               </Module>
-              <Need items={missing2} />
+              <Need items={missing2} t={t} />
             </>
           )}
 
           {/* 3 — pentru cine */}
           {step === 2 && (
             <>
-              <h2 className="vc-q">Cui îi dăruiești melodia?</h2>
-              <p className="vc-qSub">Numele se aude cântat în refren. Acesta este detaliul care emoționează cel mai mult.</p>
+              <h2 className="vc-q">{t.q3}</h2>
+              <p className="vc-qSub">{t.q3sub}</p>
 
-              <Module icon={User} title="Persoana" text="Cine va asculta melodia.">
-                <Choices options={RECIPIENTS} value={d.recipient} onPick={(v) => set('recipient', v)} />
+              <Module icon={User} title={t.modPerson} text={t.modPersonText}>
+                <Choices options={RECIPIENTS} value={d.recipient} onPick={(v) => set('recipient', v)}
+                  labelFor={(v) => label(lang, 'recipients', v)} />
                 {d.recipient === 'Altcineva' && (
                   <div className="vc-extra">
                     <input className="vc-input" maxLength={40} value={d.recipientOther}
                       onChange={(e) => set('recipientOther', e.target.value)}
-                      placeholder="ex. nașa mea, colegul de trupă" />
+                      placeholder={t.otherPersonPlaceholder} />
                   </div>
                 )}
               </Module>
 
-              <Module icon={Heart} title="Numele" text="Scrie-l exact cum se pronunță. Așa îl va cânta vocea.">
+              <Module icon={Heart} title={t.modNames} text={t.modNamesText}>
                 {d.names.map((n, i) => (
                   <div className="vc-nameRow" key={i}>
                     <input className="vc-input" maxLength={28} value={n}
                       onChange={(e) => setName(i, e.target.value)}
-                      placeholder={i === 0 ? 'ex. Maria' : 'ex. Andrei'} />
+                      placeholder={i === 0 ? t.namePlaceholder1 : t.namePlaceholder2} />
                     {d.names.length > 1 && (
-                      <button className="vc-del" onClick={() => delName(i)} aria-label={`Șterge numele ${i + 1}`}>
+                      <button className="vc-del" onClick={() => delName(i)} aria-label={t.delNameAria(i + 1)}>
                         <X size={17} />
                       </button>
                     )}
@@ -1844,62 +1809,61 @@ export default function Vocal({ initialOrderId = null }) {
                 ))}
                 {d.names.length < 4 && (
                   <button className="vc-add" onClick={addName}>
-                    <Plus size={16} /> Adaugă încă un nume
+                    <Plus size={16} /> {t.addName}
                   </button>
                 )}
               </Module>
 
-              <Module icon={CalendarHeart} title="Ocazia" text="Momentul în care îi dai melodia.">
-                <Choices options={OCCASIONS} value={d.occasion} onPick={(v) => set('occasion', v)} />
+              <Module icon={CalendarHeart} title={t.modOccasion} text={t.modOccasionText}>
+                <Choices options={OCCASIONS} value={d.occasion} onPick={(v) => set('occasion', v)}
+                  labelFor={(v) => label(lang, 'occasions', v)} />
                 {d.occasion === 'Altă ocazie' && (
                   <div className="vc-extra">
                     <input className="vc-input" maxLength={50} value={d.occasionOther}
                       onChange={(e) => set('occasionOther', e.target.value)}
-                      placeholder="ex. 25 de ani de căsnicie" />
+                      placeholder={t.otherOccasionPlaceholder} />
                   </div>
                 )}
               </Module>
-              <Need items={missing3} />
+              <Need items={missing3} t={t} />
             </>
           )}
 
           {/* 4 — povestea */}
           {step === 3 && (
             <>
-              <h2 className="vc-q">Ce vrei să-i spui?</h2>
-              <p className="vc-qSub">Partea asta face diferența dintre o melodie frumoasă și una pe care o va ține minte toată viața.</p>
+              <h2 className="vc-q">{t.q4}</h2>
+              <p className="vc-qSub">{t.q4sub}</p>
 
               <div className="vc-picks" style={{ marginBottom: 12 }}>
                 <button className="vc-pick" data-on={d.mode === 'ai' ? '1' : '0'} onClick={() => set('mode', 'ai')}>
                   <span className="vc-pickIcon"><Sparkles size={17} color="#6C5CE7" /></span>
                   <span>
-                    <p className="vc-pickName">Scriem noi versurile</p>
-                    <p className="vc-pickText">Ne spui povestea în cuvintele tale, noi o transformăm în versuri.</p>
+                    <p className="vc-pickName">{t.pickAi}</p>
+                    <p className="vc-pickText">{t.pickAiText}</p>
                   </span>
                 </button>
                 <button className="vc-pick" data-on={d.mode === 'own' ? '1' : '0'} onClick={() => set('mode', 'own')}>
                   <span className="vc-pickIcon"><Pencil size={17} color="#6C5CE7" /></span>
                   <span>
-                    <p className="vc-pickName">Am deja versurile</p>
-                    <p className="vc-pickText">Le introduci aici și le înregistrăm așa cum le-ai scris.</p>
+                    <p className="vc-pickName">{t.pickOwn}</p>
+                    <p className="vc-pickText">{t.pickOwnText}</p>
                   </span>
                 </button>
               </div>
 
-              <Module icon={Gift} title="Titlul piesei" text="Apare pe player și pe fișierul pe care îl descarci.">
+              <Module icon={Gift} title={t.modSongTitle} text={t.modSongTitleText}>
                 <input className="vc-input" maxLength={60} value={d.title}
-                  onChange={(e) => set('title', e.target.value)} placeholder="ex. Cântecul mamei" />
+                  onChange={(e) => set('title', e.target.value)} placeholder={t.songTitlePlaceholder} />
               </Module>
 
               <div ref={storyBox} style={{ scrollMarginTop: 72 }}>
               <Module icon={Pencil}
-                title={d.mode === 'ai' ? 'Povestea voastră' : 'Versurile tale'}
-                text={d.mode === 'ai'
-                  ? 'Nume, locuri, glume între voi, o amintire anume sau mesajul pe care vrei să i-l transmiți.'
-                  : 'Introdu textul complet, cu strofe și refren.'}>
+                title={d.mode === 'ai' ? t.modStoryAi : t.modStoryOwn}
+                text={d.mode === 'ai' ? t.modStoryAiText : t.modStoryOwnText}>
                 <textarea className="vc-area" maxLength={2000} value={d.story}
                   onChange={(e) => set('story', e.target.value)}
-                  placeholder={d.mode === 'ai' ? STORY_EXAMPLE : '[Strofa 1]\n…'} />
+                  placeholder={d.mode === 'ai' ? t.storyExample : t.ownPlaceholder} />
                 <p className="vc-meter">{d.story.length} / 2000</p>
               </Module>
               </div>
@@ -1909,13 +1873,13 @@ export default function Vocal({ initialOrderId = null }) {
                   <summary className="vc-modHead">
                     <span className="vc-modIcon"><Sparkles size={17} /></span>
                     <div>
-                      <p className="vc-modTitle">Nu știi de unde să începi?</p>
-                      <p className="vc-modText">Alege o direcție și îți completăm un început, pe care îl poți schimba.</p>
+                      <p className="vc-modTitle">{t.inspireTitle}</p>
+                      <p className="vc-modText">{t.inspireText}</p>
                     </div>
                     <span className="vc-foldArrow" aria-hidden="true" />
                   </summary>
                   <div className="vc-opts" style={{ gridTemplateColumns: 'repeat(2, minmax(0,1fr))', marginTop: 14 }}>
-                    {INSPIRATION.map((i) => (
+                    {inspiration(t).map((i) => (
                       <button key={i.label} className="vc-opt" onClick={() => {
                         set('story', i.text);
                         // pe telefon caseta a rămas sus, în afara ecranului: îl ducem la ea
@@ -1929,15 +1893,15 @@ export default function Vocal({ initialOrderId = null }) {
                   </div>
                 </details>
               )}
-              <Need items={missing4} />
+              <Need items={missing4} t={t} />
             </>
           )}
 
           {/* 5 — limba */}
           {step === 4 && (
             <>
-              <h2 className="vc-q">În ce limbă se cântă?</h2>
-              <p className="vc-qSub">Versurile sunt scrise direct în limba aleasă, nu traduse.</p>
+              <h2 className="vc-q">{t.q5}</h2>
+              <p className="vc-qSub">{t.q5sub}</p>
               <div className="vc-picks">
                 {LANGUAGES.map((l) => (
                   <button key={l.label} className="vc-pick" data-on={d.lang === l.label ? '1' : '0'}
@@ -1945,34 +1909,34 @@ export default function Vocal({ initialOrderId = null }) {
                     onClick={() => set('lang', d.lang === l.label ? null : l.label)}>
                     <span className="vc-pickIcon">{l.flag}</span>
                     <span>
-                      <p className="vc-pickName">{l.label}</p>
-                      <p className="vc-pickText">{l.note}</p>
+                      <p className="vc-pickName">{label(lang, 'songLangs', l.label)}</p>
+                      <p className="vc-pickText">{t.songLangNote(label(lang, 'songLangs', l.label))}</p>
                     </span>
                   </button>
                 ))}
               </div>
-              <Need items={missing5} />
+              <Need items={missing5} t={t} />
             </>
           )}
 
           {/* 6 — recapitulare */}
           {step === 5 && (
             <>
-              <h2 className="vc-q">Verifică înainte să începem</h2>
-              <p className="vc-qSub">Poți schimba orice — apasă săgeata înapoi.</p>
+              <h2 className="vc-q">{t.q6}</h2>
+              <p className="vc-qSub">{t.q6sub}</p>
               <div className="vc-recap">
-                <div className="vc-row"><span className="vc-rowKey">Stil</span><span className="vc-rowVal">{style?.name}</span></div>
-                <div className="vc-row"><span className="vc-rowKey">Direcție</span><span className="vc-rowVal">{d.sub}</span></div>
-                <div className="vc-row"><span className="vc-rowKey">Stare de spirit</span><span className="vc-rowVal">{d.mood}</span></div>
-                <div className="vc-row"><span className="vc-rowKey">Voce</span><span className="vc-rowVal">{d.voice}</span></div>
-                <div className="vc-row"><span className="vc-rowKey">Pentru</span>
-                  <span className="vc-rowVal">{filledNames.join(', ')} ({d.recipient === 'Altcineva' ? d.recipientOther : d.recipient})</span></div>
-                <div className="vc-row"><span className="vc-rowKey">Ocazia</span>
-                  <span className="vc-rowVal">{d.occasion === 'Altă ocazie' ? d.occasionOther : d.occasion}</span></div>
-                <div className="vc-row"><span className="vc-rowKey">Titlu</span><span className="vc-rowVal">{d.title}</span></div>
-                <div className="vc-row"><span className="vc-rowKey">Limba</span><span className="vc-rowVal">{d.lang}</span></div>
+                <div className="vc-row"><span className="vc-rowKey">{t.recapStyle}</span><span className="vc-rowVal">{styleName}</span></div>
+                <div className="vc-row"><span className="vc-rowKey">{t.recapDirection}</span><span className="vc-rowVal">{label(lang, 'subs', d.sub)}</span></div>
+                <div className="vc-row"><span className="vc-rowKey">{t.recapMood}</span><span className="vc-rowVal">{label(lang, 'moods', d.mood)}</span></div>
+                <div className="vc-row"><span className="vc-rowKey">{t.recapVoice}</span><span className="vc-rowVal">{label(lang, 'voices', d.voice)}</span></div>
+                <div className="vc-row"><span className="vc-rowKey">{t.recapFor}</span>
+                  <span className="vc-rowVal">{filledNames.join(', ')} ({d.recipient === 'Altcineva' ? d.recipientOther : label(lang, 'recipients', d.recipient)})</span></div>
+                <div className="vc-row"><span className="vc-rowKey">{t.recapOccasion}</span>
+                  <span className="vc-rowVal">{d.occasion === 'Altă ocazie' ? d.occasionOther : label(lang, 'occasions', d.occasion)}</span></div>
+                <div className="vc-row"><span className="vc-rowKey">{t.recapTitle}</span><span className="vc-rowVal">{d.title}</span></div>
+                <div className="vc-row"><span className="vc-rowKey">{t.recapLang}</span><span className="vc-rowVal">{label(lang, 'songLangs', d.lang)}</span></div>
                 <div className="vc-block">
-                  <span className="vc-rowKey">{d.mode === 'ai' ? 'Povestea' : 'Versurile tale'}</span>
+                  <span className="vc-rowKey">{d.mode === 'ai' ? t.recapStory : t.recapOwnLyrics}</span>
                   <p className="vc-blockText">{d.story}</p>
                 </div>
               </div>
@@ -1980,18 +1944,16 @@ export default function Vocal({ initialOrderId = null }) {
               <div className="vc-mod">
                 <div className="vc-modHead">
                   <span className="vc-modIcon"><Gift size={17} /></span>
-                  <div><p className="vc-modTitle">Ce primești</p>
-                    <p className="vc-modText">Fără nicio plată în acest moment.</p></div>
+                  <div><p className="vc-modTitle">{t.getTitle}</p>
+                    <p className="vc-modText">{t.getText}</p></div>
                 </div>
                 <ul className="vc-getList">
-                  <li><Check size={16} /><span>Versuri originale, scrise pe povestea ta</span></li>
-                  <li><Check size={16} /><span>Le poți modifica sau cere altele înainte de înregistrare</span></li>
-                  <li><Check size={16} /><span>Două variante cântate, din care o alegi pe cea preferată</span></li>
-                  <li><Check size={16} /><span>Un minut din melodie, ca să auzi cum sună</span></li>
+                  {[t.get1, t.get2, t.get3, t.get4].map((line) => (
+                    <li key={line}><Check size={16} /><span>{line}</span></li>
+                  ))}
                 </ul>
                 <div className="vc-free">
-                  <b>Plătești doar dacă îți place.</b> Versurile și minutul de ascultat sunt gratuite.
-                  Piesa întreagă costă 30 € și o iei doar dacă te-a convins ce ai auzit.
+                  <b>{t.freeNoteBold}</b>{t.freeNoteRest}
                 </div>
               </div>
             </>
@@ -1999,19 +1961,19 @@ export default function Vocal({ initialOrderId = null }) {
 
           {/* navigarea, chiar sub conținut */}
           <div className="vc-nav" ref={navRef}>
-            {step > 0 && <button className="vc-back" onClick={() => setStep(step - 1)} aria-label="Pasul anterior"><ArrowLeft size={19} /></button>}
+            {step > 0 && <button className="vc-back" onClick={() => setStep(step - 1)} aria-label={t.prevStepAria}><ArrowLeft size={19} /></button>}
             <button className={nextCls} disabled={!canGo} onClick={goNext}>
               {step === 5 ? <Sparkles size={18} /> : null}{nextLabel}{step < 5 && <ArrowRight size={18} />}
             </button>
           </div>
         </div>
 
-        <Footer />
+        <Footer t={t} lang={lang} />
       </div>
 
       {showBar && (
         <div className="vc-bar"><div className="vc-barIn">
-          {step > 0 && <button className="vc-back" onClick={() => setStep(step - 1)} aria-label="Pasul anterior"><ArrowLeft size={19} /></button>}
+          {step > 0 && <button className="vc-back" onClick={() => setStep(step - 1)} aria-label={t.prevStepAria}><ArrowLeft size={19} /></button>}
           <button className={nextCls} disabled={!canGo} onClick={goNext}>
             {step === 5 ? <Sparkles size={18} /> : null}{nextLabel}{step < 5 && <ArrowRight size={18} />}
           </button>

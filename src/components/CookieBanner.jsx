@@ -11,6 +11,7 @@
  */
 
 import { useState, useSyncExternalStore } from 'react';
+import { UI } from '@/lib/i18n';
 
 const COOKIE = 'vocal_consent';
 const VERSION = 1;
@@ -39,7 +40,8 @@ function existing() {
    HTML-ul livrat să nu conțină bannerul și să nu clipească la hidratare. */
 const subscribe = () => () => {};
 
-export default function CookieBanner() {
+export default function CookieBanner({ lang = 'ro' }) {
+  const t = UI[lang] ?? UI.ro;
   const decided = useSyncExternalStore(
     subscribe,
     () => existing() !== null,
@@ -56,13 +58,12 @@ export default function CookieBanner() {
   const decide = (choice) => { save(choice); setAnswered(true); };
 
   return (
-    <div className="ck" role="dialog" aria-live="polite" aria-label="Cookie-uri">
+    <div className="ck" role="dialog" aria-live="polite" aria-label={t.ckAria}>
       <div className="ck-in">
         <p className="ck-text">
-          Folosim cookie-uri strict necesare ca să ținem minte comanda în curs. Cu acordul
-          tău am folosi și cookie-uri de statistică și de măsurare a reclamelor.{' '}
-          <a href="/legal/ro/confidentialitate" target="_blank" rel="noopener noreferrer">
-            Politica de confidențialitate
+          {t.ckText}{' '}
+          <a href={`/legal/${lang}/confidentialitate`} target="_blank" rel="noopener noreferrer">
+            {t.ckPolicy}
           </a>
         </p>
 
@@ -70,15 +71,15 @@ export default function CookieBanner() {
           <div className="ck-opts">
             <label className="ck-opt">
               <input type="checkbox" id="ck-necessary" checked disabled readOnly />
-              <span><b>Strict necesare</b> — comanda în curs, sesiunea, securitatea. Nu pot fi oprite.</span>
+              <span><b>{t.ckNecessaryB}</b>{t.ckNecessary}</span>
             </label>
             <label className="ck-opt">
               <input type="checkbox" id="ck-stats" checked={stats} onChange={(e) => setStats(e.target.checked)} />
-              <span><b>Statistică</b> — câți vizitatori avem și unde întâmpină dificultăți.</span>
+              <span><b>{t.ckStatsB}</b>{t.ckStats}</span>
             </label>
             <label className="ck-opt">
               <input type="checkbox" id="ck-ads" checked={ads} onChange={(e) => setAds(e.target.checked)} />
-              <span><b>Marketing</b> — cât de bine funcționează reclamele noastre.</span>
+              <span><b>{t.ckAdsB}</b>{t.ckAds}</span>
             </label>
           </div>
         )}
@@ -86,16 +87,16 @@ export default function CookieBanner() {
         <div className="ck-btns">
           {open ? (
             <button className="ck-btn" onClick={() => decide({ stats, ads })}>
-              Salvează alegerea
+              {t.ckSave}
             </button>
           ) : (
-            <button className="ck-btn ck-ghost" onClick={() => setOpen(true)}>Setări</button>
+            <button className="ck-btn ck-ghost" onClick={() => setOpen(true)}>{t.ckSettings}</button>
           )}
           <button className="ck-btn ck-ghost" onClick={() => decide({ stats: false, ads: false })}>
-            Doar necesare
+            {t.ckOnlyNeeded}
           </button>
           <button className="ck-btn ck-primary" onClick={() => decide({ stats: true, ads: true })}>
-            Accept toate
+            {t.ckAcceptAll}
           </button>
         </div>
       </div>
