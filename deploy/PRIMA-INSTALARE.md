@@ -62,6 +62,11 @@ Lemon Squeezy și Resend rămân goale deocamdată — site-ul pornește fără 
 Butonul de cumpărare spune că plata se activează în curând, în loc să livreze
 degeaba.
 
+Când vine rândul plății, `bash deploy/lemon-ids.sh` întreabă contul Lemon
+Squeezy și afișează Store ID și Variant ID. Le scrie pe ambele pentru că se
+confundă ușor: în Lemon Squeezy prețul atârnă de variantă, nu de produs, iar
+checkout-ul cere varianta.
+
 ## 4. Pornirea
 
 Dacă ai folosit `setup.sh`, e deja pornit. Altfel:
