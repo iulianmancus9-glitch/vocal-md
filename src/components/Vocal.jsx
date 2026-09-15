@@ -377,13 +377,46 @@ button.vc-mark:hover { opacity: .68; }
 
 /* ─── banner de start ─── */
 .vc-heroCta { display: flex; }
-.vc-spec { margin: 13px 0 0; padding: 13px 14px; border-radius: 13px; background: rgba(255,255,255,.66); border: 1px solid rgba(108,92,231,.14); }
-.vc-specTitle { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--violet); margin: 0 0 9px; }
-.vc-specList { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
-.vc-specList li { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; line-height: 1.45; color: var(--ink-1); }
-.vc-specList li svg { flex: none; margin-top: 2px; color: var(--violet); }
-.vc-specFree { font-size: 12.5px; line-height: 1.45; color: var(--ink-2); margin: 10px 0 0; padding-top: 9px; border-top: 1px solid rgba(108,92,231,.12); }
-.vc-heroSep { height: 1px; background: rgba(108,92,231,.13); margin: 18px 0 16px; }
+/* Meniul de sub siglă. Pe telefon nu încape pe un rând, deci se derulează
+   lateral în loc să se rupă sau să micșoreze literele sub ce se poate citi. */
+.vc-nav2 { max-width: 640px; margin: 0 auto; padding: 0 18px 10px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.vc-nav2::-webkit-scrollbar { display: none; }
+.vc-nav2 a { font-size: 12.5px; font-weight: 600; color: var(--ink-2); text-decoration: none; padding: 6px 11px; border-radius: 999px; background: var(--tile); white-space: nowrap; transition: background .15s, color .15s; }
+.vc-nav2 a:hover { background: var(--violet-l); color: var(--violet); }
+
+/* Antetul are acum două rânduri, deci ancorele trebuie să se oprească mai jos
+   ca titlul secțiunii să nu rămână ascuns sub el. */
+.vc-sec { scroll-margin-top: 104px; margin-top: 16px; padding: 20px 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--page); }
+.vc-secTitle { font-size: 19px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 5px; }
+.vc-secSub { font-size: 13.5px; line-height: 1.5; color: var(--gray); margin: 0 0 16px; }
+
+.vc-priceBox { border: 1px solid rgba(108,92,231,.18); background: var(--violet-t); border-radius: 15px; padding: 17px 16px; }
+.vc-priceTop { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; margin-bottom: 14px; }
+.vc-priceBig { font-size: 34px; font-weight: 700; letter-spacing: -.02em; line-height: 1; }
+.vc-priceUnit { font-size: 13px; font-weight: 600; color: var(--gray); }
+.vc-priceList { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+.vc-priceList li { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; line-height: 1.45; color: var(--ink-1); }
+.vc-priceList li svg { flex: none; margin-top: 2px; color: var(--violet); }
+.vc-priceFoot { font-size: 12.5px; line-height: 1.5; color: var(--gray); margin: 13px 0 0; padding-top: 12px; border-top: 1px solid rgba(108,92,231,.13); }
+
+.vc-how { display: grid; gap: 13px; }
+.vc-howStep { display: flex; gap: 13px; align-items: flex-start; }
+.vc-howNum { flex: none; width: 29px; height: 29px; border-radius: 50%; background: var(--grad); color: #fff; font-size: 13.5px; font-weight: 700; display: grid; place-items: center; }
+.vc-howTitle { font-size: 14.5px; font-weight: 700; margin: 4px 0 3px; }
+.vc-howText { font-size: 13.5px; line-height: 1.55; color: var(--ink-2); margin: 0; }
+
+.vc-faq { display: grid; gap: 8px; }
+.vc-faqItem { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.vc-faqItem summary { list-style: none; cursor: pointer; padding: 13px 14px; font-size: 13.8px; font-weight: 600; line-height: 1.4; display: flex; align-items: center; gap: 10px; }
+.vc-faqItem summary::-webkit-details-marker { display: none; }
+.vc-faqItem summary::after { content: ''; margin-left: auto; flex: none; width: 8px; height: 8px; border-right: 2px solid var(--gray); border-bottom: 2px solid var(--gray); transform: rotate(45deg) translate(-2px,-2px); transition: transform .18s; }
+.vc-faqItem[open] summary::after { transform: rotate(225deg) translate(-2px,-2px); }
+.vc-faqItem p { font-size: 13.4px; line-height: 1.6; color: var(--ink-2); margin: 0; padding: 0 14px 14px; }
+.vc-faqFoot { font-size: 12.5px; color: var(--gray); text-align: center; margin: 15px 0 0; }
+.vc-faqFoot a { color: var(--violet); }
+
+.vc-heroPrice { font-size: 13.5px; line-height: 1.5; color: var(--ink-2); text-align: center; margin: 12px 0 0; }
+
 
 /* ─── dialog de confirmare ─── */
 .vc-overlay { position: fixed; inset: 0; z-index: 60; background: rgba(22,22,29,.44); backdrop-filter: blur(3px); display: grid; place-items: center; padding: 20px; animation: vcfade .16s ease; }
@@ -403,9 +436,6 @@ button.vc-mark:hover { opacity: .68; }
 .vc-checkLinks a { color: var(--violet); font-weight: 500; }
 
 /* ─── melodii demo pe prima pagină ─── */
-.vc-demos { margin-top: 16px; }
-.vc-demosTitle { font-size: 15px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 3px; }
-.vc-demosSub { font-size: 13px; line-height: 1.55; color: var(--gray); margin: 0 0 14px; }
 .vc-demoList { display: grid; gap: 10px; }
 .vc-demo { display: flex; align-items: center; gap: 12px; background: var(--page); border: 1px solid var(--line); border-radius: 16px; padding: 10px; text-align: left; width: 100%; transition: border-color .15s, box-shadow .15s; }
 .vc-demo:hover { border-color: var(--line-2); box-shadow: 0 4px 14px rgba(22,22,29,.06); }
@@ -1097,15 +1127,26 @@ export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
   /* pagina de start: bannerul singur, cu un singur lucru de făcut.
      Pașii apar abia după apăsare, iar bannerul nu se mai întoarce. */
   if (screen === 'intro') {
+    const start = () => { setStep(0); setScreen('wizard'); };
     return (
       <div className="vc">
         <style>{CSS}</style>
         {homeDialog}
 
-        <div className="vc-head"><div className="vc-headIn">
-          <Brand onClick={askHome} t={t} />
-          <LangSwitch t={t} onClick={switchLang} />
-        </div></div>
+        <div className="vc-head">
+          <div className="vc-headIn">
+            <Brand onClick={askHome} t={t} />
+            <LangSwitch t={t} onClick={switchLang} />
+          </div>
+          {/* Fără meniu, pagina arată a reclamă, nu a magazin — iar cine o
+              verifică nu are unde căuta prețul. */}
+          <nav className="vc-nav2" aria-label={t.navAria}>
+            <a href="#pricing">{t.navPricing}</a>
+            <a href="#samples">{t.navSamples}</a>
+            <a href="#how">{t.navHow}</a>
+            <a href="#faq">{t.navFaq}</a>
+          </nav>
+        </div>
 
         <div className="vc-wrap" ref={top}>
           <div className="vc-hero">
@@ -1114,63 +1155,91 @@ export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
             <p className="vc-heroText">{t.heroText}</p>
 
             <div className="vc-heroCta">
-              <button className="vc-next" onClick={() => { setStep(0); setScreen('wizard'); }}>
+              <button className="vc-next" onClick={start}>
                 <Sparkles size={18} /> {t.ctaCreate}
               </button>
             </div>
-            <div className="vc-spec">
-              <p className="vc-specTitle">{t.specTitle}</p>
-              <ul className="vc-specList">
-                <li><Download size={15} /><span><b>{t.spec1a}</b>{t.spec1b}</span></li>
-                <li><Zap size={15} /><span>{t.spec2a}<b>{t.spec2b}</b>{t.spec2c}</span></li>
-                <li><Music2 size={15} /><span><b>{t.spec3a}</b>{t.spec3b}</span></li>
-              </ul>
-              <p className="vc-specFree">
-                {t.specFreeA}<b>{t.specFreeB}</b>{t.specFreeC}
-              </p>
-            </div>
+            {/* Prețul stă lângă buton, nu ascuns mai jos: e primul lucru pe care
+                îl caută si un cumpărător, si cine ne verifică. */}
+            <p className="vc-heroPrice">
+              {t.heroPriceA}<b>{t.heroPriceB}</b>{t.heroPriceC}
+            </p>
+          </div>
 
-            <div className="vc-heroSep" />
-
-            <div className="vc-demos">
-              <p className="vc-demosTitle">{t.demosTitle}</p>
-              <p className="vc-demosSub">{t.demosSub}</p>
-
-              <div className="vc-demoList">
-                {demos(t).map((track) => (
-                  <button key={track.file} className="vc-demo" data-on={demo === track.file ? '1' : '0'}
-                    onClick={() => toggleDemo(track.file)}
-                    aria-label={demo === track.file ? t.stopAria(track.title) : t.playAria(track.title)}>
-                    <span className="vc-demoArt">
-                      {/* Copertele sunt 360×360 într-un loc de 58: le micșorează Next. */}
-                      <Image src={`/demo/${track.file}.jpg`} alt="" width={58} height={58} />
-                      <span className="vc-demoPlay">
-                        {demo === track.file
-                          ? <Pause size={18} fill="currentColor" />
-                          : <Play size={18} fill="currentColor" style={{ marginLeft: 2 }} />}
-                      </span>
-                    </span>
-                    <span className="vc-demoInfo">
-                      <p className="vc-demoName">{track.title}</p>
-                      <p className="vc-demoMeta">{track.meta}</p>
-                    </span>
-                    <span className="vc-demoLen">{track.length}</span>
-                    <audio
-                      ref={(el) => { demoRefs.current[track.file] = el; }}
-                      src={`/demo/${track.file}.mp3`}
-                      preload="none"
-                      onEnded={() => setDemo(null)}
-                    />
-                  </button>
-                ))}
+          <section className="vc-sec" id="pricing">
+            <h2 className="vc-secTitle">{t.priceTitle}</h2>
+            <p className="vc-secSub">{t.priceSub}</p>
+            <div className="vc-priceBox">
+              <div className="vc-priceTop">
+                <span className="vc-priceBig">{t.heroPriceB}</span>
+                <span className="vc-priceUnit">{t.priceUnit}</span>
               </div>
+              <ul className="vc-priceList">
+                {[t.price1, t.price2, t.price3, t.price4, t.price5].map((line) => (
+                  <li key={line}><Check size={15} strokeWidth={3} /><span>{line}</span></li>
+                ))}
+              </ul>
+              <p className="vc-priceFoot">{t.priceFoot}</p>
+            </div>
+            <div className="vc-heroCta" style={{ marginTop: 14 }}>
+              <button className="vc-next" onClick={start}>
+                <Sparkles size={18} /> {t.priceCta}
+              </button>
+            </div>
+          </section>
 
-              <p className="vc-demoFoot">{t.demoFoot}</p>
+          <section className="vc-sec" id="samples">
+            <h2 className="vc-secTitle">{t.demosTitle}</h2>
+            <p className="vc-secSub">{t.demosSub}</p>
+
+            <div className="vc-demoList">
+              {demos(t).map((track) => (
+                <button key={track.file} className="vc-demo" data-on={demo === track.file ? '1' : '0'}
+                  onClick={() => toggleDemo(track.file)}
+                  aria-label={demo === track.file ? t.stopAria(track.title) : t.playAria(track.title)}>
+                  <span className="vc-demoArt">
+                    {/* Copertele sunt 360×360 într-un loc de 58: le micșorează Next. */}
+                    <Image src={`/demo/${track.file}.jpg`} alt="" width={58} height={58} />
+                    <span className="vc-demoPlay">
+                      {demo === track.file
+                        ? <Pause size={18} fill="currentColor" />
+                        : <Play size={18} fill="currentColor" style={{ marginLeft: 2 }} />}
+                    </span>
+                  </span>
+                  <span className="vc-demoInfo">
+                    <p className="vc-demoName">{track.title}</p>
+                    <p className="vc-demoMeta">{track.meta}</p>
+                  </span>
+                  <span className="vc-demoLen">{track.length}</span>
+                  <audio
+                    ref={(el) => { demoRefs.current[track.file] = el; }}
+                    src={`/demo/${track.file}.mp3`}
+                    preload="none"
+                    onEnded={() => setDemo(null)}
+                  />
+                </button>
+              ))}
             </div>
 
-            <div className="vc-heroSep" />
+            <p className="vc-demoFoot">{t.demoFoot}</p>
+          </section>
 
-            <div className="vc-perks">
+          <section className="vc-sec" id="how">
+            <h2 className="vc-secTitle">{t.howTitle}</h2>
+            <p className="vc-secSub">{t.howSub}</p>
+            <div className="vc-how">
+              {[1, 2, 3].map((n) => (
+                <div className="vc-howStep" key={n}>
+                  <span className="vc-howNum">{n}</span>
+                  <div>
+                    <p className="vc-howTitle">{t[`how${n}Title`]}</p>
+                    <p className="vc-howText">{t[`how${n}Text`]}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="vc-perks" style={{ marginTop: 18 }}>
               {PERK_ICONS.map((Icon, i) => (
                 <div className="vc-perk" key={i}>
                   <span className="vc-perkIcon"><Icon size={17} /></span>
@@ -1178,7 +1247,22 @@ export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
                 </div>
               ))}
             </div>
-          </div>
+          </section>
+
+          <section className="vc-sec" id="faq">
+            <h2 className="vc-secTitle">{t.faqTitle}</h2>
+            <div className="vc-faq">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                <details className="vc-faqItem" key={n}>
+                  <summary>{t[`faq${n}Q`]}</summary>
+                  <p>{t[`faq${n}A`]}</p>
+                </details>
+              ))}
+            </div>
+            <p className="vc-faqFoot">
+              {t.faqContact} <a href="mailto:base.vocalmd@gmail.com">base.vocalmd@gmail.com</a>
+            </p>
+          </section>
 
           <Footer t={t} lang={lang} />
         </div>
@@ -1567,7 +1651,7 @@ export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
                 </ul>
                 <div className="vc-nav" ref={navRef} style={{ marginTop: 0 }}>
                   <button className="vc-buy" disabled={busy || waitingPayment} onClick={buy}>
-                    <Gift size={20} /> {waitingPayment ? t.confirming : t.buyCta}
+                    <Download size={20} /> {waitingPayment ? t.confirming : t.buyCta}
                   </button>
                 </div>
                 <div className="vc-offerTrust">
@@ -1583,7 +1667,7 @@ export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
         {showBar && (
           <div className="vc-bar"><div className="vc-barIn">
             <button className="vc-next" disabled={busy || waitingPayment} onClick={buy}>
-              <Gift size={18} /> {waitingPayment ? t.confirming : t.buyCta}
+              <Download size={18} /> {waitingPayment ? t.confirming : t.buyCta}
             </button>
           </div></div>
         )}

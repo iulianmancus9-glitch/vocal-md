@@ -453,8 +453,16 @@ for (const doc of ['termeni', 'rambursare', 'confidentialitate']) {
 
   ok('pagina de start se dă în engleză',
     await en.getByRole('button', { name: /Create your song/i }).count() === 1);
-  ok('fișa produsului spune ce se livrează',
-    (await en.locator('.vc-spec').textContent()).includes('Two MP3 files'));
+  ok('sectiunea de pret spune ce se livreaza',
+    (await en.locator('.vc-priceBox').textContent()).includes('Two MP3 files'));
+  ok('pretul se vede fara sa completezi nimic',
+    (await en.locator('.vc-priceBig').textContent()).includes('30'));
+  ok('meniul duce la cele patru sectiuni',
+    await en.locator('.vc-nav2 a').count() === 4);
+  for (const id of ['pricing', 'samples', 'how', 'faq']) {
+    ok(`sectiunea „${id}" exista pe pagina`, await en.locator(`#${id}`).count() === 1);
+  }
+  ok('sunt opt intrebari frecvente', await en.locator('.vc-faqItem').count() === 8);
   ok('se spune că vocile sunt sintetice',
     (await en.locator('.vc-demoFoot').textContent()).toLowerCase().includes('synthetic'));
   ok('bannerul de cookie-uri e în engleză',
