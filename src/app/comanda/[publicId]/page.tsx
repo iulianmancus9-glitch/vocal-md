@@ -7,7 +7,7 @@
  */
 import { notFound } from 'next/navigation';
 import Vocal from '@/components/Vocal';
-import { loadOrder, remember } from '@/lib/session';
+import { loadOrder } from '@/lib/session';
 import { pageLang } from '@/lib/lang';
 
 export const dynamic = 'force-dynamic';
@@ -25,8 +25,7 @@ export default async function OrderPage({
   const order = await loadOrder(publicId, t ?? null);
   if (!order) notFound();
 
-  // Browserul ține minte comanda, ca linkul să nu mai fie nevoie a doua oară.
-  if (t) await remember(publicId, order.accessToken);
-
-  return <Vocal initialOrderId={publicId} lang={await pageLang()} />;
+  // Ținerea de minte se face în ruta API, la prima întrebare a paginii: aici,
+  // într-o randare de server, scrierea unui cookie arunca și ieșea 500.
+  return <Vocal initialOrderId={publicId} initialToken={t ?? null} lang={await pageLang()} />;
 }

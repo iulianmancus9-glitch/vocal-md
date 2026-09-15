@@ -684,13 +684,16 @@ function Footer({ t, lang }) {
    ══════════════════════════════════════════════════════════════ */
 
 /**
- * @param {{ initialOrderId?: string | null, lang?: 'ro' | 'en' }} props
- *   `initialOrderId` vine din pagina deschisă dintr-un link de email.
+ * @param {{ initialOrderId?: string | null, initialToken?: string | null, lang?: 'ro' | 'en' }} props
+ *   `initialOrderId` vine din pagina deschisă dintr-un link de email sau de la
+ *   întoarcerea din plată. `initialToken` e secretul din adresă: pe alt
+ *   dispozitiv decât cel care a comandat, el e singura dovadă că omul are
+ *   dreptul la comandă.
  *   `lang` e limba paginii, hotărâtă pe server din cookie sau din setarea
  *   implicită. Alegerile trimise serverului rămân în română oricum — se
  *   traduce doar eticheta văzută de om.
  */
-export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
+export default function Vocal({ initialOrderId = null, initialToken = null, lang = 'ro' }) {
   const t = UI[lang] ?? UI.ro;
   const [screen, setScreen] = useState(initialOrderId ? 'loading' : 'intro');
   const [step, setStep] = useState(0);
@@ -829,7 +832,7 @@ export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
     let stop = false;
     (async () => {
       try {
-        const state = await api.get(initialOrderId);
+        const state = await api.get(initialOrderId, initialToken);
         if (stop) return;
         setOrder(state);
         if (state.lyrics != null) setLyrics(state.lyrics);
@@ -847,7 +850,7 @@ export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
       }
     })();
     return () => { stop = true; };
-  }, [initialOrderId]);
+  }, [initialOrderId, initialToken]);
 
   /* Întrebăm serverul cât timp are ceva de lucru. Trei secunde e des cât să
      nu pară blocat și rar cât să nu încărcăm baza degeaba. */
@@ -859,7 +862,7 @@ export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
     let stop = false;
     const tick = async () => {
       try {
-        const state = await api.get(orderId);
+        const state = await api.get(orderId, initialToken);
         if (!stop) applyState(state);
       } catch {
         /* o interogare pierdută nu e o eroare pentru client; încercăm iar */
@@ -867,7 +870,7 @@ export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
     };
     const t = setInterval(tick, 3000);
     return () => { stop = true; clearInterval(t); };
-  }, [orderId, order?.status, applyState]);
+  }, [orderId, order?.status, applyState, initialToken]);
 
   /* Bara de progres nu măsoară nimic real — Suno nu ne spune cât a făcut. Ce
      poate face cinstit e să arate că timpul trece, fără să ajungă la 100 înainte
@@ -1044,7 +1047,7 @@ export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
         const started = Date.now();
         const t = setInterval(async () => {
           try {
-            const state = await api.get(orderId);
+            const state = await api.get(orderId, initialToken);
             if (state.paid) {
               clearInterval(t);
               setWaitingPayment(false);

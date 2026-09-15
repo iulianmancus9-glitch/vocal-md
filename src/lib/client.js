@@ -25,7 +25,8 @@ async function call(url, options = {}) {
 
 export const api = {
   create: (payload) => call('/api/orders', { method: 'POST', body: JSON.stringify(payload) }),
-  get: (id) => call(`/api/orders/${id}`),
+  get: (id, token) =>
+    call(`/api/orders/${id}${token ? `?token=${encodeURIComponent(token)}` : ''}`),
   list: () => call('/api/orders'),
   regenerate: (id) => call(`/api/orders/${id}/lyrics`, { method: 'POST' }),
   saveLyrics: (id, lyrics) =>

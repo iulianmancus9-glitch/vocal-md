@@ -12,7 +12,12 @@ const bool = z
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  APP_URL: z.url().default('http://localhost:3000'),
+  /**
+    * Adresa publică a site-ului. Slash-ul de la coadă se taie aici, o singură
+    * dată: altfel fiecare adresă construită din ea ar avea două slash-uri la
+    * mijloc — iar `https://vocal.md//comanda/abc` e un 404.
+    */
+  APP_URL: z.url().default('http://localhost:3000').transform((v) => v.replace(/\/+$/, '')),
   APP_SECRET: z.string().min(32, 'APP_SECRET trebuie să aibă minimum 32 de caractere'),
 
   DATABASE_URL: z.string().startsWith('postgres'),

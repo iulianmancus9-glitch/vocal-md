@@ -377,6 +377,33 @@ ok('linkul integral apare abia acum', typeof state.tracks?.[0]?.fullUrl === 'str
 const r5 = await page.request.get(state.tracks[0].fullUrl);
 ok('integrala se descarcă după plată', r5.status() === 200);
 
+/* ─── întoarcerea de la plată ─── */
+
+/* Pagina pe care te lasă procesatorul după ce ai plătit. Se verifică într-un
+   browser fără cookie-uri, pentru ca adresa sa fie singura dovadă: cookie-ul
+   comenzii e „SameSite=lax" și nu se trimite la o navigare dintr-un cadru, iar
+   fereastra de plată e un cadru. Prima oară pagina raspundea 404, cu melodia
+   platita si inaccesibila. */
+{
+  const token = sql(`select access_token from orders where public_id='${id}'`);
+
+  const fresh = await browser.newContext({ viewport: { width: 400, height: 900 } });
+  const back = await fresh.newPage();
+  const resp = await back.goto(`${BASE}/comanda/${id}?t=${token}`, { waitUntil: 'domcontentloaded' });
+  ok('întoarcerea de la plată nu dă 404', resp.status() === 200, String(resp.status()));
+  await back.locator('.vc-doneTitle').waitFor({ timeout: 15000 }).catch(() => {});
+  ok('întoarcerea de la plată arată livrarea',
+    await back.locator('.vc-doneTitle').count() === 1);
+  await fresh.close();
+
+  /* Iar fără secret în adresă, aceeași pagină nu se deschide nimănui. */
+  const stranger = await browser.newContext({ viewport: { width: 400, height: 900 } });
+  const nosy = await stranger.newPage();
+  const denied = await nosy.goto(`${BASE}/comanda/${id}`, { waitUntil: 'domcontentloaded' });
+  ok('fără secret în adresă, comanda rămâne închisă', denied.status() === 404, String(denied.status()));
+  await stranger.close();
+}
+
 const lib = await page.evaluate(async () => {
   const r = await fetch('/api/orders', { credentials: 'same-origin' });
   return r.json();

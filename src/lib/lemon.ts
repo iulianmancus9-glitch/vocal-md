@@ -67,7 +67,17 @@ export async function createCheckout(order: Order): Promise<CheckoutSession> {
           // noastră, iar omul pierde din ochi melodia pe care tocmai a ascultat-o.
           checkout_options: { embed: true, dark: false },
           product_options: {
-            redirect_url: `${env.APP_URL}/comanda/${order.publicId}`,
+            /**
+             * Adresa de întoarcere poartă secretul comenzii, ca linkurile din
+             * email.
+             *
+             * Fără el, pagina s-ar baza pe cookie-ul comenzii — iar cookie-ul e
+             * `SameSite=lax`, care nu se trimite la o navigare dintr-un cadru.
+             * Fereastra de plată e un cadru, deci omul se întorcea de la plată
+             * pe un 404, cu melodia plătită și inaccesibilă.
+             */
+            redirect_url:
+              `${env.APP_URL}/comanda/${order.publicId}?t=${order.accessToken}`,
           },
         },
         relationships: {
