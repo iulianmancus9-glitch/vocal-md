@@ -29,11 +29,18 @@ const schema = z.object({
   PREVIEW_SECONDS: z.coerce.number().int().positive().default(60),
   DOWNLOAD_LINK_TTL: z.coerce.number().int().positive().default(86_400),
 
-  PADDLE_ENV: z.enum(['sandbox', 'production']).default('sandbox'),
-  PADDLE_API_KEY: z.string().default(''),
-  PADDLE_CLIENT_TOKEN: z.string().default(''),
-  PADDLE_PRICE_ID: z.string().default(''),
-  PADDLE_WEBHOOK_SECRET: z.string().default(''),
+  /**
+   * Lemon Squeezy. A luat locul lui Paddle, care ne-a refuzat domeniul de cinci
+   * ori: politica lor începe cu „Paddle is built to serve software companies",
+   * iar noi vindem fișiere audio.
+   *
+   * `LEMON_VARIANT_ID` e varianta produsului, nu produsul: în Lemon Squeezy
+   * prețul atârnă de variantă, iar checkout-ul o cere pe ea.
+   */
+  LEMON_API_KEY: z.string().default(''),
+  LEMON_STORE_ID: z.string().default(''),
+  LEMON_VARIANT_ID: z.string().default(''),
+  LEMON_WEBHOOK_SECRET: z.string().default(''),
   SONG_PRICE_EUR: z.coerce.number().positive().default(30),
 
   /**

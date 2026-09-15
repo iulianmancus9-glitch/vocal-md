@@ -193,7 +193,7 @@ const RO = {
   yourSong: 'Melodia ta',
   variantOf: (n: number) => `varianta ${n}`,
   dlAria: (n: number) => `Descarcă varianta ${n}`,
-  invoiceNote: 'Factura ți-a fost trimisă de Paddle pe email. Melodia rămâne în biblioteca ta 24 de luni și o poți descărca de oricâte ori vrei.',
+  invoiceNote: 'Factura ți-a fost trimisă pe email de Lemon Squeezy. Melodia rămâne în biblioteca ta 24 de luni și o poți descărca de oricâte ori vrei.',
   myLibrary: 'Biblioteca mea',
   makeAnother: 'Mai fac una',
 
@@ -400,7 +400,7 @@ const RO = {
   price3: 'Rămân în biblioteca ta 24 de luni, descărcări nelimitate',
   price4: 'Versurile și un minut din melodie, gratuite înainte de plată',
   price5: 'Le poți folosi personal și le poți posta pe rețele',
-  priceFoot: 'Fără costuri ascunse. Plata se face o singură dată, prin Paddle.',
+  priceFoot: 'Fără costuri ascunse. Plata se face o singură dată, prin Lemon Squeezy.',
   priceCta: 'Începe — previzualizarea e gratuită',
 
   /* cum funcționează */
@@ -520,7 +520,7 @@ const EN: typeof RO = {
   yourSong: 'Your song',
   variantOf: (n: number) => `take ${n}`,
   dlAria: (n: number) => `Download take ${n}`,
-  invoiceNote: 'Your invoice has been emailed to you by Paddle. The song stays in your library for 24 months and you can download it as many times as you like.',
+  invoiceNote: 'Your invoice has been emailed to you by Lemon Squeezy. The song stays in your library for 24 months and you can download it as many times as you like.',
   myLibrary: 'My library',
   makeAnother: 'Make another one',
 
@@ -719,7 +719,7 @@ const EN: typeof RO = {
   price3: 'Kept in your library for 24 months, unlimited downloads',
   price4: 'The lyrics and one minute of the song, free before you pay',
   price5: 'Yours to use personally and to post on social media',
-  priceFoot: 'No hidden costs. You pay once, through Paddle.',
+  priceFoot: 'No hidden costs. You pay once, through Lemon Squeezy.',
   priceCta: 'Start — the preview is free',
 
   howTitle: 'How it works',

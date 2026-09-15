@@ -2,7 +2,7 @@
 # ══════════════════════════════════════════════════════════════
 #  Pune chei în .env fără editor de text.
 #
-#    bash deploy/set-keys.sh                 → grupul Paddle + Resend
+#    bash deploy/set-keys.sh                 → grupul Lemon Squeezy + Resend
 #    bash deploy/set-keys.sh RESEND_API_KEY  → doar una anume
 #
 #  Fiecare cheie se cere pe rând. Apeși Enter fără să scrii nimic și cheia
@@ -14,21 +14,19 @@ cd "$(dirname "$0")/.."
 [ -f .env ] || { echo "Nu găsesc .env. Rulează întâi deploy/setup.sh." >&2; exit 1; }
 
 DEFAULT_KEYS=(
-  PADDLE_ENV
-  PADDLE_API_KEY
-  PADDLE_CLIENT_TOKEN
-  PADDLE_PRICE_ID
-  PADDLE_WEBHOOK_SECRET
+  LEMON_API_KEY
+  LEMON_STORE_ID
+  LEMON_VARIANT_ID
+  LEMON_WEBHOOK_SECRET
   RESEND_API_KEY
   MAIL_FROM
 )
 
 declare -A HINT=(
-  [PADDLE_ENV]="sandbox sau production"
-  [PADDLE_API_KEY]="Paddle → Developer tools → Authentication → API keys"
-  [PADDLE_CLIENT_TOKEN]="Paddle → Developer tools → Authentication → Client-side tokens"
-  [PADDLE_PRICE_ID]="începe cu pri_ ; îl iei de la prețul din Catalog"
-  [PADDLE_WEBHOOK_SECRET]="Paddle → Developer tools → Notifications → destinația ta"
+  [LEMON_API_KEY]="Lemon Squeezy → Settings → API ; începe cu eyJ0eXAi"
+  [LEMON_STORE_ID]="Lemon Squeezy → Settings → Stores ; e un număr, ex. 12345"
+  [LEMON_VARIANT_ID]="produsul → Variants ; e un număr, NU al produsului"
+  [LEMON_WEBHOOK_SECRET]="Lemon Squeezy → Settings → Webhooks → semnătura pusă de tine"
   [RESEND_API_KEY]="Resend → API Keys ; începe cu re_"
   [MAIL_FROM]="de pe ce adresă pleacă emailurile, ex: Vocal MD <comenzi@vocal.md>"
 )

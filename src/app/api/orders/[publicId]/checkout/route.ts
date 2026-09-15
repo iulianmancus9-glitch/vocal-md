@@ -1,13 +1,13 @@
 /**
  * POST /api/orders/:publicId/checkout — pregătește plata.
  *
- * Nu încasează nimic: creează tranzacția la Paddle și îi dă browserului
- * identificatorul ei, ca să deschidă fereastra de plată. Banii se confirmă abia
- * prin webhook, care e singurul lucru în care avem încredere.
+ * Nu încasează nimic: creează checkout-ul la Lemon Squeezy și îi dă browserului
+ * adresa, ca să deschidă fereastra de plată. Banii se confirmă abia prin
+ * webhook, care e singurul lucru în care avem încredere.
  */
 import { fail, guard, ok } from '@/lib/api';
 import { logEvent } from '@/lib/orders';
-import { createCheckout, paymentsEnabled } from '@/lib/paddle';
+import { createCheckout, paymentsEnabled } from '@/lib/lemon';
 import { loadOrder } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
@@ -33,7 +33,7 @@ export async function POST(
 
     try {
       const session = await createCheckout(order);
-      await logEvent(order.id, 'checkout_opened', { transactionId: session.transactionId });
+      await logEvent(order.id, 'checkout_opened', { checkoutId: session.checkoutId });
       return ok(session);
     } catch (err) {
       // Detaliul tehnic merge în log; omului îi spunem ce poate face.

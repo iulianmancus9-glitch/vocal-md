@@ -5,12 +5,12 @@
  *
  *   orders ──┬── lyrics_versions   fiecare generare sau editare a versurilor
  *            ├── order_tracks      cele două variante cântate, plus previzualizările
- *            ├── payments          tranzacția Paddle
+ *            ├── payments          tranzacția Lemon Squeezy
  *            ├── emails            ce i-am trimis clientului și dacă a plecat
  *            └── order_events      urma auditabilă: ce s-a întâmplat și când
  *
  *   jobs             coada de lucru a worker-ului (Postgres, fără Redis)
- *   webhook_events    idempotență pentru Paddle și Suno
+ *   webhook_events    idempotență pentru Lemon Squeezy și Suno
  *   rate_limits       apărarea previzualizării gratuite, care ne costă credite reale
  *
  * Două reguli de care atârnă partea juridică:
@@ -296,7 +296,7 @@ export const orderTracks = pgTable(
    ══════════════════════════════════════════════════════════════ */
 
 /**
- * Paddle e comerciantul înregistrat, deci aici nu ține de contabilitate, ci de
+ * Lemon Squeezy e comerciantul înregistrat, deci aici nu ține de contabilitate, ci de
  * răspunsul la o singură întrebare: are dreptul acest client la fișierele integrale?
  */
 export const payments = pgTable(
@@ -306,7 +306,7 @@ export const payments = pgTable(
     orderId: uuid('order_id')
       .notNull()
       .references(() => orders.id, { onDelete: 'restrict' }),
-    provider: text('provider').notNull().default('paddle'),
+    provider: text('provider').notNull().default('lemon'),
     transactionId: text('transaction_id').notNull(),
     customerId: text('customer_id'),
     status: paymentStatus('status').notNull().default('pending'),
@@ -317,7 +317,7 @@ export const payments = pgTable(
     refundedCents: integer('refunded_cents').notNull().default(0),
     invoiceNumber: text('invoice_number'),
 
-    /** Ultimul payload primit de la Paddle, pentru când ceva nu se potrivește. */
+    /** Ultimul payload primit de la procesator, pentru când ceva nu se potrivește. */
     rawPayload: jsonb('raw_payload'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -334,7 +334,7 @@ export const payments = pgTable(
    ══════════════════════════════════════════════════════════════ */
 
 /**
- * Paddle retrimite un eveniment până îi răspunzi 200, iar Suno poate apela callback-ul
+ * Lemon Squeezy retrimite un eveniment până îi răspunzi 200, iar Suno poate apela callback-ul
  * de două ori. Cheia unică (provider, event_id) face ca a doua livrare să nu producă
  * nimic: o inserăm, prinde conflictul, ieșim.
  */
@@ -342,7 +342,7 @@ export const webhookEvents = pgTable(
   'webhook_events',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    provider: text('provider').notNull(), // paddle | suno
+    provider: text('provider').notNull(), // lemon | suno
     eventId: text('event_id').notNull(),
     eventType: text('event_type').notNull(),
     payload: jsonb('payload').notNull(),

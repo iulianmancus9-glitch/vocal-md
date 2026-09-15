@@ -15,7 +15,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { api } from '@/lib/client';
-import { openCheckout } from '@/lib/paddle-client';
+import { openCheckout } from '@/lib/lemon-client';
 import { useRouter } from 'next/navigation';
 import { UI, label, styleLabel } from '@/lib/i18n';
 import {
@@ -1029,7 +1029,7 @@ export default function Vocal({ initialOrderId = null, lang = 'ro' }) {
   });
 
   /**
-   * Plata. Serverul pregătește tranzacția, Paddle deschide fereastra, iar
+   * Plata. Serverul pregătește checkout-ul, Lemon Squeezy deschide fereastra, iar
    * confirmarea vine prin webhook — nu de la browser, care poate minți.
    * De asta, după ce fereastra se închide, întrebăm serverul dacă s-a încasat.
    */

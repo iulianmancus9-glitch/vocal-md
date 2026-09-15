@@ -2,7 +2,7 @@
 
 Site unde oamenii comandă melodii personalizate. Formular în șase pași, versuri
 gratuite scrise de Gemini, previzualizare gratuită de 60 de secunde în două
-interpretări, apoi 30 € pentru melodia completă, prin Paddle.
+interpretări, apoi 30 € pentru melodia completă, prin Lemon Squeezy.
 
 Next.js + PostgreSQL, în Docker, pe VPS Ubuntu 24.04. Caddy termină HTTPS pe gazdă.
 
@@ -48,12 +48,12 @@ Nouă tabele. Firul unei comenzi:
 orders ──┬── lyrics_versions   fiecare generare sau editare a versurilor
          ├── renders ──┬────── o înregistrare = un task Suno = două variante
          │             └── order_tracks   piesele ei, cu previzualizările
-         ├── payments          tranzacția Paddle
+         ├── payments          tranzacția Lemon Squeezy
          ├── emails            ce i-am trimis clientului și dacă a plecat
          └── order_events      urma auditabilă: ce s-a întâmplat și când
 
 jobs             coada worker-ului
-webhook_events   idempotență pentru Paddle și Suno
+webhook_events   idempotență pentru Lemon Squeezy și Suno
 rate_limits      apărarea previzualizării gratuite
 ```
 
@@ -235,15 +235,22 @@ arată de ce.
 
 ## Plata
 
-Tranzacția se creează pe server, nu în browser: prețul, cantitatea și
-identificatorul comenzii sunt puse de noi, ca să nu poată fi schimbate înainte
-de „plătește". Confirmarea vine doar prin webhook — browserul poate minți,
-Paddle nu, pentru că semnează fiecare mesaj.
+Checkout-ul se creează pe server, nu în browser: prețul și identificatorul
+comenzii sunt puse de noi, ca să nu poată fi schimbate înainte de „plătește".
+Confirmarea vine doar prin webhook — browserul poate minți, procesatorul nu,
+pentru că semnează fiecare mesaj.
 
-Webhook-ul verifică semnătura, apoi citește JSON-ul brut câmp cu câmp. Nu
-folosim transformarea în obiecte a bibliotecii: aruncă dacă payload-ul are un
-câmp neașteptat, iar atunci o plată adevărată ar fi respinsă cu 401 și clientul
-n-ar primi niciodată melodia.
+Semnătura e HMAC-SHA256 peste corpul brut, comparată cu `timingSafeEqual`: o
+comparație obișnuită se oprește la prima literă greșită, iar din cât durează se
+poate ghici semnătura literă cu literă.
+
+Lemon Squeezy nu trimite un identificator al evenimentului, ci doar al comenzii,
+deci cheia de idempotență e `nume_eveniment:id_comandă`. Altfel rambursarea ar
+avea aceeași cheie ca plata și ar fi înghițită ca duplicat.
+
+Am venit aici de la Paddle, care ne-a refuzat domeniul de cinci ori. Motivul era
+în prima frază a politicii lor: „Paddle is built to serve software companies".
+Noi vindem fișiere audio.
 
 O rambursare readuce comanda exact de unde a plecat: păstrează previzualizările,
 pierde fișierele integrale. Ruta de audio verifică starea la fiecare cerere,
@@ -254,4 +261,5 @@ deci accesul se închide imediat.
 1. **Pagina publică de dăruit** — un link cu piesa și versurile, de trimis mai
    departe. A fost scoasă din ecranul de livrare până există o pagină care arată
    o comandă fără să deschidă și restul.
-2. **Cheile de producție Paddle**, după testarea în sandbox.
+2. **Emailurile în engleză** — pagina e bilingvă, dar mesajele de livrare pleacă
+   doar în română.

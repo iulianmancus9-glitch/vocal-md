@@ -116,7 +116,7 @@ export async function GET(
       toCsv(
         ['Data plății', 'Comandă', 'Email', 'Titlu', 'Stil', 'Direcție', 'Stare de spirit',
          'Voce', 'Pentru cine', 'Nume', 'Ocazie', 'Limbă', 'Sumă', 'Monedă',
-         'Tranzacție Paddle', 'Stare', 'Înregistrări', 'Data comenzii'],
+         'Tranzacție', 'Stare', 'Înregistrări', 'Data comenzii'],
         rows,
       ),
       'comenzi.csv',

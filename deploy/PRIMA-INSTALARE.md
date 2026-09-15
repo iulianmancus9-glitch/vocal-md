@@ -58,8 +58,9 @@ De completat obligatoriu:
 | `SUNO_API_KEY` | sunoapi.org → contul tău |
 | `APP_URL` | `https://vocal.md` |
 
-Paddle și Resend rămân goale deocamdată — site-ul pornește fără ele. Butonul de
-cumpărare spune că plata se activează în curând, în loc să livreze degeaba.
+Lemon Squeezy și Resend rămân goale deocamdată — site-ul pornește fără ele.
+Butonul de cumpărare spune că plata se activează în curând, în loc să livreze
+degeaba.
 
 ## 4. Pornirea
 

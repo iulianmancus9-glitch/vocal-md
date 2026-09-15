@@ -3,7 +3,7 @@
  *
  * Textul are o singură sursă: fișierul. Paginile se generează din el la build,
  * deci nu se poate întâmpla ca site-ul să spună altceva decât documentul pe care
- * l-a citit un avocat sau l-a aprobat Paddle.
+ * l-a citit un avocat sau l-a aprobat procesatorul de plăți.
  */
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';

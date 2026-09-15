@@ -22,7 +22,6 @@
     "check:docker": "node scripts/check-docker-build.mjs"
   },
   "dependencies": {
-    "@paddle/paddle-node-sdk": "^3.10.0",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.45.0",
     "marked": "^18.0.13",

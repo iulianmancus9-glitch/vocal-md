@@ -3,7 +3,7 @@
  *
  * Rulează în coadă, nu în webhook: dacă Resend e căzut două minute, plata a fost
  * deja înregistrată și livrarea se reîncearcă singură. Invers ar însemna că
- * Paddle primește o eroare și retrimite plata la nesfârșit.
+ * procesatorul primește o eroare și retrimite plata la nesfârșit.
  */
 import { asc, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';

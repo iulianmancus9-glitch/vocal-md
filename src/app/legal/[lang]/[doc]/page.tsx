@@ -1,7 +1,7 @@
 /**
  * Paginile legale. Generate static la build, din fișierul de documente.
  *
- * Stau pe adrese proprii, nu într-o fereastră din formular: Paddle cere să le
+ * Stau pe adrese proprii, nu într-o fereastră din formular: procesatorul cere să le
  * poată deschide un om înainte să aprobe contul, iar din formular se deschid în
  * filă nouă, ca cineva care citește Termenii la pasul patru să nu-și piardă
  * povestea scrisă.

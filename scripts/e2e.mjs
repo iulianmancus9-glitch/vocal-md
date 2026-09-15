@@ -294,7 +294,7 @@ ok('reluările s-au terminat',
 
 /* ─── butonul de cumpărare ─── */
 
-/* Cheile din test sunt inventate, deci Paddle refuză. Ce contează e că refuzul
+/* Cheile din test sunt inventate, deci procesatorul refuză. Ce contează e că refuzul
    se vede ca mesaj, nu ca pagină ruptă — și, mai ales, că browserul nu poate
    marca singur comanda ca plătită. */
 await page.getByRole('button', { name: /Primește melodia/ }).first().click();
@@ -304,37 +304,36 @@ ok('un eșec la plată se vede ca mesaj, nu strică pagina',
 ok('browserul nu poate marca singur comanda ca plătită',
   sql(`select status from orders where public_id='${id}'`) === 'preview_ready');
 
-/* ─── plata, prin webhook semnat ca al lui Paddle ─── */
+/* ─── plata, prin webhook semnat ca al lui Lemon Squeezy ─── */
 
-const SECRET = process.env.PADDLE_WEBHOOK_SECRET ?? 'pdl_ntfset_test_secret';
+const SECRET = process.env.LEMON_WEBHOOK_SECRET ?? 'lemon_test_secret';
 
-/** Semnătura pe care o pune Paddle: hmac peste „timp:corp". */
-function paddleSigned(body) {
-  const ts = Math.floor(Date.now() / 1000);
-  const h1 = createHmac('sha256', SECRET).update(`${ts}:${body}`).digest('hex');
-  return `ts=${ts};h1=${h1}`;
-}
+/** Semnătura pe care o pune Lemon Squeezy: hmac-sha256 hex peste corpul brut. */
+const lemonSigned = (body) => createHmac('sha256', SECRET).update(body).digest('hex');
 
 /** Id unic per rulare, ca două rulări să nu se calce pe idempotență. */
 const RUN = Date.now().toString(36);
 
-const paidEvent = (eventId) => JSON.stringify({
-  event_id: eventId,
-  event_type: 'transaction.completed',
-  occurred_at: new Date().toISOString(),
-  notification_id: eventId,
+const ORDER_ID = `lsorder_${RUN}`;
+
+const paidEvent = () => JSON.stringify({
+  meta: { event_name: 'order_created', custom_data: { order_id: id } },
   data: {
-    id: 'txn_test_' + eventId,
-    status: 'completed',
-    customer_id: 'ctm_test',
-    custom_data: { orderId: id },
-    details: { totals: { grand_total: '3000', currency_code: 'EUR' } },
+    id: ORDER_ID,
+    type: 'orders',
+    attributes: {
+      status: 'paid',
+      customer_id: 991,
+      total: 3000,
+      currency: 'EUR',
+      user_email: 'e2e@exemplu.md',
+    },
   },
 });
 
-const body1 = paidEvent(`evt_${RUN}_1`);
-const hook1 = await page.request.post(`${BASE}/api/webhooks/paddle`, {
-  headers: { 'Content-Type': 'application/json', 'Paddle-Signature': paddleSigned(body1) },
+const body1 = paidEvent();
+const hook1 = await page.request.post(`${BASE}/api/webhooks/lemon`, {
+  headers: { 'Content-Type': 'application/json', 'X-Signature': lemonSigned(body1) },
   data: body1,
 });
 ok('webhook-ul semnat corect e acceptat', hook1.status() === 200);
@@ -348,23 +347,27 @@ ok('comanda plătită se păstrează 24 de luni',
   Number(sql(`select round(extract(epoch from (expires_at - now()))/86400) from orders
               where public_id='${id}'`)) > 700);
 
-/* Paddle retrimite până primește 200: a doua livrare nu are voie să facă nimic. */
-const hook2 = await page.request.post(`${BASE}/api/webhooks/paddle`, {
-  headers: { 'Content-Type': 'application/json', 'Paddle-Signature': paddleSigned(body1) },
+/* Retrimit până primesc 200: a doua livrare nu are voie să facă nimic. */
+const hook2 = await page.request.post(`${BASE}/api/webhooks/lemon`, {
+  headers: { 'Content-Type': 'application/json', 'X-Signature': lemonSigned(body1) },
   data: body1,
 });
 ok('același eveniment trimis de două ori nu se procesează de două ori',
   hook2.status() === 200 && sql(`select count(*) from jobs where type='deliver'`) === '1');
 
 /* O semnătură falsificată nu are voie să deblocheze nimic. */
-const body3 = paidEvent(`evt_${RUN}_fals`);
-const hook3 = await page.request.post(`${BASE}/api/webhooks/paddle`, {
-  headers: { 'Content-Type': 'application/json', 'Paddle-Signature': 'ts=1;h1=mincinos' },
+const body3 = JSON.stringify({
+  meta: { event_name: 'order_created', custom_data: { order_id: id } },
+  data: { id: `lsorder_${RUN}_fals`, attributes: { status: 'paid', total: 3000, currency: 'EUR' } },
+});
+const hook3 = await page.request.post(`${BASE}/api/webhooks/lemon`, {
+  headers: { 'Content-Type': 'application/json', 'X-Signature': 'a'.repeat(64) },
   data: body3,
 });
 ok('webhook-ul cu semnătură falsă e refuzat', hook3.status() === 401);
 ok('evenimentul fals nu a fost înregistrat',
-  sql(`select count(*) from webhook_events where event_id='evt_${RUN}_fals'`) === '0');
+  sql(`select count(*) from webhook_events
+       where event_id='order_created:lsorder_${RUN}_fals'`) === '0');
 const state = await page.evaluate(async (oid) => {
   const r = await fetch(`/api/orders/${oid}`, { credentials: 'same-origin' });
   return r.json();
@@ -387,19 +390,18 @@ ok('comanda plătită apare la vândute',
 
 /* ─── rambursarea închide accesul ─── */
 
+/* Rambursarea vine pe aceeași comandă, deci cheia de idempotență trebuie să
+   difere prin numele evenimentului — altfel ar fi înghițită ca duplicat. */
 const refundBody = JSON.stringify({
-  event_id: `evt_${RUN}_refund`,
-  event_type: 'adjustment.created',
-  occurred_at: new Date().toISOString(),
+  meta: { event_name: 'order_refunded', custom_data: { order_id: id } },
   data: {
-    id: 'adj_test',
-    action: 'refund',
-    transaction_id: `txn_test_evt_${RUN}_1`,
-    details: { totals: { grand_total: '3000', currency_code: 'EUR' } },
+    id: ORDER_ID,
+    type: 'orders',
+    attributes: { status: 'refunded', total: 3000, refunded_amount: 3000, currency: 'EUR' },
   },
 });
-const hook4 = await page.request.post(`${BASE}/api/webhooks/paddle`, {
-  headers: { 'Content-Type': 'application/json', 'Paddle-Signature': paddleSigned(refundBody) },
+const hook4 = await page.request.post(`${BASE}/api/webhooks/lemon`, {
+  headers: { 'Content-Type': 'application/json', 'X-Signature': lemonSigned(refundBody) },
   data: refundBody,
 });
 ok('rambursarea e acceptată', hook4.status() === 200);

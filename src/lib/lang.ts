@@ -10,10 +10,10 @@
  *      ca un client de acasă să nu dea peste un site englezesc;
  *   3. `DEFAULT_LANG` din `.env` — restul lumii.
  *
- * `DEFAULT_LANG` e acum `en`. Paddle verifică site-ul din Marea Britanie, iar
- * un om care nu înțelege pagina nu poate confirma ce se vinde pe ea — de trei
- * ori a răspuns că „produsul principal nu este un produs sau serviciu digital".
- * După aprobare se pune `ro` în `.env` și se repornește; nimic altceva.
+ * `DEFAULT_LANG` e acum `en`, pentru verificarea făcută de procesatorul de
+ * plăți: se uită peste site din străinătate, iar un om care nu înțelege pagina
+ * nu poate confirma ce se vinde pe ea. După aprobare se pune `ro` în `.env` și
+ * se repornește; nimic altceva.
  */
 import { cookies, headers } from 'next/headers';
 import { isLang, type Lang } from '@/lib/i18n';
