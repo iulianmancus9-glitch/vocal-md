@@ -74,7 +74,7 @@ const LANGUAGES = [
 ];
 
 const PERKS = [
-  { Icon: PenLine, text: 'Versuri scrise de la zero' },
+  { Icon: PenLine, text: 'Versuri generate de AI' },
   { Icon: Download, text: 'Două fișiere MP3, ale tale' },
   { Icon: Clock,   text: 'Gata în câteva minute' },
 ];
@@ -392,7 +392,12 @@ button.vc-mark:hover { opacity: .68; }
 
 /* ─── banner de start ─── */
 .vc-heroCta { display: flex; }
-.vc-heroNote { font-size: 12.5px; line-height: 1.5; color: var(--ink-2); text-align: center; margin: 11px 0 0; }
+.vc-spec { margin: 13px 0 0; padding: 13px 14px; border-radius: 13px; background: rgba(255,255,255,.66); border: 1px solid rgba(108,92,231,.14); }
+.vc-specTitle { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--violet); margin: 0 0 9px; }
+.vc-specList { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.vc-specList li { display: flex; align-items: flex-start; gap: 9px; font-size: 13.5px; line-height: 1.45; color: var(--ink-1); }
+.vc-specList li svg { flex: none; margin-top: 2px; color: var(--violet); }
+.vc-specFree { font-size: 12.5px; line-height: 1.45; color: var(--ink-2); margin: 10px 0 0; padding-top: 9px; border-top: 1px solid rgba(108,92,231,.12); }
 .vc-heroSep { height: 1px; background: rgba(108,92,231,.13); margin: 18px 0 16px; }
 
 /* ─── dialog de confirmare ─── */
@@ -1106,17 +1111,24 @@ export default function Vocal({ initialOrderId = null }) {
                 <Sparkles size={18} /> Creează melodia ta
               </button>
             </div>
-            <p className="vc-heroNote">
-              Versurile și un minut din melodie sunt <b>gratuite</b>.<br />
-              Melodia completă — <b>două fișiere MP3</b>, descărcabile pe loc.
-            </p>
+            <div className="vc-spec">
+              <p className="vc-specTitle">Ce primești</p>
+              <ul className="vc-specList">
+                <li><Download size={15} /><span><b>Două fișiere MP3</b> — două interpretări ale melodiei tale</span></li>
+                <li><Zap size={15} /><span>Descărcare <b>pe loc</b>, din pagină și pe email</span></li>
+                <li><Music2 size={15} /><span><b>30 €</b>, plată unică — fără abonament</span></li>
+              </ul>
+              <p className="vc-specFree">
+                Versurile și un minut din melodie sunt <b>gratuite</b>, înainte de plată.
+              </p>
+            </div>
 
             <div className="vc-heroSep" />
 
             <div className="vc-demos">
               <p className="vc-demosTitle">Ascultă trei melodii făcute deja</p>
               <p className="vc-demosSub">
-                Pentru alți oameni, la comenzile lor. A ta va fi despre povestea ta.
+                Toate au fost generate de aceleași modele care o vor face și pe a ta.
               </p>
 
               <div className="vc-demoList">
@@ -1149,7 +1161,8 @@ export default function Vocal({ initialOrderId = null }) {
               </div>
 
               <p className="vc-demoFoot">
-                Melodia completă: <b>30 €</b>, plată unică.
+                Versurile și vocea sunt generate de modele AI. Nu clonăm și nu imităm
+                voci reale — vocile pe care le auzi sunt sintetice.
               </p>
             </div>
 
@@ -1186,7 +1199,7 @@ export default function Vocal({ initialOrderId = null }) {
             <p className="vc-heroEyebrow">Aproape gata</p>
             <h1 className="vc-heroTitle">Unde îți trimitem melodia?</h1>
             <p className="vc-heroText">
-              Îți scriem versurile în câteva secunde. Lăsăm adresa ta de email ca să nu pierzi
+              Versurile se generează în câteva secunde. Lăsăm adresa ta de email ca să nu pierzi
               nimic dacă închizi pagina — îți trimitem acolo și versurile, și melodia.
             </p>
           </div>
@@ -1448,7 +1461,7 @@ export default function Vocal({ initialOrderId = null }) {
             <p className="vc-waitText">
               {overtime
                 ? 'Mai durează câteva clipe — textul e pe ultima sută de metri. Lasă pagina deschisă.'
-                : 'Citim povestea ta și compunem textul. Durează câteva zeci de secunde — lasă pagina deschisă.'}
+                : 'Povestea ta se citește și textul se generează. Durează câteva zeci de secunde — lasă pagina deschisă.'}
             </p>
             <div className="vc-waitRail"><div className="vc-waitFill" style={{ width: `${progress}%` }} /></div>
           </div>
