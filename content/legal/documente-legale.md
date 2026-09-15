@@ -48,7 +48,7 @@ Nu vi se solicită nicio plată înainte de a asculta previzualizarea.
 
 Prețul melodiei complete este afișat clar înainte de achiziție și include toate taxele aplicabile. Este o **plată unică**, fără abonament și fără costuri recurente.
 
-Plățile sunt procesate de **Lemon Squeezy**, care acționează în calitate de **comerciant înregistrat (Merchant of Record)** pentru această tranzacție. Aceasta înseamnă că, din punct de vedere juridic, Lemon Squeezy este vânzătorul produsului digital către dumneavoastră și este responsabil pentru facturare, colectarea și virarea taxelor aplicabile. Denumirea juridică completă a entității și datele ei de contact apar pe chitanța pe care o primiți după plată.
+Plățile sunt procesate de **Lemon Squeezy (Link, LLC)**, care acționează în calitate de **comerciant înregistrat (Merchant of Record)** pentru această tranzacție. Aceasta înseamnă că, din punct de vedere juridic, Link, LLC este vânzătorul produsului digital către dumneavoastră și este responsabil pentru facturare, colectarea și virarea taxelor aplicabile. Datele complete ale acestuia apar pe chitanța pe care o primiți după plată.
 
 Prin finalizarea achiziției, sunteți de acord și cu termenii și politica de confidențialitate ale Lemon Squeezy, disponibile pe site-ul acestora. Vocal MD nu colectează, nu stochează și nu are acces la datele complete ale cardului dumneavoastră.
 
@@ -192,7 +192,7 @@ Răspundem în maximum 5 zile lucrătoare. Rambursările aprobate sunt procesate
 
 ### Rambursări prin Lemon Squeezy
 
-Întrucât **Lemon Squeezy** este comerciantul înregistrat pentru vânzările noastre, rambursarea este efectuată prin sistemul lor. Puteți contacta și direct suportul Lemon Squeezy folosind datele de pe chitanța primită.
+Întrucât **Lemon Squeezy (Link, LLC)** este comerciantul înregistrat pentru vânzările noastre, rambursarea este efectuată prin sistemul lor. Puteți contacta și direct suportul Lemon Squeezy folosind datele de pe chitanța primită.
 
 ---
 
@@ -241,7 +241,7 @@ Nu folosim datele dumneavoastră pentru a antrena modele de inteligență artifi
 Nu vindem, nu închiriem și nu tranzacționăm datele dumneavoastră. Le transmitem exclusiv furnizorilor care ne ajută să prestăm serviciul:
 
 - **Furnizori de inteligență artificială** — pentru a genera versurile din povestea dumneavoastră și pentru a produce fișierul audio. Acestora le este transmis textul comenzii, nu și adresa dumneavoastră de email.
-- **Lemon Squeezy** — procesatorul de plăți și comerciantul înregistrat al tranzacției.
+- **Lemon Squeezy (Link, LLC)** — procesatorul de plăți și comerciantul înregistrat al tranzacției.
 - **Furnizorul serviciului de email** — pentru trimiterea automată a linkurilor.
 - **Furnizorul de găzduire și stocare** — pentru funcționarea site-ului și păstrarea fișierelor audio.
 
@@ -347,7 +347,7 @@ You are never asked to pay before hearing the preview.
 
 The price of the complete song is clearly displayed before purchase and includes all applicable taxes. It is a **one-time payment** — no subscription, no recurring charges.
 
-Payments are processed by **Lemon Squeezy**, acting as the **Merchant of Record** for the transaction. This means that, legally, Lemon Squeezy is the seller of the digital product to you and is responsible for invoicing and for collecting and remitting applicable taxes. The full legal name of the entity and its contact details appear on the receipt you receive after payment.
+Payments are processed by **Lemon Squeezy (Link, LLC)**, acting as the **Merchant of Record** for the transaction. This means that, legally, Link, LLC is the seller of the digital product to you and is responsible for invoicing and for collecting and remitting applicable taxes. Their full details appear on the receipt you receive after payment.
 
 By completing your purchase, you also agree to Lemon Squeezy's terms and privacy policy, available on their website. Vocal MD does not collect, store or have access to your full card details.
 
@@ -491,7 +491,7 @@ We reply within 5 working days. Approved refunds are processed by Lemon Squeezy 
 
 ### Refunds through Lemon Squeezy
 
-Because **Lemon Squeezy** is the Merchant of Record for our sales, refunds are issued through their system. You may also contact Lemon Squeezy support directly using the details on the receipt you received.
+Because **Lemon Squeezy (Link, LLC)** is the Merchant of Record for our sales, refunds are issued through their system. You may also contact Lemon Squeezy support directly using the details on the receipt you received.
 
 ---
 
@@ -540,7 +540,7 @@ We do not use your data to train our own artificial intelligence models.
 We do not sell, rent or trade your data. We share it only with providers who help us deliver the service:
 
 - **Artificial intelligence providers** — to generate the lyrics from your story and to produce the audio file. They receive the text of your order, not your email address.
-- **Lemon Squeezy** — our payment processor and Merchant of Record.
+- **Lemon Squeezy (Link, LLC)** — our payment processor and Merchant of Record.
 - **Our email service provider** — to send the delivery links automatically.
 - **Our hosting and storage provider** — to run the website and store the audio files.
 
