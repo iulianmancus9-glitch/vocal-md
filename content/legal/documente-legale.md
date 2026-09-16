@@ -48,7 +48,7 @@ Nu vi se solicită nicio plată înainte de a asculta previzualizarea.
 
 Prețul melodiei complete este afișat clar înainte de achiziție și include toate taxele aplicabile. Este o **plată unică**, fără abonament și fără costuri recurente.
 
-Plățile sunt procesate de **Lemon Squeezy (Link, LLC)**, care acționează în calitate de **comerciant înregistrat (Merchant of Record)** pentru această tranzacție. Aceasta înseamnă că, din punct de vedere juridic, Link, LLC este vânzătorul produsului digital către dumneavoastră și este responsabil pentru facturare, colectarea și virarea taxelor aplicabile. Datele complete ale acestuia apar pe chitanța pe care o primiți după plată.
+Plățile sunt procesate de **Link, LLC** (cunoscută anterior ca Lemon Squeezy LLC), cu sediul în 354 Oyster Point Blvd, South San Francisco, CA 94080, SUA, care acționează în calitate de **comerciant înregistrat (Merchant of Record)** pentru această tranzacție. Aceasta înseamnă că, din punct de vedere juridic, Link, LLC este vânzătorul produsului digital către dumneavoastră și este responsabil pentru facturare, colectarea și virarea taxelor aplicabile. Datele complete ale acestuia apar pe chitanța pe care o primiți după plată.
 
 Prin finalizarea achiziției, sunteți de acord și cu termenii și politica de confidențialitate ale Lemon Squeezy, disponibile pe site-ul acestora. Vocal MD nu colectează, nu stochează și nu are acces la datele complete ale cardului dumneavoastră.
 
@@ -241,7 +241,7 @@ Nu folosim datele dumneavoastră pentru a antrena modele de inteligență artifi
 Nu vindem, nu închiriem și nu tranzacționăm datele dumneavoastră. Le transmitem exclusiv furnizorilor care ne ajută să prestăm serviciul:
 
 - **Furnizori de inteligență artificială** — pentru a genera versurile din povestea dumneavoastră și pentru a produce fișierul audio. Acestora le este transmis textul comenzii, nu și adresa dumneavoastră de email.
-- **Lemon Squeezy (Link, LLC)** — procesatorul de plăți și comerciantul înregistrat al tranzacției.
+- **Link, LLC** (Lemon Squeezy), 354 Oyster Point Blvd, South San Francisco, CA 94080, SUA — procesatorul de plăți și comerciantul înregistrat al tranzacției.
 - **Furnizorul serviciului de email** — pentru trimiterea automată a linkurilor.
 - **Furnizorul de găzduire și stocare** — pentru funcționarea site-ului și păstrarea fișierelor audio.
 
@@ -347,7 +347,7 @@ You are never asked to pay before hearing the preview.
 
 The price of the complete song is clearly displayed before purchase and includes all applicable taxes. It is a **one-time payment** — no subscription, no recurring charges.
 
-Payments are processed by **Lemon Squeezy (Link, LLC)**, acting as the **Merchant of Record** for the transaction. This means that, legally, Link, LLC is the seller of the digital product to you and is responsible for invoicing and for collecting and remitting applicable taxes. Their full details appear on the receipt you receive after payment.
+Payments are processed by **Link, LLC** (formerly Lemon Squeezy LLC), of 354 Oyster Point Blvd, South San Francisco, CA 94080, USA, acting as the **Merchant of Record** for the transaction. This means that, legally, Link, LLC is the seller of the digital product to you and is responsible for invoicing and for collecting and remitting applicable taxes. Their full details appear on the receipt you receive after payment.
 
 By completing your purchase, you also agree to Lemon Squeezy's terms and privacy policy, available on their website. Vocal MD does not collect, store or have access to your full card details.
 
@@ -540,7 +540,7 @@ We do not use your data to train our own artificial intelligence models.
 We do not sell, rent or trade your data. We share it only with providers who help us deliver the service:
 
 - **Artificial intelligence providers** — to generate the lyrics from your story and to produce the audio file. They receive the text of your order, not your email address.
-- **Lemon Squeezy (Link, LLC)** — our payment processor and Merchant of Record.
+- **Link, LLC** (Lemon Squeezy), 354 Oyster Point Blvd, South San Francisco, CA 94080, USA — our payment processor and Merchant of Record.
 - **Our email service provider** — to send the delivery links automatically.
 - **Our hosting and storage provider** — to run the website and store the audio files.
 
