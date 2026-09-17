@@ -5,23 +5,11 @@
  * a fost reglat promptul. Dacă se schimbă formularul, aici se face legătura.
  */
 import type { Order } from '@/lib/db/schema';
+import { STYLE_NAMES } from './stiluri';
 import type { SongBrief } from './types';
 
-/** Numele afișabile ale stilurilor, în ordinea din formular. Cheia e `style_id`. */
-export const STYLE_NAMES: Record<string, string> = {
-  romantic:  'Romantic',
-  suflet:    'Din suflet',
-  petrecere: 'De petrecere',
-  manele:    'Manele',
-  pop:       'Pop',
-  rb:        'R&B / Soul',
-  rap:       'Hip-Hop / Rap',
-  rock:      'Rock',
-  folclor:   'Folclor / Etno',
-  acustic:   'Acustic',
-  latino:    'Latino',
-  jazz:      'Jazz / Swing',
-};
+// Tabelul stilurilor stă în `stiluri.ts`; aici doar se folosește.
+export { STYLE_NAMES } from './stiluri';
 
 export function briefFromOrder(order: Order): SongBrief {
   const destinatar =

@@ -168,6 +168,22 @@ Două adrese care întorc CSV, protejate cu `EXPORT_KEY` din `.env`:
 `setup.sh` afișează formulele gata de lipit. Cheia apare în adresa pusă în foaie,
 deci e separată de tot restul și nu deschide nimic altceva.
 
+## Reglarea sunetului
+
+Toate tabelele care traduc alegerile clientului în limbaj Suno — stiluri,
+direcții, stări, limbi, voce — stau într-un singur fișier:
+`src/lib/pipeline/stiluri.ts`. Dacă un gen sună prost, acolo se schimbă un rând.
+
+```bash
+npm run stiluri
+```
+
+Arată, pentru fiecare stil, șirul exact care pleacă la Suno, și verifică
+potrivirile: o stare oferită în formular dar netradusă ar dispărea în tăcere din
+prompt, iar melodia ar ieși altfel decât a cerut omul.
+
+Promptul care scrie versurile e separat, în `prompt.ts` (`SYSTEM_PROMPT`).
+
 ## Testare
 
 ```bash

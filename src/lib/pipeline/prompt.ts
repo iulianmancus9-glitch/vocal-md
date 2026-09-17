@@ -1,10 +1,22 @@
 /**
  * Promptul pentru Gemini și traducerea alegerilor din formular în parametri Suno.
  *
- * Portat din pipeline-ul testat, fără schimbări de conținut. Aici sunt cele mai mari
- * câștiguri de calitate: dacă un gen sună prost, se ajustează STYLE_MAP, nu codul.
+ * Portat din pipeline-ul testat, fără schimbări de conținut.
+ *
+ * Aici a rămas doar promptul care scrie versurile și ordinea în care se lipesc
+ * bucățile șirului de stil. Tabelele — stiluri, stări, limbi — stau în
+ * `stiluri.ts`, ca să le poată deschide și cine nu scrie cod; `npm run stiluri`
+ * arată ce iese din ele.
  */
+import { LIMBI, STARI, STYLE_MAP, VOCI } from './stiluri';
 import type { SongBrief } from './types';
+
+/**
+ * Tabelele s-au mutat în `stiluri.ts`, ca să stea toate într-un loc pe care
+ * îl poate deschide și cine nu scrie cod. Se re-exportă de aici pentru că
+ * restul aplicației le cunoștea de la adresa asta.
+ */
+export { STYLE_MAP, VOCI as GENDER_MAP, STARI as MOOD_MAP, LIMBI as LANG_MAP } from './stiluri';
 
 export const SYSTEM_PROMPT = `Ești textier profesionist. Scrii versuri pentru melodii personalizate, făcute cadou unei
 persoane anume. Primești datele comenzii în format JSON și returnezi DOAR un obiect JSON,
@@ -77,44 +89,6 @@ alt titlu. Păstrează aceleași reguli de formă și aceeași limbă.`;
 
 /* ─── traducerea alegerilor în limbaj Suno ─── */
 
-export const STYLE_MAP: Record<string, string> = {
-  'Romantic':       'romantic ballad',
-  'Din suflet':     'heartfelt acoustic ballad',
-  'De petrecere':   'upbeat party music',
-  'Manele':         'manele, oriental balkan pop',
-  'Pop':            'modern pop',
-  'R&B / Soul':     'rnb soul',
-  'Hip-Hop / Rap':  'hip hop',
-  'Rock':           'rock',
-  'Folclor / Etno': 'balkan folk, ethno',
-  'Acustic':        'acoustic',
-  'Latino':         'latin pop',
-  'Jazz / Swing':   'jazz swing',
-};
-
-export const MOOD_MAP: Record<string, string> = {
-  'Tandră': 'tender, warm', 'Caldă': 'warm', 'Intimă': 'intimate',
-  'Pasională': 'passionate', 'Nostalgică': 'nostalgic, bittersweet',
-  'Solemnă': 'solemn, cinematic', 'Recunoștință': 'grateful, uplifting',
-  'Luminoasă': 'bright', 'Veselă': 'joyful', 'Emoționantă': 'emotional, moving',
-  'Energică': 'energetic, driving', 'Exuberantă': 'exuberant',
-  'Senzuală': 'sensual, smooth', 'Reflexivă': 'reflective',
-  'Sentimentală': 'sentimental', 'De chef': 'festive', 'Cu năduf': 'melancholic',
-  'Amuzantă': 'playful, humorous', 'Motivațională': 'motivational',
-  'Rebelă': 'rebellious', 'Visătoare': 'dreamy', 'De sărbătoare': 'celebratory',
-  'Jucăușă': 'playful', 'Elegantă': 'elegant', 'Romantică': 'romantic',
-};
-
-export const LANG_MAP: Record<string, string> = {
-  'Română':   'Romanian language vocals',
-  'Engleză':  'English vocals',
-  'Italiană': 'Italian language vocals',
-  'Rusă':     'Russian language vocals',
-};
-
-/** Suno primește genul vocii separat, prin `vocalGender`. */
-export const GENDER_MAP: Record<string, 'f' | 'm'> = { 'Femeie': 'f', 'Bărbat': 'm' };
-
 /**
  * Construiește șirul de stil trimis la Suno.
  * Ordinea contează: sub-stilul întâi, apoi genul, apoi starea, apoi limba.
@@ -124,9 +98,9 @@ export function buildStyle(brief: SongBrief, styleHint?: string): string {
 
   if (brief.directie) parts.push(brief.directie.toLowerCase());
   if (STYLE_MAP[brief.stil]) parts.push(STYLE_MAP[brief.stil]!);
-  if (brief.stare && MOOD_MAP[brief.stare]) parts.push(MOOD_MAP[brief.stare]!);
+  if (brief.stare && STARI[brief.stare]) parts.push(STARI[brief.stare]!);
   parts.push(brief.voce === 'Femeie' ? 'female vocals' : 'male vocals');
-  if (LANG_MAP[brief.limba]) parts.push(LANG_MAP[brief.limba]!);
+  if (LIMBI[brief.limba]) parts.push(LIMBI[brief.limba]!);
   if (styleHint) parts.push(styleHint);
   parts.push('clean production');
 

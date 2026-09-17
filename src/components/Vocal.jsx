@@ -18,6 +18,8 @@ import { api } from '@/lib/client';
 import { openCheckout } from '@/lib/lemon-client';
 import { useRouter } from 'next/navigation';
 import { UI, label, styleLabel } from '@/lib/i18n';
+// Sub-stilurile și stările fiecărui stil stau lângă promptul lui, în stiluri.ts.
+import { OPTIONS } from '@/lib/pipeline/stiluri';
 import {
   Check, ArrowLeft, ArrowRight, Heart, Users, PartyPopper, Music2, Star, Mic2,
   Disc3, Guitar, Piano, Flame, Radio, Pencil, PenLine, RefreshCw, Play, Pause,
@@ -45,21 +47,6 @@ const STYLES = [
 ];
 
 const VOICE_EMOJI = { 'Femeie': '👩', 'Bărbat': '👨' };
-
-const OPTIONS = {
-  romantic:  { sub: ['Baladă', 'Acustic', 'Pop romantic', 'Cinematic'],               mood: ['Tandră', 'Pasională', 'Nostalgică', 'Solemnă'],          voice: ['Femeie', 'Bărbat'] },
-  suflet:    { sub: ['Baladă acustică', 'Pop cald', 'Folk', 'Orchestral'],            mood: ['Recunoștință', 'Nostalgică', 'Luminoasă', 'Emoționantă'], voice: ['Femeie', 'Bărbat'] },
-  petrecere: { sub: ['Dance', 'Disco', 'Folclor modern', 'Latino'],                   mood: ['Energică', 'Veselă', 'Exuberantă'],                      voice: ['Femeie', 'Bărbat'] },
-  manele:    { sub: ['De dragoste', 'De petrecere', 'De pahar', 'Orientală modernă'], mood: ['Sentimentală', 'De chef', 'Cu năduf'],                   voice: ['Femeie', 'Bărbat'] },
-  pop:       { sub: ['Pop modern', 'Dance-pop', 'Pop acustic', 'Retro anii 80'],      mood: ['Veselă', 'Emoționantă', 'Energică', 'Visătoare'],        voice: ['Femeie', 'Bărbat'] },
-  rb:        { sub: ['Classic Soul', 'Contemporary', 'Neo-Soul', 'Funky'],            mood: ['Senzuală', 'Romantică', 'Reflexivă'],                    voice: ['Femeie', 'Bărbat'] },
-  rap:       { sub: ['Melodic rap', 'Trap', 'Old-school', 'Boom bap'],                mood: ['Energică', 'Emoționantă', 'Amuzantă', 'Motivațională'],  voice: ['Femeie', 'Bărbat'] },
-  rock:      { sub: ['Rock clasic', 'Baladă rock', 'Pop-rock', 'Alternativ'],         mood: ['Energică', 'Emoționantă', 'Rebelă'],                     voice: ['Femeie', 'Bărbat'] },
-  folclor:   { sub: ['Etno modern', 'Tradițional', 'Doină', 'Sârbă de joc'],          mood: ['Veselă', 'Nostalgică', 'De sărbătoare'],                 voice: ['Femeie', 'Bărbat'] },
-  acustic:   { sub: ['Voce și chitară', 'Pian', 'Folk', 'Indie'],                     mood: ['Caldă', 'Intimă', 'Nostalgică'],                         voice: ['Femeie', 'Bărbat'] },
-  latino:    { sub: ['Reggaeton', 'Bachata', 'Salsa', 'Latin pop'],                   mood: ['Pasională', 'Veselă', 'Senzuală'],                       voice: ['Femeie', 'Bărbat'] },
-  jazz:      { sub: ['Swing', 'Jazz lounge', 'Bossa nova', 'Big band'],               mood: ['Elegantă', 'Jucăușă', 'Romantică'],                      voice: ['Femeie', 'Bărbat'] },
-};
 
 const RECIPIENTS = ['Iubită', 'Iubit', 'Soție', 'Soț', 'Mamă', 'Tată', 'Părinți', 'Fiică',
   'Fiu', 'Soră', 'Frate', 'Prietenă', 'Prieten', 'Bunici', 'Altcineva'];
