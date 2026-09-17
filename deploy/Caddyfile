@@ -1,5 +1,8 @@
-# Configurarea pentru Caddy. Există două feluri de a rula Caddy, iar linia
-# `reverse_proxy` diferă între ele — e singura diferență, dar e esențială.
+# Configurarea pentru Caddy.
+#
+# Site-ul stă pe golura.io — domeniul aprobat de Paddle pentru exact acest
+# produs. vocal.md rămâne cumpărat și trimite vizitatorii acolo, ca linkurile
+# vechi și cine îl tastează din memorie să ajungă unde trebuie.
 #
 # ─────────────────────────────────────────────────────────────────────────
 #  CAZUL 1 — Caddy rulează ÎN CONTAINER (verifici cu: docker ps | grep caddy)
@@ -11,15 +14,20 @@
 #
 #     docker network connect vocal-md_default <numele-containerului-caddy>
 #
-# Apoi folosește blocul de mai jos AȘA CUM E.
+# Apoi folosește blocurile de mai jos AȘA CUM SUNT.
 
-vocal.md, www.vocal.md {
+golura.io, www.golura.io {
 	encode zstd gzip
 
-	reverse_proxy vocal-md-web-1:3000 {
-		# Cloudflare stă în față, deci IP-ul real al vizitatorului vine de la el.
-		header_up X-Real-IP {http.request.header.CF-Connecting-IP}
-	}
+	# Fără `header_up X-Real-IP` aici, dinadins.
+	#
+	# Blocul vechi muta CF-Connecting-IP în X-Real-IP, pentru că vocal.md stătea
+	# în spatele Cloudflare. golura.io merge direct de la Namecheap la server,
+	# deci antetul acela nu există — iar dacă l-am seta oricum, ar pleca gol, și
+	# toți vizitatorii ar ajunge în aceeași găleată de limitare.
+	#
+	# Caddy pune singur X-Forwarded-For, de unde aplicația citește adresa.
+	reverse_proxy vocal-md-web-1:3000
 
 	header {
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -34,12 +42,19 @@ vocal.md, www.vocal.md {
 	}
 }
 
+# Domeniul vechi. 308 păstrează metoda și calea, deci un link adânc
+# (vocal.md/comanda/abc?t=…) ajunge la aceeași pagină pe golura.io, cu tot cu
+# secretul din adresă.
+vocal.md, www.vocal.md {
+	redir https://golura.io{uri} 308
+}
+
 # ─────────────────────────────────────────────────────────────────────────
-#  CAZUL 2 — Caddy e instalat pe server (there's /etc/caddy/Caddyfile)
+#  CAZUL 2 — Caddy e instalat pe server (există /etc/caddy/Caddyfile)
 # ─────────────────────────────────────────────────────────────────────────
 #
 # Atunci Caddy și site-ul sunt pe aceeași mașină, deci schimbi o singură linie:
 #
-#     reverse_proxy 127.0.0.1:3000 {
+#     reverse_proxy 127.0.0.1:3000
 #
 # și scoți blocul `log`, pentru că un Caddy de sistem scrie deja în jurnalul lui.

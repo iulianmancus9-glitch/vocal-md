@@ -92,14 +92,26 @@ export async function checkLimit(
 }
 
 /**
- * IP-ul real al vizitatorului. Caddy pune CF-Connecting-IP în X-Real-IP, pentru că
- * altfel am vedea doar adresele Cloudflare și am limita toată lumea deodată.
+ * IP-ul real al vizitatorului.
+ *
+ * Se caută în mai multe anteturi pentru că depinde ce stă în față: cu Cloudflare
+ * adresa vine în CF-Connecting-IP, pe care Caddy îl mută în X-Real-IP; fără
+ * Cloudflare rămâne X-Forwarded-For, pus de Caddy.
+ *
+ * Anteturile goale se sar, nu se acceptă. Un Caddy configurat pentru Cloudflare
+ * pe un domeniu care nu e în spatele lui trimite X-Real-IP gol — iar un șir gol
+ * ar fi trecut de `??` ca valoare bună. Atunci toți vizitatorii ar fi ajuns în
+ * aceeași găleată de limitare și s-ar fi blocat unii pe alții.
  */
 export function clientIp(headers: Headers): string {
-  return (
-    headers.get('x-real-ip') ??
-    headers.get('cf-connecting-ip') ??
-    headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    '0.0.0.0'
-  );
+  const candidates = [
+    headers.get('x-real-ip'),
+    headers.get('cf-connecting-ip'),
+    headers.get('x-forwarded-for')?.split(',')[0],
+  ];
+  for (const value of candidates) {
+    const ip = value?.trim();
+    if (ip) return ip;
+  }
+  return '0.0.0.0';
 }

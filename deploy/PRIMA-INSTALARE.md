@@ -1,7 +1,7 @@
 # Prima instalare pe VPS
 
 Pentru serverul Ubuntu 24.04 de la 194.33.42.212, unde Caddy rulează deja și
-domeniul vocal.md are HTTPS prin Cloudflare.
+domeniul golura.io are HTTPS prin Caddy.
 
 ---
 
@@ -56,7 +56,7 @@ De completat obligatoriu:
 | `DATABASE_URL` | `postgres://vocal:PAROLA@db:5432/vocalmd` — hostul e `db`, numele serviciului |
 | `OPENROUTER_API_KEY` | openrouter.ai → Keys |
 | `SUNO_API_KEY` | sunoapi.org → contul tău |
-| `APP_URL` | `https://vocal.md` |
+| `APP_URL` | `https://golura.io` |
 
 Lemon Squeezy și Resend rămân goale deocamdată — site-ul pornește fără ele.
 Butonul de cumpărare spune că plata se activează în curând, în loc să livreze
@@ -107,7 +107,7 @@ Fișierele audio stau pe volumul Docker `vocal-md_audio` și se salvează separa
 
 ## Prima comandă adevărată
 
-Intră pe https://vocal.md, completează formularul și urmărește din alt terminal:
+Intră pe https://golura.io, completează formularul și urmărește din alt terminal:
 
 ```bash
 docker compose logs -f worker

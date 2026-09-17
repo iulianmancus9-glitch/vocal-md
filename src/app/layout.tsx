@@ -32,7 +32,7 @@ const poppins = Poppins({
 export async function generateMetadata(): Promise<Metadata> {
   const t = UI[await pageLang()];
   return {
-    metadataBase: new URL(process.env.APP_URL ?? 'https://vocal.md'),
+    metadataBase: new URL(process.env.APP_URL ?? 'https://golura.io'),
     title: t.metaTitle,
     description: t.metaDesc,
     openGraph: {
