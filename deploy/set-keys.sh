@@ -28,7 +28,7 @@ declare -A HINT=(
   [LEMON_VARIANT_ID]="produsul → Variants ; e un număr, NU al produsului"
   [LEMON_WEBHOOK_SECRET]="Lemon Squeezy → Settings → Webhooks → semnătura pusă de tine"
   [RESEND_API_KEY]="Resend → API Keys ; începe cu re_"
-  [MAIL_FROM]="de pe ce adresă pleacă emailurile, ex: Vocal MD <comenzi@golura.io>"
+  [MAIL_FROM]="de pe ce adresă pleacă emailurile, ex: Vocal MD <comenzi@vocal.md>"
 )
 
 KEYS=("$@")

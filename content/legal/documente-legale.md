@@ -22,7 +22,7 @@ Vocal MD („Vocal MD", „noi") este un serviciu operat de **S.R.L. „WADE PRO
 - IDNO: 1025600056881
 - Sediu: MD-4614, raionul Edineț, satul Bădragii Noi, Republica Moldova
 - Email de contact: base.vocalmd@gmail.com
-- Site: golura.io
+- Site: vocal.md
 
 Prin utilizarea site-ului și plasarea unei comenzi, sunteți de acord cu acești Termeni. Dacă nu sunteți de acord, vă rugăm să nu utilizați serviciul.
 
@@ -323,7 +323,7 @@ Vocal MD ("Vocal MD", "we", "us") is a service operated by **WADE PRODUCTION S.R
 - Company number (IDNO): 1025600056881
 - Registered address: MD-4614, Edineț district, Bădragii Noi village, Republic of Moldova
 - Contact email: base.vocalmd@gmail.com
-- Website: golura.io
+- Website: vocal.md
 
 By using our website and placing an order, you agree to these Terms. If you do not agree, please do not use the service.
 

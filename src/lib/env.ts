@@ -56,7 +56,7 @@ const schema = z.object({
   EXPORT_KEY: z.string().default(''),
 
   RESEND_API_KEY: z.string().default(''),
-  MAIL_FROM: z.string().default('Vocal MD <comenzi@golura.io>'),
+  MAIL_FROM: z.string().default('Vocal MD <comenzi@vocal.md>'),
   MAIL_REPLY_TO: z.string().default('base.vocalmd@gmail.com'),
 
   /**

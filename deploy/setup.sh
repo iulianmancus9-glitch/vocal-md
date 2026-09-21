@@ -74,8 +74,8 @@ if [ -z "${SKIP_ENV:-}" ]; then
   EXPORT_KEY=$(openssl rand -hex 20)
 
   read -r -p "
-Adresa site-ului [https://golura.io]: " APP_URL
-  APP_URL=${APP_URL:-https://golura.io}
+Adresa site-ului [https://vocal.md]: " APP_URL
+  APP_URL=${APP_URL:-https://vocal.md}
 
   # ─── 5. scrierea .env ────────────────────────────────────────
   cp .env.example .env
