@@ -165,7 +165,7 @@ Două adrese care întorc CSV, protejate cu `EXPORT_KEY` din `.env`:
 ```
 
 În Sheets se leagă cu `=IMPORTDATA("…")`, care reîmprospătează singur.
-`setup.sh` afișează formulele gata de lipit. Cheia apare în adresa pusă în foaie,
+`bash deploy/sheets.sh` afișează formulele gata de lipit. Cheia apare în adresa pusă în foaie,
 deci e separată de tot restul și nu deschide nimic altceva.
 
 ## Reglarea sunetului
