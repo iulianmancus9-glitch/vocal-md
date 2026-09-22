@@ -150,6 +150,13 @@ const RO = {
   heroTitle: 'Transformă povestea voastră într-o melodie de neuitat.',
   heroText: 'Spui povestea voastră, iar versurile și vocea sunt generate automat. În câteva minute ai o melodie făcută numai pentru omul drag ție.',
   ctaCreate: 'Creează melodia ta',
+
+  /* revenirea la o melodie lăsată neterminată */
+  resumeTitle: 'Ai o melodie începută',
+  resumeFor: (nume: string) => `Ai început o melodie pentru ${nume}`,
+  resumeText: 'Am păstrat ce ai completat. Poți continua de unde ai rămas sau poți lua totul de la capăt.',
+  resumeGo: 'Continuă melodia',
+  resumeNew: 'Începe una nouă',
   specTitle: 'Ce primești',
   spec1a: 'Două fișiere MP3', spec1b: ' — două interpretări ale melodiei tale',
   spec2a: 'Livrare ', spec2b: 'pe email', spec2c: ' și în pagină, după confirmarea plății',
@@ -467,6 +474,12 @@ const EN: typeof RO = {
   heroTitle: 'Turn your story into a song no one forgets.',
   heroText: 'You tell your story, and the lyrics and the voice are generated automatically. In a few minutes you have a song made for one person only.',
   ctaCreate: 'Create your song',
+
+  resumeTitle: 'You have a song in progress',
+  resumeFor: (nume: string) => `You started a song for ${nume}`,
+  resumeText: 'We kept what you filled in. You can carry on from where you left off, or start over.',
+  resumeGo: 'Carry on',
+  resumeNew: 'Start a new one',
   specTitle: 'What you get',
   spec1a: 'Two MP3 files', spec1b: ' — two takes of your song',
   spec2a: 'Delivered ', spec2b: 'by email', spec2c: ' and on this page, once your payment is confirmed',

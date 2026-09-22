@@ -80,6 +80,16 @@ ok('bannerul nu se mai întoarce în formular', await page.locator('.vc-hero').c
 
 await page.getByRole('button', { name: /Romantic/ }).first().click();
 await page.locator('.vc-nav .vc-next').click();
+
+/* Refresh-ul nu are voie să șteargă ce a completat. Înainte, comanda nu exista
+   pe server până la ecranul de email, deci o pagină reîncărcată — sau un telefon
+   intrat în stand-by — îl trimitea înapoi la prima întrebare, după șase pași și
+   o poveste scrisă de mână. */
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(700);
+ok('refresh-ul îl lasă în formular, nu îl duce la început',
+  await page.locator('.vc-steps').count() === 1 && await page.locator('.vc-hero').count() === 0);
+
 await page.getByRole('button', { name: 'Baladă', exact: true }).click();
 await page.getByRole('button', { name: 'Tandră', exact: true }).click();
 await page.getByRole('button', { name: /Bărbat/ }).click();

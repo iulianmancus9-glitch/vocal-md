@@ -22,6 +22,7 @@ import { env } from '@/lib/env';
 import { logEvent, paidExpiry, unpaidExpiry } from '@/lib/orders';
 import { PROVIDER } from '@/lib/plata';
 import { enqueue } from '@/lib/queue/queue';
+import { resetLimits } from '@/lib/rate-limit';
 import { answerCallback, closeMessage, esc, telegramEnabled } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
@@ -85,6 +86,10 @@ async function unlock(press: Press): Promise<string> {
 
   await logEvent(order.id, 'paid', { prin: 'telegram', confirmatDe: press.from });
   await enqueue('deliver', order.id);
+
+  // A plătit, deci limita zilnică nu-l mai privește: e liber să înceapă o a
+  // doua melodie, cadou pentru altcineva, fără să fie oprit la primul text.
+  await resetLimits({ ip: order.consentIp, email: order.email });
 
   return `Comanda ${press.publicId} e deblocată. Emailul cu melodia pleacă singur.`;
 }

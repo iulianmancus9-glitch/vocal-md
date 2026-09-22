@@ -70,6 +70,65 @@ const inspiration = (t) => INSPIRATION_EMOJI.map((emoji, i) => ({
 const steps = (t) => [t.step1, t.step2, t.step3, t.step4, t.step5, t.step6];
 
 /* ══════════════════════════════════════════════════════════════
+   CIORNA
+   ══════════════════════════════════════════════════════════════ */
+
+/**
+ * Ce a completat omul în formular, ținut în browserul lui.
+ *
+ * Până la ecranul de email, comanda nu există pe server: e doar stare de React.
+ * Un refresh, un telefon care intră în stand-by sau o filă închisă din greșeală
+ * ștergeau tot, iar omul o lua de la prima întrebare. După șase pași și o
+ * poveste scrisă de mână, ăla e momentul în care pleacă de pe site.
+ *
+ * Nu salvăm bifa de acord cu termenii. Ea trebuie pusă din nou, cu mâna, de
+ * fiecare dată — un consimțământ readus din memorie nu e consimțământ.
+ *
+ * `localStorage` poate lipsi sau poate arunca (fereastră privată, cookie-uri
+ * blocate), deci fiecare atingere e învelită: dacă nu merge, se pierde ciorna,
+ * nu pagina.
+ */
+const DRAFT_KEY = 'vocal_draft';
+/** Mai vechi de atât, o ciornă nu mai e a nimănui. */
+const DRAFT_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+/**
+ * Sub atât, a fost un refresh: îl punem înapoi unde era, fără să-l întrebăm.
+ * Peste, e o revenire — și atunci întrebarea e cuviincioasă, nu enervantă.
+ */
+const DRAFT_FRESH = 30 * 60 * 1000;
+
+/** Are ciorna ceva de salvat, sau e formularul gol? */
+const hasProgress = (d) =>
+  Boolean(d && (d.style || d.names?.[0]?.trim() || d.story?.trim() || d.title?.trim()));
+
+function readDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!saved || saved.v !== 1 || typeof saved.at !== 'number') return null;
+    if (Date.now() - saved.at > DRAFT_MAX_AGE) {
+      localStorage.removeItem(DRAFT_KEY);
+      return null;
+    }
+    return hasProgress(saved.d) ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(value) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(value)); } catch { /* n-avem unde */ }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch { /* n-avem unde */ }
+}
+
+/** Pentru cine e melodia din ciornă, ca s-o putem numi când îl întrebăm. */
+const draftName = (d) => d?.names?.find((n) => n?.trim())?.trim() ?? '';
+
+/* ══════════════════════════════════════════════════════════════
    STIL
    ══════════════════════════════════════════════════════════════ */
 
@@ -358,6 +417,13 @@ button.vc-mark:hover { opacity: .68; }
 .vc-sec { scroll-margin-top: 104px; margin-top: 16px; padding: 20px 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--page); }
 .vc-secTitle { font-size: 19px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 5px; }
 .vc-secSub { font-size: 13.5px; line-height: 1.5; color: var(--gray); margin: 0 0 16px; }
+
+/* ─── panoul „continuă de unde ai rămas" ─── */
+.vc-resume { border: 1px solid rgba(108,92,231,.22); background: var(--violet-t); border-radius: 16px; padding: 15px 15px 16px; text-align: left; margin-top: 4px; }
+.vc-resumeTitle { font-size: 15.5px; font-weight: 700; margin: 0 0 4px; letter-spacing: -.01em; }
+.vc-resumeText { font-size: 12.8px; line-height: 1.5; color: var(--gray); margin: 0 0 13px; }
+.vc-resumeRow { display: grid; gap: 8px; }
+@media (min-width: 560px) { .vc-resumeRow { grid-template-columns: 1fr auto; align-items: center; } }
 
 /* ─── panoul de plată (link MAIB + confirmare cu mâna) ─── */
 .vc-payPanel { width: 100%; }
@@ -681,6 +747,8 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
   const [email, setEmail] = useState('');
   const [agree, setAgree] = useState(false);
   const [news, setNews] = useState(false);
+  /* Ciorna găsită la intrare, pe care i-o oferim înapoi. Null = n-avem ce oferi. */
+  const [draft, setDraft] = useState(null);
   const [copied, setCopied] = useState(false);
   const [confirmHome, setConfirmHome] = useState(false);
   const [library, setLibrary] = useState([]);
@@ -693,6 +761,41 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     document.cookie = `lang=${next};path=/;max-age=31536000;samesite=lax`;
     router.refresh();
   };
+
+  /**
+   * La intrare: ce facem cu ce a rămas de data trecută.
+   *
+   * Dacă a dat refresh acum câteva minute, îl punem exact unde era — asta nu e o
+   * alegere, e continuarea aceluiași gest. Dacă a trecut mai mult, îl întrebăm
+   * pe pagina de start, ca să nu-l aruncăm într-un formular pe care poate nu-l
+   * mai vrea.
+   *
+   * Nu se aplică deloc când intră dintr-un link de email: acolo comanda există
+   * pe server și ea bate orice ciornă din browser.
+   */
+  useEffect(() => {
+    if (initialOrderId) return;
+    const saved = readDraft();
+    if (!saved) return;
+
+    if (Date.now() - saved.at < DRAFT_FRESH) {
+      setD(saved.d);
+      setStep(saved.step ?? 0);
+      setEmail(saved.email ?? '');
+      setNews(Boolean(saved.news));
+      setScreen(saved.screen === 'email' ? 'email' : 'wizard');
+      return;
+    }
+    setDraft(saved);
+  }, [initialOrderId]);
+
+  /* Salvăm la fiecare schimbare, cât timp e în formular. E puțin text, iar
+     momentul în care se pierde tot e tocmai cel în care n-ai apucat să salvezi. */
+  useEffect(() => {
+    if (screen !== 'wizard' && screen !== 'email') return;
+    if (!hasProgress(d)) return;
+    writeDraft({ v: 1, at: Date.now(), screen, step, d, email, news });
+  }, [screen, step, d, email, news]);
 
   const top = useRef(null);
   const storyBox = useRef(null);
@@ -931,6 +1034,10 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
       mode: d.mode, title: d.title, story: d.story, lang: d.lang,
       email: email.trim(), newsletter: news, terms: agree,
     });
+    // De aici încolo comanda trăiește pe server, iar cookie-ul o ține minte.
+    // Ciorna din browser și-a făcut treaba și n-are de ce să mai stea.
+    clearDraft();
+    setDraft(null);
     setOrderId(publicId);
     setWaitFrom(Date.now());
     setScreen('writing');
@@ -1118,7 +1225,30 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
   /* pagina de start: bannerul singur, cu un singur lucru de făcut.
      Pașii apar abia după apăsare, iar bannerul nu se mai întoarce. */
   if (screen === 'intro') {
-    const start = () => { setStep(0); setScreen('wizard'); };
+    /* „Începe" pornește de la zero, deci ciorna veche se aruncă: altfel primul
+       pas ar arăta bifat cu alegerile altei melodii. */
+    const start = () => {
+      clearDraft();
+      setDraft(null);
+      setD({
+        style: null, sub: null, mood: null, voice: null,
+        recipient: null, recipientOther: '', names: [''], occasion: null, occasionOther: '',
+        mode: 'ai', title: '', story: '', lang: 'Română',
+      });
+      setEmail('');
+      setNews(false);
+      setStep(0);
+      setScreen('wizard');
+    };
+
+    const resume = () => {
+      setD(draft.d);
+      setStep(draft.step ?? 0);
+      setEmail(draft.email ?? '');
+      setNews(Boolean(draft.news));
+      setDraft(null);
+      setScreen(draft.screen === 'email' ? 'email' : 'wizard');
+    };
     return (
       <div className="vc">
         <style>{CSS}</style>
@@ -1144,11 +1274,29 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
             <h1 className="vc-heroTitle">{t.heroTitle}</h1>
             <p className="vc-heroText">{t.heroText}</p>
 
-            <div className="vc-heroCta">
-              <button className="vc-next" onClick={start}>
-                <Sparkles size={18} /> {t.ctaCreate}
-              </button>
-            </div>
+            {/* A lăsat ceva neterminat. Îl întrebăm o dată, aici, în locul
+                butonului obișnuit — nu-l aruncăm înapoi în formular, dar nici
+                nu ne facem că n-a fost nimic. */}
+            {draft ? (
+              <div className="vc-resume">
+                <p className="vc-resumeTitle">
+                  {draftName(draft.d) ? t.resumeFor(draftName(draft.d)) : t.resumeTitle}
+                </p>
+                <p className="vc-resumeText">{t.resumeText}</p>
+                <div className="vc-resumeRow">
+                  <button className="vc-next" onClick={resume}>
+                    <RotateCcw size={17} /> {t.resumeGo}
+                  </button>
+                  <button className="vc-ghost" onClick={start}>{t.resumeNew}</button>
+                </div>
+              </div>
+            ) : (
+              <div className="vc-heroCta">
+                <button className="vc-next" onClick={start}>
+                  <Sparkles size={18} /> {t.ctaCreate}
+                </button>
+              </div>
+            )}
             {/* Prețul stă lângă buton, nu ascuns mai jos: e primul lucru pe care
                 îl caută si un cumpărător, si cine ne verifică. */}
             <p className="vc-heroPrice">

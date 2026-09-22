@@ -147,8 +147,8 @@ Site-ul e în română și engleză. Limba se alege pe server, în ordinea asta:
 2. antetul `Accept-Language` — un browser care cere română primește română;
 3. `DEFAULT_LANG` din `.env` — restul lumii.
 
-`DEFAULT_LANG=en` acum. Ca să se întoarcă româna implicită, se schimbă în `ro`
-și se repornește; nimic altceva.
+`DEFAULT_LANG=ro` acum: clienții sunt majoritatea din Moldova și România. Pentru
+engleză implicită se schimbă în `en` și se repornește; nimic altceva.
 
 Se traduc doar etichetele văzute de om. Alegerile din formular — „Femeie",
 „Altcineva", „Română", stările de spirit — rămân în română oriunde, pentru că

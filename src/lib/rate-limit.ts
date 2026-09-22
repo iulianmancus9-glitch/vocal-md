@@ -8,9 +8,10 @@
  * Numărătoarea stă în Postgres, nu în memoria procesului: web-ul și worker-ul
  * sunt containere separate, iar o repornire nu are voie să reseteze limita.
  */
-import { sql } from 'drizzle-orm';
+import { inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { env } from '@/lib/env';
+import { rateLimits } from '@/lib/db/schema';
 
 export type LimitAction = 'lyrics' | 'render';
 
@@ -89,6 +90,42 @@ export async function checkLimit(
   }
 
   return byIp;
+}
+
+/**
+ * Șterge contoarele de azi ale unui client. Se cheamă când a plătit.
+ *
+ * Limitele apără previzualizarea gratuită, care ne costă credite Suno. Cineva
+ * care tocmai a plătit 30 € nu mai e riscul de care ne apăram — iar el e exact
+ * omul care vrea o a doua melodie, cadou pentru altcineva.
+ *
+ * Fără asta, limita zilnică rămânea pe el și după cumpărare: începea o melodie
+ * nouă, completa tot formularul și nu primea nici măcar primul text. Din partea
+ * lui arăta ca un site stricat, nu ca o limită.
+ *
+ * Ștergem și după IP, și după email, pentru că `checkLimit` numără pe amândouă
+ * și ar fi de ajuns unul rămas ca să-l oprească.
+ */
+export async function resetLimits(
+  { ip, email }: { ip?: string | null; email?: string | null },
+): Promise<void> {
+  const day = today();
+  const buckets: string[] = [];
+
+  if (ip) buckets.push(`lyrics:ip:${ip}:${day}`, `render:ip:${ip}:${day}`);
+  if (email) {
+    const e = email.toLowerCase();
+    buckets.push(`lyrics:email:${e}:${day}`, `render:email:${e}:${day}`);
+  }
+  if (buckets.length === 0) return;
+
+  try {
+    await db.delete(rateLimits).where(inArray(rateLimits.bucket, buckets));
+  } catch (err) {
+    // O limită nereseta nu are voie să strice deblocarea: omul are melodia,
+    // iar contorul se golește oricum la miezul nopții.
+    console.error('Nu am putut reseta limitele:', err);
+  }
 }
 
 /**
