@@ -817,6 +817,10 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
   const [email, setEmail] = useState('');
   const [agree, setAgree] = useState(false);
   const [news, setNews] = useState(false);
+  /* Panoul de plată deschis, dacă e vreunul. Stă aici, sus, printre celelalte
+     stări, pentru că `jumpTo` trebuie să-l poată închide — iar `jumpTo` e
+     declarat înaintea secțiunii de plată. */
+  const [pay, setPay] = useState(null);
   /* Ce i-am găsit la intrare și i-am putea da înapoi: o comandă de pe server
      sau, dacă n-a ajuns să facă una, ciorna din browser. */
   const [draft, setDraft] = useState(null);
@@ -847,8 +851,15 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
   const jumpTo = useCallback((state) => {
     setOrderId(state.publicId);
     setOrder(state);
+    /* Trecem la altă comandă, deci ce ținea de cea dinainte se închide: un
+       panou de plată rămas deschis ar arăta numărul comenzii vechi, iar omul
+       ar plăti crezând că e vorba de asta. */
+    setPay(null);
+    setApiError(null);
     if (state.lyrics != null) setLyrics(state.lyrics);
-    if (state.status === 'rendering' || state.status === 'lyrics_pending') {
+    // Stările în care ecranul arată o bară de așteptare. Fără momentul de
+    // pornire, bara ar sta la zero și ar părea înțepenită.
+    if (['rendering', 'lyrics_pending', 'draft'].includes(state.status)) {
       setWaitFrom(Date.now());
     }
     setScreen(SCREEN_FOR[state.status] ?? 'intro');
@@ -1214,8 +1225,9 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
    * Confirmarea nu vine de la browser — linkul MAIB nu ne anunță nimic, iar
    * browserul poate minți. Clientul spune doar că a plătit; melodia se
    * deschide când vede cineva banii în cont și apasă butonul de pe Telegram.
+   *
+   * Panoul deschis se ține în `pay`, declarat sus, printre celelalte stări.
    */
-  const [pay, setPay] = useState(null);
 
   /**
    * Așteptarea nu e o stare a paginii, ci a comenzii.
@@ -1748,19 +1760,24 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
                   </span>
                 </div>
 
-                {it.tracks.length > 0 && (
-                  <div className="vc-itemAct">
-                    <button className="vc-ghost" style={{ flex: 1 }}
-                      onClick={() => { setOrderId(it.publicId); applyState(it); }}>
-                      <Play size={15} /> {it.paid ? t.listen : t.listenDemo}
-                    </button>
-                    {it.paid && it.tracks[0]?.fullUrl && (
-                      <a className="vc-ghost" style={{ flex: 1 }} href={it.tracks[0].fullUrl} download>
-                        <Download size={15} /> {t.download}
-                      </a>
+                {/* Butonul apare la orice comandă, nu doar la cele care au deja
+                    piese: o melodie lăsată la jumătate se continuă tot de aici.
+                    `jumpTo` duce fiecare comandă pe ecranul stării ei — ascultat,
+                    versuri, sau așteptare. */}
+                <div className="vc-itemAct">
+                  <button className="vc-ghost" style={{ flex: 1 }} onClick={() => jumpTo(it)}>
+                    {it.tracks.length > 0 ? (
+                      <><Play size={15} /> {it.paid ? t.listen : t.listenDemo}</>
+                    ) : (
+                      <><ArrowRight size={15} /> {t.libContinue}</>
                     )}
-                  </div>
-                )}
+                  </button>
+                  {it.paid && it.tracks[0]?.fullUrl && (
+                    <a className="vc-ghost" style={{ flex: 1 }} href={it.tracks[0].fullUrl} download>
+                      <Download size={15} /> {t.download}
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
 

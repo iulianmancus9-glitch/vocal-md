@@ -498,6 +498,18 @@ const lib = await page.evaluate(async () => {
 });
 ok('biblioteca listează comanda', lib.orders?.some((o) => o.publicId === id));
 
+/* Butonul din bibliotecă nu făcea nimic: chema funcția care mută ecranul doar
+   atunci când omul aștepta ceva, iar în bibliotecă nu așteaptă nimic. Apăsai
+   și rămâneai pe loc, fără niciun semn că s-a întâmplat ceva. */
+await page.locator('.vc-footBtn').first().click();
+await page.locator('.vc-item').first().waitFor({ timeout: 15000 });
+ok('biblioteca se deschide din subsol', await page.locator('.vc-item').count() >= 1);
+
+await page.locator('.vc-itemAct button').first().click();
+await page.locator('.vc-doneTitle').waitFor({ timeout: 15000 }).catch(() => {});
+ok('din bibliotecă se intră în melodie',
+  await page.locator('.vc-doneTitle').count() === 1);
+
 const key0 = process.env.EXPORT_KEY ?? 'cheie-de-test-12345';
 const soldNow = await page.request.get(`${BASE}/api/export/comenzi.csv?key=${key0}`);
 ok('comanda plătită apare la vândute',
