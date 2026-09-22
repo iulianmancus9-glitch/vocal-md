@@ -783,6 +783,26 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
   };
 
   /**
+   * Sare direct pe ecranul care se potrivește stării comenzii.
+   *
+   * Spre deosebire de `applyState`, care mută ecranul doar când omul aștepta
+   * ceva, asta e o mutare voită: venim dintr-un link de email sau dintr-o
+   * pagină reîncărcată, iar locul corect e cel în care a rămas comanda.
+   *
+   * Stă aici, sus, pentru că efectul de mai jos îl folosește. `const` nu se
+   * ridică singur: declarat sub el, ar fi fost citit înainte să existe.
+   */
+  const jumpTo = useCallback((state) => {
+    setOrderId(state.publicId);
+    setOrder(state);
+    if (state.lyrics != null) setLyrics(state.lyrics);
+    if (state.status === 'rendering' || state.status === 'lyrics_pending') {
+      setWaitFrom(Date.now());
+    }
+    setScreen(SCREEN_FOR[state.status] ?? 'intro');
+  }, []);
+
+  /**
    * La intrare: ce facem cu ce a rămas de data trecută.
    *
    * Dacă a dat refresh acum câteva minute, îl punem exact unde era — asta nu e o
@@ -922,23 +942,6 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
       return next;
     });
   }, [editing]);
-
-  /**
-   * Sare direct pe ecranul care se potrivește stării comenzii.
-   *
-   * Spre deosebire de `applyState`, care mută ecranul doar când omul aștepta
-   * ceva, asta e o mutare voită: venim dintr-un link de email sau dintr-o
-   * pagină reîncărcată, iar locul corect e cel în care a rămas comanda.
-   */
-  const jumpTo = useCallback((state) => {
-    setOrderId(state.publicId);
-    setOrder(state);
-    if (state.lyrics != null) setLyrics(state.lyrics);
-    if (state.status === 'rendering' || state.status === 'lyrics_pending') {
-      setWaitFrom(Date.now());
-    }
-    setScreen(SCREEN_FOR[state.status] ?? 'intro');
-  }, []);
 
   /* Deschisă dintr-un link de email: sărim direct unde a rămas comanda. */
   useEffect(() => {
