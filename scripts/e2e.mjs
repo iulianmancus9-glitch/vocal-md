@@ -482,18 +482,25 @@ for (const doc of ['termeni', 'rambursare', 'confidentialitate']) {
 
   ok('pagina de start se dă în engleză',
     await en.getByRole('button', { name: /Create your song/i }).count() === 1);
-  ok('sectiunea de pret spune ce se livreaza',
-    (await en.locator('.vc-priceBox').textContent()).includes('Two MP3 files'));
+  /* Prețul nu mai are secțiune proprie: stă în rândul de sub butonul din antet.
+     Verificarea rămâne aceeași în fond — omul trebuie să vadă 30 € fără să
+     completeze nimic, altfel află abia după șase pași. */
   ok('pretul se vede fara sa completezi nimic',
-    (await en.locator('.vc-priceBig').textContent()).includes('30'));
-  ok('meniul duce la cele patru sectiuni',
-    await en.locator('.vc-nav2 a').count() === 4);
-  for (const id of ['pricing', 'samples', 'how', 'faq']) {
+    (await en.locator('.vc-heroPrice').textContent()).includes('30'));
+  ok('meniul duce la cele doua sectiuni',
+    await en.locator('.vc-nav2 a').count() === 2);
+  for (const id of ['how', 'faq']) {
     ok(`sectiunea „${id}" exista pe pagina`, await en.locator(`#${id}`).count() === 1);
   }
+  ok('pretul si melodiile demo nu mai au sectiuni separate',
+    await en.locator('#pricing').count() === 0
+    && await en.locator('#samples').count() === 0);
   ok('sunt opt intrebari frecvente', await en.locator('.vc-faqItem').count() === 8);
+  /* Mențiunea că vocile sunt sintetice stătea sub melodiile demo. Odată cu ele
+     a plecat și ea de acolo, dar rămâne obligatorie — acum o poartă a patra
+     întrebare frecventă, și de acolo o verificăm. */
   ok('se spune că vocile sunt sintetice',
-    (await en.locator('.vc-demoFoot').textContent()).toLowerCase().includes('synthetic'));
+    (await en.locator('.vc-faqItem').nth(3).textContent()).toLowerCase().includes('synthetic'));
   ok('bannerul de cookie-uri e în engleză',
     await en.getByRole('button', { name: 'Necessary only' }).count() === 1);
   ok('comutatorul oferă româna', await en.locator('.vc-lang').first().textContent() === 'Română');

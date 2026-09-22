@@ -23,7 +23,14 @@ const schema = z.object({
   DATABASE_URL: z.string().startsWith('postgres'),
 
   OPENROUTER_API_KEY: z.string().min(1),
-  GEMINI_MODEL: z.string().default('google/gemini-2.5-pro'),
+  /**
+   * Modelul care scrie versurile, la OpenRouter.
+   *
+   * E „preview", adică Google îl poate schimba sau retrage fără să anunțe. Dacă
+   * într-o zi versurile nu se mai generează, ăsta e primul lucru de verificat:
+   * se pune `google/gemini-2.5-pro` la loc în `.env` și se repornește.
+   */
+  GEMINI_MODEL: z.string().default('google/gemini-3.1-pro-preview'),
   GEMINI_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.9),
 
   SUNO_API_KEY: z.string().min(1),
