@@ -39,6 +39,15 @@ export interface OrderState {
   publicId: string;
   status: Order['status'];
   paid: boolean;
+  /**
+   * Adresa lui, întoarsă înapoi lui.
+   *
+   * Linkul de plată MAIB e același pentru toți și nu poartă numărul comenzii.
+   * Singura punte între banii intrați și rândul din baza noastră e emailul, deci
+   * ecranul de plată i-l arată și îl roagă să-l folosească și acolo. Nu e o
+   * scurgere: ca să ajungi aici, ai deja cheia comenzii.
+   */
+  email: string | null;
   songTitle: string | null;
   lyrics: string | null;
   lyricsVersion: number;
@@ -109,6 +118,7 @@ export async function orderState(order: Order): Promise<OrderState> {
     publicId: order.publicId,
     status: order.status,
     paid,
+    email: order.email,
     songTitle: order.songTitle,
     lyrics: order.lyrics,
     lyricsVersion: order.lyricsVersion,

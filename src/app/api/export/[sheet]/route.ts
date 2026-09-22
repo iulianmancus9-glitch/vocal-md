@@ -26,6 +26,7 @@ const STATUS_LABEL: Record<string, string> = {
   lyrics_ready: 'a primit versurile',
   rendering: 'se înregistrează melodia',
   preview_ready: 'a ascultat previzualizarea',
+  payment_claimed: 'spune că a plătit — de confirmat',
   paid: 'a plătit',
   delivered: 'a primit melodia',
   refused: 'refuzată (conținut)',

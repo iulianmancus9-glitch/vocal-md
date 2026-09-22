@@ -2,7 +2,7 @@
 
 Site unde oamenii comandă melodii personalizate. Formular în șase pași, versuri
 gratuite scrise de Gemini, previzualizare gratuită de 60 de secunde în două
-interpretări, apoi 30 € pentru melodia completă, prin Lemon Squeezy.
+interpretări, apoi 30 € pentru melodia completă, printr-un link de plată MAIB.
 
 Next.js + PostgreSQL, în Docker, pe VPS Ubuntu 24.04. Caddy termină HTTPS pe gazdă.
 
@@ -48,19 +48,19 @@ Nouă tabele. Firul unei comenzi:
 orders ──┬── lyrics_versions   fiecare generare sau editare a versurilor
          ├── renders ──┬────── o înregistrare = un task Suno = două variante
          │             └── order_tracks   piesele ei, cu previzualizările
-         ├── payments          tranzacția Lemon Squeezy
+         ├── payments          tranzacția, așa cum a fost confirmată
          ├── emails            ce i-am trimis clientului și dacă a plecat
          └── order_events      urma auditabilă: ce s-a întâmplat și când
 
 jobs             coada worker-ului
-webhook_events   idempotență pentru Lemon Squeezy și Suno
+webhook_events   idempotență pentru Telegram și Suno
 rate_limits      apărarea previzualizării gratuite
 ```
 
 Drumul normal al unei comenzi, prin coloana `status`:
 
 ```
-draft → lyrics_pending → lyrics_ready → rendering → preview_ready → paid → delivered
+draft → lyrics_pending → lyrics_ready → rendering → preview_ready → payment_claimed → paid → delivered
 ```
 
 Ramurile scurte: `refused` (filtru de conținut), `failed` (eroare tehnică),
@@ -252,25 +252,43 @@ arată de ce.
 ## Plata
 
 Checkout-ul se creează pe server, nu în browser: prețul și identificatorul
-comenzii sunt puse de noi, ca să nu poată fi schimbate înainte de „plătește".
-Confirmarea vine doar prin webhook — browserul poate minți, procesatorul nu,
-pentru că semnează fiecare mesaj.
+Paddle a refuzat domeniul de cinci ori — motivul era în prima frază a politicii
+lor: „Paddle is built to serve software companies", iar noi vindem fișiere
+audio. Lemon Squeezy a refuzat și el, invocând regulile impuse lui de Stripe,
+PayPal și companiile de carduri. Problema e categoria, nu site-ul.
 
-Semnătura e HMAC-SHA256 peste corpul brut, comparată cu `timingSafeEqual`: o
-comparație obișnuită se oprește la prima literă greșită, iar din cât durează se
-poate ghici semnătura literă cu literă.
+Până se leagă Paynet, se încasează pe un **link fix de plată MAIB**, iar
+deblocarea o face omul, cu mâna, de pe Telegram. Tot ce ține de procesator stă
+într-un singur fișier, `src/lib/plata.ts`: a treia mutare înseamnă rescris
+fișierul ăla, nu căutat prin proiect.
 
-Lemon Squeezy nu trimite un identificator al evenimentului, ci doar al comenzii,
-deci cheia de idempotență e `nume_eveniment:id_comandă`. Altfel rambursarea ar
-avea aceeași cheie ca plata și ar fi înghițită ca duplicat.
+Fluxul are trei timpi:
 
-Am venit aici de la Paddle, care ne-a refuzat domeniul de cinci ori. Motivul era
-în prima frază a politicii lor: „Paddle is built to serve software companies".
-Noi vindem fișiere audio.
+```
+clientul deschide linkul   →  notificare pe Telegram
+clientul zice „am plătit"  →  payment_claimed + notificare cu două butoane
+apeși „Deblochează"        →  paid, livrarea intră în coadă, emailul pleacă
+```
 
-O rambursare readuce comanda exact de unde a plecat: păstrează previzualizările,
-pierde fișierele integrale. Ruta de audio verifică starea la fiecare cerere,
-deci accesul se închide imediat.
+Ce nu poate linkul fix, și trebuie știut: **nu poartă identificatorul comenzii.**
+MAIB spune că au intrat 30 €, nu de la care comandă. Puntea e adresa de email,
+pe care clientul o completează și la noi, și la MAIB — de asta i-o punem sub
+ochi pe ecranul de plată și o repetăm în mesajul de pe Telegram.
+
+Starea `payment_claimed` e cea în care clientul **spune** că a plătit. Melodia
+rămâne închisă: browserul poate minți, iar singura dovadă e contul. Testul e2e
+ține cel mai mult la exact asta.
+
+Webhook-ul Telegram (`/api/webhooks/telegram`) e cea mai periculoasă adresă din
+proiect — cine o poate chema poate debloca melodii pe gratis. De asta verifică
+întâi antetul secret, cu `timingSafeEqual`, și abia apoi citește ceva din corp.
+Peste el, apăsarea trebuie să vină din chat-ul nostru, iar `update_id` ține
+idempotența: Telegram retrimite până primește 200.
+
+Butonul „Respinge" acoperă și rambursarea: comanda se întoarce la previzualizare,
+păstrează previzualizările, pierde fișierele integrale. Ruta de audio verifică
+starea la fiecare cerere, deci accesul se închide imediat. Banii se dau înapoi
+din MAIB, cu mâna.
 
 ## Ce urmează
 

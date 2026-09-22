@@ -15,6 +15,7 @@ import { enqueue } from '@/lib/queue/queue';
 import { briefFromOrder } from '@/lib/pipeline/brief';
 import { buildStyle } from '@/lib/pipeline/prompt';
 import { logEvent } from '@/lib/orders';
+import { esc, notify } from '@/lib/telegram';
 import { env } from '@/lib/env';
 
 export interface StartRenderResult {
@@ -68,5 +69,23 @@ export async function startRender(
     .where(eq(orders.id, order.id));
 
   await logEvent(order.id, 'render_started', { generation, style });
+
+  /**
+   * Anunțul pe Telegram. De aici încolo se cheltuiesc credite Suno și urmează,
+   * poate, o plată — iar plata se deblochează cu mâna, deci e bine ca omul să
+   * știe că vine, nu s-o afle când clientul așteaptă deja.
+   *
+   * Nu așteptăm răspunsul: clientul n-are de ce să stea după Telegram ca să i
+   * se pornească melodia. Dacă pică, `notify` își înghite eroarea singur.
+   */
+  void notify(
+    `🎬 <b>A intrat la înregistrare</b>\n` +
+    `Comanda <code>${esc(order.publicId)}</code>` +
+    (generation > 1 ? ` · înregistrarea ${generation}` : '') + `\n` +
+    `Email: <code>${esc(order.email)}</code>\n` +
+    `Titlu: ${esc(order.songTitle ?? order.titleWanted ?? '—')}\n` +
+    `Stil: ${esc(style)}`,
+  );
+
   return { render: render! };
 }

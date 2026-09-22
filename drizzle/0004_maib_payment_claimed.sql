@@ -1,0 +1,21 @@
+-- Plata trece de la Lemon Squeezy la un link fix de la MAIB.
+--
+-- Lemon Squeezy a refuzat, invocând regulile impuse lor de Stripe, PayPal și
+-- companiile de carduri. Paddle refuzase de cinci ori înainte. Categoria e
+-- problema, nu site-ul, deci până se leagă Paynet încasăm pe un link MAIB, iar
+-- deblocarea o face omul, cu mâna, de pe Telegram.
+--
+-- Rândurile vechi rămân cum sunt: o plată făcută prin Lemon Squeezy a fost
+-- făcută prin Lemon Squeezy, iar `provider` spune adevărul despre ea. Se
+-- schimbă doar ce se scrie de acum înainte.
+ALTER TABLE "payments" ALTER COLUMN "provider" SET DEFAULT 'maib';
+--> statement-breakpoint
+-- Starea în care clientul spune că a plătit, dar banii nu s-au văzut încă.
+--
+-- Stă înaintea lui `paid` pentru că asta e și ordinea în care se întâmplă, iar
+-- enumerările din Postgres se compară după poziție, nu după nume.
+--
+-- `ADD VALUE` merge într-o tranzacție de la Postgres 12 încolo, cât timp
+-- valoarea nouă nu e și folosită în aceeași tranzacție. Aici doar se adaugă;
+-- prima comandă care ajunge în ea vine mult mai târziu, din altă conexiune.
+ALTER TYPE "order_status" ADD VALUE IF NOT EXISTS 'payment_claimed' BEFORE 'paid';

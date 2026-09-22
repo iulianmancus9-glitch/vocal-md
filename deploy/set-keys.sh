@@ -2,7 +2,7 @@
 # ══════════════════════════════════════════════════════════════
 #  Pune chei în .env fără editor de text.
 #
-#    bash deploy/set-keys.sh                 → grupul Lemon Squeezy + Resend
+#    bash deploy/set-keys.sh                 → plata, Telegram și Resend
 #    bash deploy/set-keys.sh RESEND_API_KEY  → doar una anume
 #
 #  Fiecare cheie se cere pe rând. Apeși Enter fără să scrii nimic și cheia
@@ -14,19 +14,19 @@ cd "$(dirname "$0")/.."
 [ -f .env ] || { echo "Nu găsesc .env. Rulează întâi deploy/setup.sh." >&2; exit 1; }
 
 DEFAULT_KEYS=(
-  LEMON_API_KEY
-  LEMON_STORE_ID
-  LEMON_VARIANT_ID
-  LEMON_WEBHOOK_SECRET
+  MAIB_PAY_URL
+  TELEGRAM_BOT_TOKEN
+  TELEGRAM_CHAT_ID
+  TELEGRAM_WEBHOOK_SECRET
   RESEND_API_KEY
   MAIL_FROM
 )
 
 declare -A HINT=(
-  [LEMON_API_KEY]="Lemon Squeezy → Settings → API ; începe cu eyJ0eXAi"
-  [LEMON_STORE_ID]="Lemon Squeezy → Settings → Stores ; e un număr, ex. 12345"
-  [LEMON_VARIANT_ID]="produsul → Variants ; e un număr, NU al produsului"
-  [LEMON_WEBHOOK_SECRET]="Lemon Squeezy → Settings → Webhooks → semnătura pusă de tine"
+  [MAIB_PAY_URL]="linkul de plată din MAIB, ex: https://maibpay.md/pay/XXXXX"
+  [TELEGRAM_BOT_TOKEN]="de la @BotFather, după /newbot ; arată ca 12345:AAH..."
+  [TELEGRAM_CHAT_ID]="de la @userinfobot ; e un număr, al tău"
+  [TELEGRAM_WEBHOOK_SECRET]="îl inventezi tu ; generează-l cu: openssl rand -hex 32"
   [RESEND_API_KEY]="Resend → API Keys ; începe cu re_"
   [MAIL_FROM]="de pe ce adresă pleacă emailurile, ex: Vocal MD <comenzi@vocal.md>"
 )

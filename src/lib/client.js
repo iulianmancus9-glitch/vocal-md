@@ -36,6 +36,7 @@ export const api = {
   chooseRecording: (id, renderId) =>
     call(`/api/orders/${id}/recording`, { method: 'POST', body: JSON.stringify({ renderId }) }),
   checkout: (id) => call(`/api/orders/${id}/checkout`, { method: 'POST' }),
+  claimPayment: (id) => call(`/api/orders/${id}/plata-anuntata`, { method: 'POST' }),
   restoreLyrics: (id, version) =>
     call(`/api/orders/${id}/lyrics/restore`, { method: 'POST', body: JSON.stringify({ version }) }),
 };

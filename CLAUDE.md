@@ -28,10 +28,12 @@ Detaliile tehnice sunt în `README.md`. Citește-l înainte să schimbi ceva.
 ## Starea, la zi
 
 Site-ul e gata și funcționează: bilingv română/engleză, pagina de start arată
-prețul, trei melodii de ascultat, cum funcționează și întrebări frecvente.
-Formularul merge cap-coadă, generarea merge, livrarea prin linkuri semnate merge.
+prețul, cum funcționează și întrebări frecvente. Formularul merge cap-coadă,
+generarea merge, livrarea prin linkuri semnate merge.
 
-**Ce lipsește ca să se poată vinde: un procesator de plăți care să-l accepte.**
+**Se poate vinde.** Plata se face pe un link fix MAIB, iar deblocarea o face el,
+cu mâna, de pe Telegram. E soluția de probă: dacă vin 2-3 comenzi, se conectează
+Paynet.
 
 ## Povestea plăților — citește, ca să nu se repete
 
@@ -53,31 +55,53 @@ Regula care iese din asta, și care se aplică la orice de acum înainte: **dac�
 soluție depinde de aprobarea cuiva, se întreabă întâi dacă acceptă categoria, și
 abia apoi se construiește.**
 
+## Cum se încasează acum
+
+Link fix de plată MAIB, `MAIB_PAY_URL` în `.env`. Tot ce ține de procesator stă
+într-un singur fișier: `src/lib/plata.ts`. Când vine Paynet, se rescrie ăla.
+
+Fluxul, în trei timpi:
+
+1. clientul deschide linkul → notificare pe Telegram;
+2. clientul apasă „Am efectuat achitarea" → starea `payment_claimed`, plus o
+   notificare cu două butoane: ✅ Deblochează / ❌ Respinge;
+3. el apasă ✅ → `paid`, livrarea intră în coadă, emailul pleacă singur.
+
+**Linkul MAIB nu poartă identificatorul comenzii.** Banca spune că au intrat
+30 €, nu de la care comandă. Puntea e adresa de email, pe care clientul o pune
+și la noi, și la MAIB. De asta i se arată pe ecranul de plată și se repetă în
+mesajul de pe Telegram. Nu strica asta.
+
+Butonul „Respinge" acoperă și rambursarea: pe o comandă deja plătită închide
+accesul la loc. Banii se dau înapoi din MAIB, cu mâna.
+
+`/api/webhooks/telegram` e cea mai periculoasă adresă din proiect. Verifică
+antetul secret înainte să citească orice, cere ca apăsarea să vină din chat-ul
+lui și ține idempotența pe `update_id`.
+
 ## Ce urmează
 
-**Paynet**, procesator din Moldova. Clienții sunt majoritatea din Moldova și
-România, iar Paynet evaluează local, nu prin filtrul Stripe sau Visa. Cererea e
-trimisă; se așteaptă răspuns la două întrebări: dacă acceptă categoria (fișiere
-audio generate cu AI) și dacă acceptă carduri emise în România și în UE.
+**Paynet**, procesator din Moldova, cere 2000 de lei la conectare. De asta merge
+întâi pe MAIB, cu mâna: dacă se strâng 2-3 comenzi adevărate, investiția are
+sens. Cererea la Paynet e trimisă; se așteaptă răspuns dacă acceptă categoria
+(fișiere audio generate cu AI) și cardurile emise în România și în UE.
 
-Când răspund, de făcut:
+Când se leagă Paynet, de făcut:
 
-1. Legat Paynet în site. A rămas cod pentru Lemon Squeezy, care nu mai trebuie:
-   `src/lib/lemon.ts`, `src/lib/lemon-client.js`,
-   `src/app/api/webhooks/lemon/route.ts`. Planul era ca procesatorul să fie
-   comutabil dintr-un rând din `.env`, ca a treia mutare să nu mai însemne o
-   rescriere. Cod Paddle, ca exemplu de structură, există în istoric la `305b617^`.
-2. Paynet are notificare automată către site; pe ea se deblochează melodia.
-3. **Documentele legale** (`content/legal/documente-legale.md`) spun acum că
-   vânzătorul e Lemon Squeezy. Cu Paynet vânzătorul e firma lui, deci textele se
-   rescriu, inclusiv partea de TVA. **Întreabă-l înainte** — vrea să verifice cu
-   contabilul, iar tu nu ești consilier fiscal.
+1. Rescris `src/lib/plata.ts` pentru API-ul lor. Ruta de checkout întoarce deja
+   un obiect, nu un șir, tocmai ca să nu se schimbe când adresa devine una
+   generată pentru fiecare comandă. Cod Paddle, ca exemplu de structură cu
+   webhook semnat, există în istoric la `305b617^`.
+2. Paynet are notificare automată; pe ea se deblochează melodia singură, iar
+   `payment_claimed` devine o stare de rezervă, nu drumul normal.
+3. **Documentele legale** de verificat din nou — acum spun că vânzătorul e firma
+   lui, iar plata o procesează MAIB. **Partea de TVA n-a fost scrisă de tine și
+   nu o scrie:** el o verifică cu contabilul. Tu nu ești consilier fiscal.
 
 ## Ce a mai rămas nefăcut
 
 - emailurile către clienți sunt doar în română, deși site-ul e bilingv
 - nu există pagina publică de dăruit (un link cu melodia și versurile, de trimis)
-- Google Sheets nu e legat (rutele care dau CSV există, protejate cu o cheie)
 - nu e pus backup automat la baza de date
 - Resend nu e verificat pe domeniu
 

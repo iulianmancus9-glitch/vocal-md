@@ -42,18 +42,33 @@ const schema = z.object({
   DOWNLOAD_LINK_TTL: z.coerce.number().int().positive().default(86_400),
 
   /**
-   * Lemon Squeezy. A luat locul lui Paddle, care ne-a refuzat domeniul de cinci
-   * ori: politica lor începe cu „Paddle is built to serve software companies",
-   * iar noi vindem fișiere audio.
+   * Plata, prin linkul fix de la MAIB.
    *
-   * `LEMON_VARIANT_ID` e varianta produsului, nu produsul: în Lemon Squeezy
-   * prețul atârnă de variantă, iar checkout-ul o cere pe ea.
+   * Paddle a refuzat domeniul de cinci ori, Lemon Squeezy după ce a cerut
+   * lămuriri. Amândoi răspund aceleiași reguli, nu site-ului nostru, deci n-are
+   * rost să mai încercăm pe linia aia. Până se leagă Paynet, încasăm pe un link
+   * de plată MAIB, iar deblocarea o face omul, cu mâna, de pe Telegram.
+   *
+   * Linkul e același pentru toți clienții: MAIB nu ne spune ce comandă a plătit.
+   * De asta clientul e rugat să folosească la plată aceeași adresă de email ca
+   * pe site — ea e singura punte între banii intrați și rândul din baza noastră.
    */
-  LEMON_API_KEY: z.string().default(''),
-  LEMON_STORE_ID: z.string().default(''),
-  LEMON_VARIANT_ID: z.string().default(''),
-  LEMON_WEBHOOK_SECRET: z.string().default(''),
+  MAIB_PAY_URL: z.string().default(''),
   SONG_PRICE_EUR: z.coerce.number().positive().default(30),
+
+  /**
+   * Telegram — panoul de control al comenzilor.
+   *
+   * Fără el fluxul tot merge, dar deblocarea s-ar face intrând pe server. Cu el,
+   * notificarea vine pe telefon și are două butoane.
+   *
+   * `TELEGRAM_WEBHOOK_SECRET` se trimite de Telegram înapoi, în antetul
+   * `X-Telegram-Bot-Api-Secret-Token`. Fără el, oricine ar putea chema adresa
+   * noastră de webhook și ar debloca melodii fără să plătească.
+   */
+  TELEGRAM_BOT_TOKEN: z.string().default(''),
+  TELEGRAM_CHAT_ID: z.string().default(''),
+  TELEGRAM_WEBHOOK_SECRET: z.string().default(''),
 
   /**
    * Cheia pentru exportul în Google Sheets. Stă în adresa pe care o pune omul în
@@ -151,4 +166,4 @@ export function assertConfig(): void {
 }
 
 /** Versiunea documentelor legale acceptate de client, stocată la fiecare comandă. */
-export const LEGAL_VERSION = '2026-09-13';
+export const LEGAL_VERSION = '2026-09-22';

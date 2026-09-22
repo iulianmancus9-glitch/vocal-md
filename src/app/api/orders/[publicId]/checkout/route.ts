@@ -1,14 +1,20 @@
 /**
  * POST /api/orders/:publicId/checkout — pregătește plata.
  *
- * Nu încasează nimic: creează checkout-ul la Lemon Squeezy și îi dă browserului
- * adresa, ca să deschidă fereastra de plată. Banii se confirmă abia prin
- * webhook, care e singurul lucru în care avem încredere.
+ * Nu încasează nimic și nu confirmă nimic: întoarce adresa de plată, ca
+ * browserul s-o deschidă. Banii se confirmă abia când cineva apasă butonul de
+ * pe Telegram, după ce i-a văzut în cont.
+ *
+ * Trimitem o notificare încă de aici, nu doar la „am plătit": dacă omul deschide
+ * linkul la unsprezece noaptea, e bine să știm că urmează o plată, chiar dacă
+ * n-o anunță niciodată. Notificarea nu poate opri ruta — dacă Telegram e căzut,
+ * clientul tot trebuie să poată plăti.
  */
 import { fail, guard, ok } from '@/lib/api';
 import { logEvent } from '@/lib/orders';
-import { createCheckout, paymentsEnabled } from '@/lib/lemon';
+import { createCheckout, paymentsEnabled } from '@/lib/plata';
 import { loadOrder } from '@/lib/session';
+import { esc, notify } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,25 +33,23 @@ export async function POST(
     if (order.status === 'paid' || order.status === 'delivered') {
       return fail('Comanda e deja plătită.', 409);
     }
-    if (order.status !== 'preview_ready') {
+    // `payment_claimed` trece: omul poate deschide linkul a doua oară dacă
+    // prima încercare i-a picat la bancă.
+    if (order.status !== 'preview_ready' && order.status !== 'payment_claimed') {
       return fail('Melodia nu e gata încă.', 409);
     }
 
-    try {
-      const session = await createCheckout(order);
-      await logEvent(order.id, 'checkout_opened', { checkoutId: session.checkoutId });
-      return ok(session);
-    } catch (err) {
-      // Detaliul tehnic merge în log; omului îi spunem ce poate face.
-      console.error(`Checkout eșuat pentru ${order.publicId}:`, err);
-      await logEvent(order.id, 'checkout_failed', {
-        message: err instanceof Error ? err.message : String(err),
-      });
-      return fail(
-        'Nu am putut deschide plata. Încearcă din nou peste un minut, ' +
-        'sau scrie-ne la base.vocalmd@gmail.com și rezolvăm noi.',
-        502,
-      );
-    }
+    const session = createCheckout(order.publicId);
+    await logEvent(order.id, 'checkout_opened', { provider: 'maib' });
+
+    await notify(
+      `💳 <b>A deschis linkul de plată</b>\n` +
+      `Comanda <code>${esc(order.publicId)}</code>\n` +
+      `Email: <code>${esc(order.email)}</code>\n` +
+      `Titlu: ${esc(order.songTitle ?? order.titleWanted ?? '—')}\n\n` +
+      `<i>Dacă intră 30 €, caută plata după emailul de mai sus.</i>`,
+    );
+
+    return ok(session);
   });
 }

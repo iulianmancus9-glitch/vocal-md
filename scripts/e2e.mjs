@@ -17,7 +17,6 @@
  */
 import { chromium } from 'playwright';
 import { execFileSync } from 'node:child_process';
-import { createHmac } from 'node:crypto';
 import { mkdirSync, rmSync } from 'node:fs';
 
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:3000';
@@ -291,52 +290,80 @@ ok('a treia înregistrare apare lângă celelalte', await page.locator('.vc-take
 await shot('trei-inregistrari');
 ok('reluările s-au terminat',
   (await page.locator('.vc-takesFoot').textContent()).includes('folosit toate'));
+/* ─── plata: link MAIB, apoi confirmarea făcută cu mâna ─── */
 
-/* ─── butonul de cumpărare ─── */
+/* Linkul MAIB e același pentru toți și nu ne anunță nimic când se plătește.
+   De asta fluxul are trei timpi: clientul deschide linkul, clientul spune că a
+   plătit, iar noi deblocăm de pe Telegram după ce vedem banii. Testul ține cel
+   mai mult la un singur lucru: între primii doi timpi melodia rămâne închisă. */
 
-/* Cheile din test sunt inventate, deci procesatorul refuză. Ce contează e că refuzul
-   se vede ca mesaj, nu ca pagină ruptă — și, mai ales, că browserul nu poate
-   marca singur comanda ca plătită. */
-await page.getByRole('button', { name: /Primește melodia/ }).first().click();
-await page.locator('.vc-alert').waitFor({ timeout: 15000 });
-ok('un eșec la plată se vede ca mesaj, nu strică pagina',
-  (await page.locator('.vc-alert').textContent()).length > 10);
-ok('browserul nu poate marca singur comanda ca plătită',
-  sql(`select status from orders where public_id='${id}'`) === 'preview_ready');
-
-/* ─── plata, prin webhook semnat ca al lui Lemon Squeezy ─── */
-
-const SECRET = process.env.LEMON_WEBHOOK_SECRET ?? 'lemon_test_secret';
-
-/** Semnătura pe care o pune Lemon Squeezy: hmac-sha256 hex peste corpul brut. */
-const lemonSigned = (body) => createHmac('sha256', SECRET).update(body).digest('hex');
+const TG_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET ?? 'telegram_test_secret';
+const TG_CHAT = process.env.TELEGRAM_CHAT_ID ?? '111222333';
 
 /** Id unic per rulare, ca două rulări să nu se calce pe idempotență. */
 const RUN = Date.now().toString(36);
+let updateId = Number.parseInt(RUN.slice(-6), 36) * 100;
 
-const ORDER_ID = `lsorder_${RUN}`;
-
-const paidEvent = () => JSON.stringify({
-  meta: { event_name: 'order_created', custom_data: { order_id: id } },
-  data: {
-    id: ORDER_ID,
-    type: 'orders',
-    attributes: {
-      status: 'paid',
-      customer_id: 991,
-      total: 3000,
-      currency: 'EUR',
-      user_email: 'e2e@exemplu.md',
+/** O apăsare de buton, așa cum o trimite Telegram. */
+const press = (data, { chat = TG_CHAT, secret = TG_SECRET, id = ++updateId } = {}) =>
+  page.request.post(`${BASE}/api/webhooks/telegram`, {
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Telegram-Bot-Api-Secret-Token': secret,
     },
-  },
-});
+    data: JSON.stringify({
+      update_id: id,
+      callback_query: {
+        id: `cb_${id}`,
+        data,
+        from: { id: 42, username: 'e2e' },
+        message: { message_id: id, chat: { id: chat } },
+      },
+    }),
+  });
 
-const body1 = paidEvent();
-const hook1 = await page.request.post(`${BASE}/api/webhooks/lemon`, {
-  headers: { 'Content-Type': 'application/json', 'X-Signature': lemonSigned(body1) },
-  data: body1,
-});
-ok('webhook-ul semnat corect e acceptat', hook1.status() === 200);
+await page.getByRole('button', { name: /Primește melodia/ }).first().click();
+await page.locator('.vc-payPanel').waitFor({ timeout: 15000 });
+ok('butonul de cumpărare deschide panoul de plată',
+  await page.locator('.vc-payPanel').count() === 1);
+ok('panoul arată linkul de plată',
+  (await page.locator('.vc-payPanel a.vc-buy').getAttribute('href')).startsWith('http'));
+ok('panoul arată emailul după care se potrivește plata',
+  (await page.locator('.vc-payMatchValue').textContent()).includes('@'));
+ok('deschiderea linkului nu plătește nimic',
+  sql(`select status from orders where public_id='${id}'`) === 'preview_ready');
+await shot('panou-plata');
+
+await page.getByRole('button', { name: /Am efectuat achitarea/ }).click();
+await page.locator('.vc-payWait').waitFor({ timeout: 15000 });
+ok('„am plătit" pune comanda în așteptare, nu în plătită',
+  sql(`select status from orders where public_id='${id}'`) === 'payment_claimed');
+
+/* Aici e toată miza: browserul a spus că a plătit, și nu s-a deschis nimic. */
+const claimed = await page.evaluate(async (oid) => {
+  const r = await fetch(`/api/orders/${oid}`, { credentials: 'same-origin' });
+  return r.json();
+}, id);
+ok('browserul nu poate debloca singur melodia', claimed.paid === false);
+ok('fișierul integral rămâne închis cât timp plata nu e confirmată',
+  claimed.tracks?.[0]?.fullUrl == null);
+
+/* Adresa de webhook e cea mai periculoasă din proiect: cine o poate chema poate
+   debloca melodii pe gratis. Fără secretul potrivit, nu răspunde nimic. */
+const fakeSecret = await press(`ok:${id}`, { secret: 'a'.repeat(32) });
+ok('apăsarea fără secretul potrivit e refuzată', fakeSecret.status() === 401);
+ok('apăsarea falsă nu a deblocat nimic',
+  sql(`select status from orders where public_id='${id}'`) === 'payment_claimed');
+
+/* Secretul e bun, dar apăsarea vine din alt chat: tot nu are voie. */
+const otherChat = await press(`ok:${id}`, { chat: '999000999' });
+ok('apăsarea din alt chat nu deblochează',
+  otherChat.status() === 200
+  && sql(`select status from orders where public_id='${id}'`) === 'payment_claimed');
+
+const unlockId = ++updateId;
+const unlocked = await press(`ok:${id}`, { id: unlockId });
+ok('apăsarea pe „deblochează" e acceptată', unlocked.status() === 200);
 ok('comanda devine plătită', sql(`select status from orders where public_id='${id}'`) === 'paid');
 ok('plata e înregistrată cu suma corectă',
   sql(`select amount_cents||' '||currency from payments p join orders o on o.id=p.order_id
@@ -347,27 +374,11 @@ ok('comanda plătită se păstrează 24 de luni',
   Number(sql(`select round(extract(epoch from (expires_at - now()))/86400) from orders
               where public_id='${id}'`)) > 700);
 
-/* Retrimit până primesc 200: a doua livrare nu are voie să facă nimic. */
-const hook2 = await page.request.post(`${BASE}/api/webhooks/lemon`, {
-  headers: { 'Content-Type': 'application/json', 'X-Signature': lemonSigned(body1) },
-  data: body1,
-});
-ok('același eveniment trimis de două ori nu se procesează de două ori',
-  hook2.status() === 200 && sql(`select count(*) from jobs where type='deliver'`) === '1');
+/* Telegram retrimite până primește 200: a doua livrare nu are voie să facă nimic. */
+const again = await press(`ok:${id}`, { id: unlockId });
+ok('aceeași apăsare trimisă de două ori nu se procesează de două ori',
+  again.status() === 200 && sql(`select count(*) from jobs where type='deliver'`) === '1');
 
-/* O semnătură falsificată nu are voie să deblocheze nimic. */
-const body3 = JSON.stringify({
-  meta: { event_name: 'order_created', custom_data: { order_id: id } },
-  data: { id: `lsorder_${RUN}_fals`, attributes: { status: 'paid', total: 3000, currency: 'EUR' } },
-});
-const hook3 = await page.request.post(`${BASE}/api/webhooks/lemon`, {
-  headers: { 'Content-Type': 'application/json', 'X-Signature': 'a'.repeat(64) },
-  data: body3,
-});
-ok('webhook-ul cu semnătură falsă e refuzat', hook3.status() === 401);
-ok('evenimentul fals nu a fost înregistrat',
-  sql(`select count(*) from webhook_events
-       where event_id='order_created:lsorder_${RUN}_fals'`) === '0');
 const state = await page.evaluate(async (oid) => {
   const r = await fetch(`/api/orders/${oid}`, { credentials: 'same-origin' });
   return r.json();
@@ -417,25 +428,18 @@ ok('comanda plătită apare la vândute',
 
 /* ─── rambursarea închide accesul ─── */
 
-/* Rambursarea vine pe aceeași comandă, deci cheia de idempotență trebuie să
-   difere prin numele evenimentului — altfel ar fi înghițită ca duplicat. */
-const refundBody = JSON.stringify({
-  meta: { event_name: 'order_refunded', custom_data: { order_id: id } },
-  data: {
-    id: ORDER_ID,
-    type: 'orders',
-    attributes: { status: 'refunded', total: 3000, refunded_amount: 3000, currency: 'EUR' },
-  },
-});
-const hook4 = await page.request.post(`${BASE}/api/webhooks/lemon`, {
-  headers: { 'Content-Type': 'application/json', 'X-Signature': lemonSigned(refundBody) },
-  data: refundBody,
-});
-ok('rambursarea e acceptată', hook4.status() === 200);
+/* Banii se dau înapoi din MAIB, cu mâna. Ce trebuie să facă site-ul e să închidă
+   accesul, iar asta se cere tot de pe Telegram: aceeași apăsare pe „respinge",
+   de data asta pe o comandă deja deblocată. */
+const refunded = await press(`no:${id}`);
+ok('rambursarea de pe Telegram e acceptată', refunded.status() === 200);
 ok('plata e marcată rambursată',
   sql(`select p.status from payments p join orders o on o.id=p.order_id where o.public_id='${id}'`) === 'refunded');
 ok('comanda se întoarce la previzualizare',
   sql(`select status from orders where public_id='${id}'`) === 'preview_ready');
+ok('comanda rambursată revine la retenția de 30 de zile',
+  Number(sql(`select round(extract(epoch from (expires_at - now()))/86400) from orders
+              where public_id='${id}'`)) < 40);
 const fullUrl = state.tracks?.[0]?.fullUrl;
 if (fullUrl) {
   const afterRefund = await page.request.get(fullUrl);

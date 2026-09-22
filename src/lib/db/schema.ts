@@ -5,12 +5,12 @@
  *
  *   orders ──┬── lyrics_versions   fiecare generare sau editare a versurilor
  *            ├── order_tracks      cele două variante cântate, plus previzualizările
- *            ├── payments          tranzacția Lemon Squeezy
+ *            ├── payments          tranzacția, așa cum a fost confirmată
  *            ├── emails            ce i-am trimis clientului și dacă a plecat
  *            └── order_events      urma auditabilă: ce s-a întâmplat și când
  *
  *   jobs             coada de lucru a worker-ului (Postgres, fără Redis)
- *   webhook_events    idempotență pentru Lemon Squeezy și Suno
+ *   webhook_events    idempotență pentru Telegram și Suno
  *   rate_limits       apărarea previzualizării gratuite, care ne costă credite reale
  *
  * Două reguli de care atârnă partea juridică:
@@ -43,8 +43,14 @@ import {
 
 /**
  * Drumul normal al unei comenzi:
- *   draft → lyrics_ready → rendering → preview_ready → paid → delivered
+ *   draft → lyrics_ready → rendering → preview_ready → payment_claimed → paid → delivered
  * Ramurile scurte: failed (eroare tehnică), refused (filtru de conținut), expired (retenție).
+ *
+ * `payment_claimed` e starea în care clientul **spune** că a plătit, dar noi n-am
+ * văzut încă banii. Linkul MAIB e fix și nu ne anunță nimic, deci cineva
+ * trebuie să se uite în cont și să confirme. Până atunci comanda nu e plătită:
+ * melodia rămâne închisă, iar retenția rămâne cea de comandă neplătită. Dacă
+ * plata nu se confirmă, comanda se întoarce la `preview_ready`, de unde a venit.
  */
 export const orderStatus = pgEnum('order_status', [
   'draft',
@@ -52,6 +58,7 @@ export const orderStatus = pgEnum('order_status', [
   'lyrics_ready',
   'rendering',
   'preview_ready',
+  'payment_claimed',
   'paid',
   'delivered',
   'failed',
@@ -296,8 +303,13 @@ export const orderTracks = pgTable(
    ══════════════════════════════════════════════════════════════ */
 
 /**
- * Lemon Squeezy e comerciantul înregistrat, deci aici nu ține de contabilitate, ci de
- * răspunsul la o singură întrebare: are dreptul acest client la fișierele integrale?
+ * Plățile. Răspund la o singură întrebare: are dreptul acest client la fișierele
+ * integrale?
+ *
+ * Cu linkul fix de la MAIB nu primim niciun identificator de tranzacție de la
+ * bancă, deci `transaction_id` e construit de noi, ca `manual:<comandă>`.
+ * Rămâne unic pe comandă, așa că o a doua apăsare pe butonul de deblocare nu
+ * scrie un al doilea rând. Când vine Paynet, acolo va intra identificatorul lor.
  */
 export const payments = pgTable(
   'payments',
@@ -306,7 +318,7 @@ export const payments = pgTable(
     orderId: uuid('order_id')
       .notNull()
       .references(() => orders.id, { onDelete: 'restrict' }),
-    provider: text('provider').notNull().default('lemon'),
+    provider: text('provider').notNull().default('maib'),
     transactionId: text('transaction_id').notNull(),
     customerId: text('customer_id'),
     status: paymentStatus('status').notNull().default('pending'),
@@ -334,7 +346,7 @@ export const payments = pgTable(
    ══════════════════════════════════════════════════════════════ */
 
 /**
- * Lemon Squeezy retrimite un eveniment până îi răspunzi 200, iar Suno poate apela callback-ul
+ * Telegram retrimite o apăsare până îi răspunzi 200, iar Suno poate apela callback-ul
  * de două ori. Cheia unică (provider, event_id) face ca a doua livrare să nu producă
  * nimic: o inserăm, prinde conflictul, ieșim.
  */
@@ -342,7 +354,7 @@ export const webhookEvents = pgTable(
   'webhook_events',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    provider: text('provider').notNull(), // lemon | suno
+    provider: text('provider').notNull(), // telegram | suno
     eventId: text('event_id').notNull(),
     eventType: text('event_type').notNull(),
     payload: jsonb('payload').notNull(),

@@ -14,7 +14,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { api } from '@/lib/client';
-import { openCheckout } from '@/lib/lemon-client';
 import { useRouter } from 'next/navigation';
 import { UI, label, styleLabel } from '@/lib/i18n';
 // Sub-stilurile și stările fiecărui stil stau lângă promptul lui, în stiluri.ts.
@@ -23,7 +22,7 @@ import {
   Check, ArrowLeft, ArrowRight, Heart, Users, PartyPopper, Music2, Star, Mic2,
   Disc3, Guitar, Piano, Flame, Radio, Pencil, PenLine, RefreshCw, Play, Pause,
   Download, Sparkles, Wand2, User, Gift, CalendarHeart, Clock, ShieldCheck, Zap,
-  Plus, X, Mail, Copy, AlertTriangle, ListMusic, Link2, RotateCcw
+  Plus, X, Mail, Copy, AlertTriangle, ListMusic, Link2, RotateCcw, ExternalLink
 } from 'lucide-react';
 
 /* ══════════════════════════════════════════════════════════════
@@ -359,6 +358,18 @@ button.vc-mark:hover { opacity: .68; }
 .vc-sec { scroll-margin-top: 104px; margin-top: 16px; padding: 20px 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--page); }
 .vc-secTitle { font-size: 19px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 5px; }
 .vc-secSub { font-size: 13.5px; line-height: 1.5; color: var(--gray); margin: 0 0 16px; }
+
+/* ─── panoul de plată (link MAIB + confirmare cu mâna) ─── */
+.vc-payPanel { width: 100%; }
+.vc-payStep { font-size: 13px; font-weight: 600; color: var(--ink-1); margin: 0; }
+.vc-payMatch { margin-top: 12px; border: 1px solid rgba(108,92,231,.2); background: var(--violet-t); border-radius: 13px; padding: 12px 13px; }
+.vc-payMatchTitle { font-size: 12.5px; font-weight: 600; color: var(--ink-1); margin: 0 0 5px; }
+.vc-payMatchValue { font-size: 14.5px; font-weight: 700; margin: 0; word-break: break-all; color: var(--violet); }
+.vc-payMatchNote { font-size: 12px; color: var(--gray); margin: 7px 0 0; }
+.vc-payFoot { font-size: 12px; line-height: 1.55; color: var(--gray); margin: 10px 0 0; text-align: center; }
+.vc-payWait { width: 100%; border: 1px solid var(--line); background: var(--page); border-radius: 15px; padding: 16px; text-align: center; }
+.vc-payWaitTitle { display: flex; align-items: center; justify-content: center; gap: 7px; font-size: 14.5px; font-weight: 700; margin: 0 0 6px; }
+.vc-payWaitText { font-size: 12.8px; line-height: 1.55; color: var(--gray); margin: 0; }
 
 .vc-how { display: grid; gap: 13px; }
 .vc-howStep { display: flex; gap: 13px; align-items: flex-start; }
@@ -723,6 +734,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
       lyrics_ready: 'lyrics',
       rendering: 'making',
       preview_ready: 'demo',
+      payment_claimed: 'demo',
       paid: 'done',
       delivered: 'done',
       refused: 'error',
@@ -767,7 +779,8 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
         if (state.lyrics != null) setLyrics(state.lyrics);
         const map = {
           draft: 'writing', lyrics_pending: 'writing', lyrics_ready: 'lyrics',
-          rendering: 'making', preview_ready: 'demo', paid: 'done', delivered: 'done',
+          rendering: 'making', preview_ready: 'demo', payment_claimed: 'demo',
+          paid: 'done', delivered: 'done',
           refused: 'error', failed: 'error', expired: 'error',
         };
         if (state.status === 'rendering' || state.status === 'lyrics_pending') {
@@ -961,37 +974,63 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
   });
 
   /**
-   * Plata. Serverul pregătește checkout-ul, Lemon Squeezy deschide fereastra, iar
-   * confirmarea vine prin webhook — nu de la browser, care poate minți.
-   * De asta, după ce fereastra se închide, întrebăm serverul dacă s-a încasat.
+   * Plata, prin linkul fix de la MAIB.
+   *
+   * Nu se deschide nicio fereastră peste pagină: linkul e un `<a>` adevărat, pe
+   * care îl apasă omul. Altfel Safari și telefoanele l-ar bloca drept fereastră
+   * nesolicitată, pentru că s-ar deschide după o cerere la server, nu direct
+   * din apăsare.
+   *
+   * Confirmarea nu vine de la browser — linkul MAIB nu ne anunță nimic, iar
+   * browserul poate minți. Clientul spune doar că a plătit; melodia se
+   * deschide când vede cineva banii în cont și apasă butonul de pe Telegram.
    */
-  const [waitingPayment, setWaitingPayment] = useState(false);
+  const [pay, setPay] = useState(null);
+
+  /**
+   * Așteptarea nu e o stare a paginii, ci a comenzii.
+   *
+   * Dacă ar fi ținută doar în browser, omul care se întoarce a doua zi din
+   * linkul de email ar vedea iar butonul de cumpărare, deși plata lui e deja
+   * anunțată — și ar plăti a doua oară.
+   */
+  const waitingPayment = order?.status === 'payment_claimed';
 
   const buy = () => run(async () => {
-    const session = await api.checkout(orderId);
-    await openCheckout(session, {
-      onCompleted: () => {
-        setWaitingPayment(true);
-        // Webhook-ul ajunge în câteva secunde; întrebăm până se vede plata.
-        const started = Date.now();
-        const t = setInterval(async () => {
-          try {
-            const state = await api.get(orderId, initialToken);
-            if (state.paid) {
-              clearInterval(t);
-              setWaitingPayment(false);
-              setOrder(state);
-              setScreen('done');
-            } else if (Date.now() - started > 90_000) {
-              clearInterval(t);
-              setWaitingPayment(false);
-              setApiError(t.paymentLate);
-            }
-          } catch { /* o interogare pierdută nu e o eroare; încercăm iar */ }
-        }, 2500);
-      },
-    });
+    setPay(await api.checkout(orderId));
   });
+
+  /** „Am efectuat achitarea." Nu deblochează nimic: doar ne anunță pe noi. */
+  const claimPaid = () => run(async () => {
+    const state = await api.claimPayment(orderId);
+    applyState(state);
+    if (state.paid) setScreen('done');
+  });
+
+  /**
+   * Cât timp comanda așteaptă confirmarea, întrebăm serverul din zece în zece
+   * secunde, ca melodia să se deschidă singură sub ochii lui.
+   *
+   * Ne oprim după un sfert de oră. Deblocarea o face un om, iar omul poate
+   * dormi — iar o pagină uitată deschisă peste noapte n-are de ce să bată
+   * serverul până dimineața. Textul spune de ce: melodia vine oricum pe email.
+   */
+  useEffect(() => {
+    if (!waitingPayment || !orderId) return;
+    const until = Date.now() + 900_000;
+    const t = setInterval(async () => {
+      if (Date.now() > until) { clearInterval(t); return; }
+      try {
+        const fresh = await api.get(orderId, initialToken);
+        if (fresh.paid) {
+          clearInterval(t);
+          setOrder(fresh);
+          setScreen('done');
+        }
+      } catch { /* o interogare pierdută nu e o eroare; încercăm iar */ }
+    }, 10_000);
+    return () => clearInterval(t);
+  }, [waitingPayment, orderId, initialToken]);
 
   const openLibrary = () => run(async () => {
     const { orders } = await api.list();
@@ -1523,9 +1562,46 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
                   ))}
                 </ul>
                 <div className="vc-nav" ref={navRef} style={{ marginTop: 0 }}>
-                  <button className="vc-buy" disabled={busy || waitingPayment} onClick={buy}>
-                    <Download size={20} /> {waitingPayment ? t.confirming : t.buyCta}
-                  </button>
+                  {waitingPayment ? (
+                    /* A spus că a plătit. Aici nu mai are ce apăsa: deblocarea e
+                       la noi, iar pagina se deschide singură când se face. */
+                    <div className="vc-payWait">
+                      <p className="vc-payWaitTitle">
+                        <Clock size={16} /> {t.payCheckingTitle}
+                      </p>
+                      <p className="vc-payWaitText">{t.payCheckingText}</p>
+                    </div>
+                  ) : !pay ? (
+                    <button className="vc-buy" disabled={busy} onClick={buy}>
+                      <Download size={20} /> {t.buyCta}
+                    </button>
+                  ) : (
+                    <div className="vc-payPanel">
+                      <p className="vc-payStep">{t.payStep1}</p>
+                      {/* Linkul e un <a> adevărat, nu o fereastră deschisă din
+                          cod: altfel telefoanele îl blochează. */}
+                      <a className="vc-buy" href={pay.url} target="_blank" rel="noopener noreferrer"
+                        style={{ marginTop: 10, textDecoration: 'none' }}>
+                        <ExternalLink size={19} /> {t.payOpen(pay.priceEur)}
+                      </a>
+
+                      {/* Linkul MAIB e același pentru toți și nu poartă numărul
+                          comenzii. Emailul e singura punte între banii intrați
+                          și comanda asta, deci i-l punem sub ochi. */}
+                      <div className="vc-payMatch">
+                        <p className="vc-payMatchTitle">{t.paySameEmail}</p>
+                        <p className="vc-payMatchValue">{order?.email ?? '—'}</p>
+                        <p className="vc-payMatchNote">{t.payOrderRef} <b>{pay.orderRef}</b></p>
+                      </div>
+
+                      <p className="vc-payStep" style={{ marginTop: 14 }}>{t.payStep2}</p>
+                      <button className="vc-ghost" disabled={busy} onClick={claimPaid}
+                        style={{ width: '100%', marginTop: 8 }}>
+                        <Check size={16} /> {t.payDone}
+                      </button>
+                      <p className="vc-payFoot">{t.payFoot}</p>
+                    </div>
+                  )}
                 </div>
                 <div className="vc-offerTrust">
                   <span className="vc-trustBit"><ShieldCheck size={13} /> {t.trust1}</span>
@@ -1537,10 +1613,12 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
           </div>
           <Footer t={t} lang={lang} />
         </div>
-        {showBar && (
+        {/* Bara de jos dispare odată ce s-a deschis panoul de plată: altfel ar
+            acoperi tocmai butonul „am efectuat achitarea". */}
+        {showBar && !pay && !waitingPayment && (
           <div className="vc-bar"><div className="vc-barIn">
-            <button className="vc-next" disabled={busy || waitingPayment} onClick={buy}>
-              <Download size={18} /> {waitingPayment ? t.confirming : t.buyCta}
+            <button className="vc-next" disabled={busy} onClick={buy}>
+              <Download size={18} /> {t.buyCta}
             </button>
           </div></div>
         )}
@@ -1555,7 +1633,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     const older = history.filter((v) => !v.isCurrent).reverse();
     // După ce piesa a fost cântată, textul nu se mai schimbă pe loc — dar se
     // poate reveni la o variantă veche, iar apoi cere o înregistrare nouă.
-    const sung = ['rendering', 'preview_ready', 'paid', 'delivered'].includes(order?.status);
+    const sung = ['rendering', 'preview_ready', 'payment_claimed', 'paid', 'delivered'].includes(order?.status);
     // Textul de acum diferă de cel din înregistrarea aleasă: are rost să-l cânte.
     const chosen = (order?.recordings ?? []).find((r) => r.id === order?.currentRenderId);
     const textChanged = sung && chosen && chosen.lyricsVersion !== order?.lyricsVersion;

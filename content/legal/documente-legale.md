@@ -1,6 +1,6 @@
 # Vocal MD — Documente legale
 
-Data intrării în vigoare: **13 septembrie 2026**
+Data intrării în vigoare: **22 septembrie 2026**
 
 Operator: **S.R.L. „WADE PRODUCTION"** · IDNO 1025600056881 · MD-4614, r-l Edineț, s. Bădragii Noi, Republica Moldova · base.vocalmd@gmail.com
 
@@ -13,7 +13,7 @@ Operator: **S.R.L. „WADE PRODUCTION"** · IDNO 1025600056881 · MD-4614, r-l E
 
 ## Termeni și condiții
 
-**Data intrării în vigoare: 13 septembrie 2026**
+**Data intrării în vigoare: 22 septembrie 2026**
 
 ### 1. Cine suntem
 
@@ -48,13 +48,19 @@ Nu vi se solicită nicio plată înainte de a asculta previzualizarea.
 
 Prețul melodiei complete este afișat clar înainte de achiziție și include toate taxele aplicabile. Este o **plată unică**, fără abonament și fără costuri recurente.
 
-Plățile sunt procesate de **Link, LLC** (cunoscută anterior ca Lemon Squeezy LLC), cu sediul în 354 Oyster Point Blvd, South San Francisco, CA 94080, SUA, care acționează în calitate de **comerciant înregistrat (Merchant of Record)** pentru această tranzacție. Aceasta înseamnă că, din punct de vedere juridic, Link, LLC este vânzătorul produsului digital către dumneavoastră și este responsabil pentru facturare, colectarea și virarea taxelor aplicabile. Datele complete ale acestuia apar pe chitanța pe care o primiți după plată.
+**Vânzătorul produsului digital este S.R.L. „WADE PRODUCTION"**, IDNO 1025600056881, cu datele de contact de mai sus. Contractul de vânzare se încheie direct între dumneavoastră și noi.
 
-Prin finalizarea achiziției, sunteți de acord și cu termenii și politica de confidențialitate ale Lemon Squeezy, disponibile pe site-ul acestora. Vocal MD nu colectează, nu stochează și nu are acces la datele complete ale cardului dumneavoastră.
+Plata cu cardul este procesată de **BC „Moldova Agroindbank" S.A. (MAIB)**, prin serviciul său de plăți online. Vocal MD nu colectează, nu stochează și nu are acces la datele cardului dumneavoastră — acestea sunt introduse direct în pagina securizată a băncii.
+
+La cerere, vă emitem factură pentru achiziție. Scrieți-ne la base.vocalmd@gmail.com, menționând adresa de email folosită la comandă.
 
 ### 5. Livrarea
 
-După confirmarea plății, melodia completă vă este pusă la dispoziție **imediat**, direct în pagina din browser, și vă este trimis un link de descărcare la adresa de email furnizată. În condiții normale, emailul ajunge în câteva minute.
+Plata este confirmată de noi, după verificarea încasării. De obicei aceasta durează câteva minute; în cazuri rare, până la câteva ore.
+
+Odată confirmată plata, melodia completă vă este pusă la dispoziție **imediat**, direct în pagina din browser, și vă este trimis un link de descărcare la adresa de email furnizată.
+
+Pentru ca încasarea să poată fi identificată, vă rugăm să folosiți la plată **aceeași adresă de email** pe care ați indicat-o în comandă.
 
 Nu răspundem pentru întârzieri sau nelivrări cauzate de:
 
@@ -155,7 +161,7 @@ base.vocalmd@gmail.com
 
 ## Politica de rambursare
 
-**Data intrării în vigoare: 13 septembrie 2026**
+**Data intrării în vigoare: 22 septembrie 2026**
 
 ### Principiul de bază
 
@@ -188,17 +194,17 @@ Rambursăm integral sau oferim o înlocuire în următoarele situații:
 
 Scrieți-ne la **base.vocalmd@gmail.com** în termen de **14 zile** de la achiziție, menționând adresa de email folosită la comandă și descrierea problemei.
 
-Răspundem în maximum 5 zile lucrătoare. Rambursările aprobate sunt procesate de Lemon Squeezy și ajung de regulă în contul dumneavoastră în 5–10 zile lucrătoare, în funcție de banca emitentă.
+Răspundem în maximum 5 zile lucrătoare. Rambursările aprobate sunt efectuate de noi, prin MAIB, către cardul folosit la plată, și ajung de regulă în contul dumneavoastră în 5–10 zile lucrătoare, în funcție de banca emitentă.
 
-### Rambursări prin Lemon Squeezy
+### Ce se întâmplă cu melodia după rambursare
 
-Întrucât **Lemon Squeezy (Link, LLC)** este comerciantul înregistrat pentru vânzările noastre, rambursarea este efectuată prin sistemul lor. Puteți contacta și direct suportul Lemon Squeezy folosind datele de pe chitanța primită.
+Odată rambursată achiziția, accesul la fișierele integrale se închide, iar dreptul de utilizare acordat la punctul „Ce primiți" încetează. Previzualizarea gratuită și versurile rămân disponibile.
 
 ---
 
 ## Politica de confidențialitate
 
-**Data intrării în vigoare: 13 septembrie 2026**
+**Data intrării în vigoare: 22 septembrie 2026**
 
 Confidențialitatea dumneavoastră este importantă pentru noi. Documentul de față explică ce date colectăm, de ce, cu cine le împărtășim și ce drepturi aveți.
 
@@ -216,7 +222,7 @@ Pentru orice întrebare privind datele dumneavoastră: **base.vocalmd@gmail.com*
 
 Atenție: aceste informații pot include **date personale despre altă persoană** — destinatarul melodiei. Introducându-le, confirmați că aveți dreptul să ne le furnizați.
 
-**Date privind plata.** Plățile sunt procesate integral de Lemon Squeezy. Noi primim doar confirmarea plății, valoarea, moneda și un identificator de tranzacție. **Nu vedem și nu stocăm numărul cardului dumneavoastră.**
+**Date privind plata.** Datele cardului sunt introduse direct în pagina securizată a MAIB și sunt prelucrate integral de bancă. Noi păstrăm doar faptul că plata a fost confirmată, valoarea, moneda și data. **Nu vedem și nu stocăm numărul cardului dumneavoastră.**
 
 **Date tehnice.** Adresa IP, tipul de browser și dispozitiv, paginile vizitate și momentul vizitei. Le folosim pentru securitate, prevenirea abuzurilor și funcționarea corectă a site-ului.
 
@@ -241,7 +247,7 @@ Nu folosim datele dumneavoastră pentru a antrena modele de inteligență artifi
 Nu vindem, nu închiriem și nu tranzacționăm datele dumneavoastră. Le transmitem exclusiv furnizorilor care ne ajută să prestăm serviciul:
 
 - **Furnizori de inteligență artificială** — pentru a genera versurile din povestea dumneavoastră și pentru a produce fișierul audio. Acestora le este transmis textul comenzii, nu și adresa dumneavoastră de email.
-- **Link, LLC** (Lemon Squeezy), 354 Oyster Point Blvd, South San Francisco, CA 94080, SUA — procesatorul de plăți și comerciantul înregistrat al tranzacției.
+- **BC „Moldova Agroindbank" S.A. (MAIB)**, Republica Moldova — procesatorul plăților cu cardul.
 - **Furnizorul serviciului de email** — pentru trimiterea automată a linkurilor.
 - **Furnizorul de găzduire și stocare** — pentru funcționarea site-ului și păstrarea fișierelor audio.
 
@@ -314,7 +320,7 @@ base.vocalmd@gmail.com
 
 ## Terms of Service
 
-**Effective date: 13 September 2026**
+**Effective date: 22 September 2026**
 
 ### 1. Who we are
 
@@ -347,13 +353,19 @@ You are never asked to pay before hearing the preview.
 
 The price of the complete song is clearly displayed before purchase and includes all applicable taxes. It is a **one-time payment** — no subscription, no recurring charges.
 
-Payments are processed by **Link, LLC** (formerly Lemon Squeezy LLC), of 354 Oyster Point Blvd, South San Francisco, CA 94080, USA, acting as the **Merchant of Record** for the transaction. This means that, legally, Link, LLC is the seller of the digital product to you and is responsible for invoicing and for collecting and remitting applicable taxes. Their full details appear on the receipt you receive after payment.
+**The seller of the digital product is WADE PRODUCTION S.R.L.**, IDNO 1025600056881, with the contact details given above. The contract of sale is concluded directly between you and us.
 
-By completing your purchase, you also agree to Lemon Squeezy's terms and privacy policy, available on their website. Vocal MD does not collect, store or have access to your full card details.
+Card payments are processed by **BC "Moldova Agroindbank" S.A. (MAIB)** through its online payment service. Vocal MD does not collect, store or have access to your card details — you enter them directly on the bank's secure page.
+
+We issue an invoice for your purchase on request. Write to us at base.vocalmd@gmail.com, quoting the email address used for the order.
 
 ### 5. Delivery
 
-Once payment is confirmed, the complete song is made available to you **immediately** in your browser, and a download link is sent to the email address you provided. Under normal circumstances the email arrives within a few minutes.
+Payment is confirmed by us, after we verify that it has been received. This usually takes a few minutes; in rare cases, up to a few hours.
+
+Once payment is confirmed, the complete song is made available to you **immediately** in your browser, and a download link is sent to the email address you provided.
+
+So that we can identify your payment, please use **the same email address** at the payment page as the one you gave with your order.
 
 We are not responsible for delays or non-delivery caused by:
 
@@ -454,7 +466,7 @@ base.vocalmd@gmail.com
 
 ## Refund Policy
 
-**Effective date: 13 September 2026**
+**Effective date: 22 September 2026**
 
 ### The basic principle
 
@@ -487,17 +499,17 @@ We issue a full refund or provide a replacement in the following cases:
 
 Write to **base.vocalmd@gmail.com** within **14 days** of your purchase, quoting the email address used for the order and describing the problem.
 
-We reply within 5 working days. Approved refunds are processed by Lemon Squeezy and usually reach your account within 5–10 working days, depending on your bank.
+We reply within 5 working days. Approved refunds are issued by us, through MAIB, to the card used for the payment, and usually reach your account within 5–10 working days, depending on your bank.
 
-### Refunds through Lemon Squeezy
+### What happens to the song after a refund
 
-Because **Lemon Squeezy (Link, LLC)** is the Merchant of Record for our sales, refunds are issued through their system. You may also contact Lemon Squeezy support directly using the details on the receipt you received.
+Once a purchase is refunded, access to the full files closes and the licence granted under "What you receive" ends. The free preview and the lyrics remain available.
 
 ---
 
 ## Privacy Policy
 
-**Effective date: 13 September 2026**
+**Effective date: 22 September 2026**
 
 Your privacy matters to us. This document explains what data we collect, why, who we share it with, and what rights you have.
 
@@ -515,7 +527,7 @@ For any question about your data: **base.vocalmd@gmail.com**
 
 Please note this may include **personal data about another person** — the recipient of the song. By entering it, you confirm you have the right to provide it to us.
 
-**Payment data.** Payments are handled entirely by Lemon Squeezy. We only receive confirmation of payment, the amount, the currency and a transaction identifier. **We never see or store your card number.**
+**Payment data.** Card details are entered directly on MAIB's secure page and are processed entirely by the bank. We keep only the fact that the payment was confirmed, the amount, the currency and the date. **We never see or store your card number.**
 
 **Technical data.** Your IP address, browser and device type, the pages you visit and when. We use this for security, abuse prevention and the correct functioning of the site.
 
@@ -540,7 +552,7 @@ We do not use your data to train our own artificial intelligence models.
 We do not sell, rent or trade your data. We share it only with providers who help us deliver the service:
 
 - **Artificial intelligence providers** — to generate the lyrics from your story and to produce the audio file. They receive the text of your order, not your email address.
-- **Link, LLC** (Lemon Squeezy), 354 Oyster Point Blvd, South San Francisco, CA 94080, USA — our payment processor and Merchant of Record.
+- **BC "Moldova Agroindbank" S.A. (MAIB)**, Republic of Moldova — our card payment processor.
 - **Our email service provider** — to send the delivery links automatically.
 - **Our hosting and storage provider** — to run the website and store the audio files.
 

@@ -58,14 +58,21 @@ De completat obligatoriu:
 | `SUNO_API_KEY` | sunoapi.org → contul tău |
 | `APP_URL` | `https://vocal.md` |
 
-Lemon Squeezy și Resend rămân goale deocamdată — site-ul pornește fără ele.
+Plata, Telegram și Resend rămân goale deocamdată — site-ul pornește fără ele.
 Butonul de cumpărare spune că plata se activează în curând, în loc să livreze
 degeaba.
 
-Când vine rândul plății, `bash deploy/lemon-ids.sh` întreabă contul Lemon
-Squeezy și afișează Store ID și Variant ID. Le scrie pe ambele pentru că se
-confundă ușor: în Lemon Squeezy prețul atârnă de variantă, nu de produs, iar
-checkout-ul cere varianta.
+Când vine rândul plății:
+
+```bash
+bash deploy/set-keys.sh          # MAIB_PAY_URL, cheile de Telegram, Resend
+bash deploy/telegram-webhook.sh  # îi spune lui Telegram unde să trimită apăsările
+```
+
+Botul de Telegram se face la `@BotFather` (comanda `/newbot`), iar numărul
+chat-ului tău îl dă `@userinfobot`. Secretul de webhook îl inventezi tu:
+`openssl rand -hex 32`. Fără el, oricine ar putea chema adresa noastră de
+webhook și ar debloca melodii fără să plătească.
 
 ## 4. Pornirea
 
