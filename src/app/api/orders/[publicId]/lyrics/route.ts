@@ -12,7 +12,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { lyricsVersions, orders } from '@/lib/db/schema';
 import { fail, guard, ok } from '@/lib/api';
-import { logEvent } from '@/lib/orders';
+import { logEvent, nextLyricsVersion } from '@/lib/orders';
 import { orderState } from '@/lib/order-state';
 import { enqueue } from '@/lib/queue/queue';
 import { loadOrder } from '@/lib/session';
@@ -69,7 +69,9 @@ export async function PATCH(
     const { lyrics } = lyricsEdit.parse(await req.json());
     if (lyrics === order.lyrics) return ok(await orderState(order));
 
-    const version = order.lyricsVersion + 1;
+    // Din maximul existent, nu din versiunea curentă: readucerea unei variante
+    // vechi mută comanda înapoi, iar „curentă + 1" ar da un număr deja folosit.
+    const version = await nextLyricsVersion(order.id);
 
     await db.transaction(async (tx) => {
       await tx.insert(lyricsVersions).values({

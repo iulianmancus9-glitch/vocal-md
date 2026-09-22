@@ -1,8 +1,17 @@
 /**
  * POST /api/orders/:publicId/lyrics/restore — înapoi la o variantă anterioară.
  *
- * Nu suprascriem istoricul: varianta veche e copiată ca versiune nouă. Așa,
- * după ce te răzgândești de două ori, tot le ai pe toate.
+ * Readucerea NU creează o variantă nouă: doar mută comanda pe una care există
+ * deja. Înainte, varianta veche era copiată ca versiune nouă, iar cine apăsa de
+ * trei ori se trezea cu trei rânduri identice în istoric — o listă care nu mai
+ * arăta variantele scrise, ci de câte ori s-a răzgândit.
+ *
+ * Nimic nu se pierde: toate variantele rămân în `lyrics_versions`. Se pierde
+ * doar ordinea vizitelor, care nu-i folosește nimănui.
+ *
+ * De aici iese o regulă pentru tot restul codului: numărul următoarei versiuni
+ * se ia din maximul existent (`nextLyricsVersion`), nu din versiunea curentă a
+ * comenzii — care acum poate merge și înapoi.
  */
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
@@ -36,8 +45,6 @@ export async function POST(
     if (!wanted) return fail('Varianta nu a fost găsită.', 404);
     if (wanted.version === order.lyricsVersion) return ok(await orderState(order));
 
-    const next = order.lyricsVersion + 1;
-
     /**
      * Dacă piesa a fost deja cântată, comanda NU se întoarce în „lyrics_ready".
      *
@@ -50,29 +57,18 @@ export async function POST(
       where: and(eq(renders.orderId, order.id), eq(renders.status, 'done')),
     });
 
-    await db.transaction(async (tx) => {
-      await tx.insert(lyricsVersions).values({
-        orderId: order.id,
-        version: next,
-        source: 'user_edit',
-        title: wanted.title,
+    await db
+      .update(orders)
+      .set({
         lyrics: wanted.lyrics,
-        styleHint: wanted.styleHint,
-        model: wanted.model,
-      });
-      await tx
-        .update(orders)
-        .set({
-          lyrics: wanted.lyrics,
-          songTitle: wanted.title,
-          lyricsVersion: next,
-          ...(sung ? {} : { status: 'lyrics_ready' as const }),
-          updatedAt: new Date(),
-        })
-        .where(eq(orders.id, order.id));
-    });
+        songTitle: wanted.title,
+        lyricsVersion: wanted.version,
+        ...(sung ? {} : { status: 'lyrics_ready' as const }),
+        updatedAt: new Date(),
+      })
+      .where(eq(orders.id, order.id));
 
-    await logEvent(order.id, 'lyrics_restored', { from: wanted.version, as: next });
+    await logEvent(order.id, 'lyrics_restored', { to: wanted.version });
 
     const fresh = await loadOrder(publicId);
     return ok(await orderState(fresh!));

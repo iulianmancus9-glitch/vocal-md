@@ -9,7 +9,7 @@ import { desc, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { lyricsVersions, orders, type Job } from '@/lib/db/schema';
 import { env } from '@/lib/env';
-import { logEvent, setStatus } from '@/lib/orders';
+import { logEvent, nextLyricsVersion, setStatus } from '@/lib/orders';
 import { briefFromOrder } from '@/lib/pipeline/brief';
 import { generateLyrics } from '@/lib/pipeline/gemini';
 
@@ -51,7 +51,9 @@ export async function handleLyrics(job: Job): Promise<void> {
     return;
   }
 
-  const version = order.lyricsVersion + 1;
+  // Din maximul existent, nu din versiunea curentă: readucerea unei variante
+  // vechi mută comanda înapoi, iar „curentă + 1" ar da un număr deja folosit.
+  const version = await nextLyricsVersion(order.id);
 
   await db.transaction(async (tx) => {
     await tx.insert(lyricsVersions).values({

@@ -1,10 +1,10 @@
 /**
  * Operații mărunte pe comenzi, folosite din mai multe locuri.
  */
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { env } from '@/lib/env';
-import { orderEvents, orders, type OrderStatus } from '@/lib/db/schema';
+import { lyricsVersions, orderEvents, orders, type OrderStatus } from '@/lib/db/schema';
 
 /** Scrie un rând în urma auditabilă. Nu aruncă niciodată: e jurnal, nu logică. */
 export async function logEvent(
@@ -28,6 +28,22 @@ export async function setStatus(
     .update(orders)
     .set({ status, updatedAt: new Date(), ...extra })
     .where(eq(orders.id, orderId));
+}
+
+/**
+ * Următorul număr liber de versiune a versurilor.
+ *
+ * Se calculează din maximul existent, NU din versiunea curentă a comenzii.
+ * Readucerea unei variante vechi mută comanda înapoi pe numărul ei — după ce
+ * te întorci la varianta 1, `lyrics_version + 1` ar da 2, care există deja, iar
+ * inserarea ar cădea pe cheia unică.
+ */
+export async function nextLyricsVersion(orderId: string): Promise<number> {
+  const [row] = await db
+    .select({ max: sql<number>`coalesce(max(${lyricsVersions.version}), 0)` })
+    .from(lyricsVersions)
+    .where(eq(lyricsVersions.orderId, orderId));
+  return (row?.max ?? 0) + 1;
 }
 
 /** Data la care o comandă neplătită se șterge: 30 de zile, conform politicii. */

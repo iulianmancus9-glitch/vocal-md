@@ -267,11 +267,35 @@ ok('se vede istoricul variantelor', await page.locator('.vc-hist').count() === 1
 await page.locator('.vc-hist summary').click();
 await page.waitForTimeout(300);
 await shot('istoric-versuri');
+const countVersions = () =>
+  Number(sql(`select count(*) from lyrics_versions lv join orders o on o.id=lv.order_id
+              where o.public_id='${id}'`));
+
+const versionsBefore = countVersions();
 await page.getByRole('button', { name: /Readu varianta asta/ }).first().click();
 await page.waitForTimeout(1500);
-ok('readucerea unei variante creează o versiune nouă, fără să piardă nimic',
-  Number(sql(`select count(*) from lyrics_versions lv join orders o on o.id=lv.order_id
-              where o.public_id='${id}'`)) >= 3);
+ok('readucerea nu creează o variantă nouă, doar o alege pe cea veche',
+  countVersions() === versionsBefore, `${versionsBefore} → ${countVersions()}`);
+
+/* Înainte, fiecare readucere copia varianta ca versiune nouă. Cine se
+   răzgândea de câteva ori se trezea cu rânduri identice în istoric — o listă
+   care nu mai arăta variantele scrise, ci de câte ori a apăsat. Ne oprim pe
+   varianta 1, ca textul curent să difere de cel înregistrat. */
+await page.evaluate(async (oid) => {
+  for (const version of [2, 1, 2, 1]) {
+    await fetch(`/api/orders/${oid}/lyrics/restore`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ version }),
+    });
+  }
+}, id);
+await page.waitForTimeout(800);
+ok('readucerile repetate nu adună copii identice',
+  countVersions() === versionsBefore, `${versionsBefore} → ${countVersions()}`);
+ok('comanda arată varianta readusă, nu una nouă',
+  sql(`select lyrics_version from orders where public_id='${id}'`) === '1');
 
 // Portița: dacă readucerea ar da comanda înapoi în „lyrics_ready", aprobarea ar
 // porni înregistrări la nesfârșit, fără să scadă limita.

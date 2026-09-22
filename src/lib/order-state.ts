@@ -48,6 +48,12 @@ export interface OrderState {
    * scurgere: ca să ajungi aici, ai deja cheia comenzii.
    */
   email: string | null;
+  /** Numele din piesă. Pagina de start le folosește ca să-l întrebe pe om
+   *  dacă vrea să continue „melodia pentru Ana". */
+  names: string[];
+  /** Ultima atingere a comenzii. După ea se decide dacă a fost un refresh
+   *  (și îl ducem direct înapoi) sau o revenire (și îl întrebăm). */
+  updatedAt: string;
   songTitle: string | null;
   lyrics: string | null;
   lyricsVersion: number;
@@ -119,6 +125,8 @@ export async function orderState(order: Order): Promise<OrderState> {
     status: order.status,
     paid,
     email: order.email,
+    names: order.names ?? [],
+    updatedAt: order.updatedAt.toISOString(),
     songTitle: order.songTitle,
     lyrics: order.lyrics,
     lyricsVersion: order.lyricsVersion,

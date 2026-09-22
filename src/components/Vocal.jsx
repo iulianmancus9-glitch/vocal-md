@@ -128,6 +128,24 @@ function clearDraft() {
 /** Pentru cine e melodia din ciornă, ca s-o putem numi când îl întrebăm. */
 const draftName = (d) => d?.names?.find((n) => n?.trim())?.trim() ?? '';
 
+/** Ce ecran i se cuvine fiecărei stări a comenzii. */
+const SCREEN_FOR = {
+  draft: 'writing', lyrics_pending: 'writing', lyrics_ready: 'lyrics',
+  rendering: 'making', preview_ready: 'demo', payment_claimed: 'demo',
+  paid: 'done', delivered: 'done',
+  refused: 'error', failed: 'error', expired: 'error',
+};
+
+/**
+ * Stările în care o comandă are încă ceva de făcut.
+ *
+ * O comandă livrată nu se „continuă" — se ascultă, din bibliotecă. Una oprită
+ * de un refuz de conținut, nici atât.
+ */
+const IN_PROGRESS = [
+  'draft', 'lyrics_pending', 'lyrics_ready', 'rendering', 'preview_ready', 'payment_claimed',
+];
+
 /* ══════════════════════════════════════════════════════════════
    STIL
    ══════════════════════════════════════════════════════════════ */
@@ -747,8 +765,10 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
   const [email, setEmail] = useState('');
   const [agree, setAgree] = useState(false);
   const [news, setNews] = useState(false);
-  /* Ciorna găsită la intrare, pe care i-o oferim înapoi. Null = n-avem ce oferi. */
+  /* Ce i-am găsit la intrare și i-am putea da înapoi: o comandă de pe server
+     sau, dacă n-a ajuns să facă una, ciorna din browser. */
   const [draft, setDraft] = useState(null);
+  const [resumeOrder, setResumeOrder] = useState(null);
   const [copied, setCopied] = useState(false);
   const [confirmHome, setConfirmHome] = useState(false);
   const [library, setLibrary] = useState([]);
@@ -775,19 +795,53 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
    */
   useEffect(() => {
     if (initialOrderId) return;
-    const saved = readDraft();
-    if (!saved) return;
+    let stop = false;
 
-    if (Date.now() - saved.at < DRAFT_FRESH) {
-      setD(saved.d);
-      setStep(saved.step ?? 0);
-      setEmail(saved.email ?? '');
-      setNews(Boolean(saved.news));
-      setScreen(saved.screen === 'email' ? 'email' : 'wizard');
-      return;
-    }
-    setDraft(saved);
-  }, [initialOrderId]);
+    (async () => {
+      /**
+       * Întâi comenzile adevărate, apoi ciorna.
+       *
+       * O comandă există pe server și supraviețuiește oricui: browserul o ține
+       * minte prin cookie-ul ei. Ciorna e doar ce n-a apucat să devină comandă.
+       * Dacă există amândouă, comanda câștigă — ea are versurile deja scrise.
+       *
+       * Asta repară și cazul care doare cel mai tare: omul primește versurile,
+       * dă de limita zilnică la înregistrare, reîncarcă pagina din reflex — și
+       * până acum se trezea la prima întrebare, cu versurile lui rămase pe un
+       * server de care nu mai știa nimic.
+       */
+      let live = null;
+      try {
+        const { orders: mine } = await api.list();
+        live = (mine ?? []).find((o) => IN_PROGRESS.includes(o.status)) ?? null;
+      } catch { /* fără cookie sau fără rețea: mergem mai departe cu ciorna */ }
+      if (stop) return;
+
+      if (live) {
+        if (Date.now() - new Date(live.updatedAt).getTime() < DRAFT_FRESH) {
+          jumpTo(live);
+        } else {
+          setResumeOrder(live);
+        }
+        return;
+      }
+
+      const saved = readDraft();
+      if (!saved) return;
+
+      if (Date.now() - saved.at < DRAFT_FRESH) {
+        setD(saved.d);
+        setStep(saved.step ?? 0);
+        setEmail(saved.email ?? '');
+        setNews(Boolean(saved.news));
+        setScreen(saved.screen === 'email' ? 'email' : 'wizard');
+        return;
+      }
+      setDraft(saved);
+    })();
+
+    return () => { stop = true; };
+  }, [initialOrderId, jumpTo]);
 
   /* Salvăm la fiecare schimbare, cât timp e în formular. E puțin text, iar
      momentul în care se pierde tot e tocmai cel în care n-ai apucat să salvezi. */
@@ -869,33 +923,37 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     });
   }, [editing]);
 
-  /* Deschisă dintr-un link de email: sărim direct unde a rămas comanda. Aici
-     mutarea ecranului e voită, spre deosebire de sincronizarea obișnuită. */
+  /**
+   * Sare direct pe ecranul care se potrivește stării comenzii.
+   *
+   * Spre deosebire de `applyState`, care mută ecranul doar când omul aștepta
+   * ceva, asta e o mutare voită: venim dintr-un link de email sau dintr-o
+   * pagină reîncărcată, iar locul corect e cel în care a rămas comanda.
+   */
+  const jumpTo = useCallback((state) => {
+    setOrderId(state.publicId);
+    setOrder(state);
+    if (state.lyrics != null) setLyrics(state.lyrics);
+    if (state.status === 'rendering' || state.status === 'lyrics_pending') {
+      setWaitFrom(Date.now());
+    }
+    setScreen(SCREEN_FOR[state.status] ?? 'intro');
+  }, []);
+
+  /* Deschisă dintr-un link de email: sărim direct unde a rămas comanda. */
   useEffect(() => {
     if (!initialOrderId) return;
     let stop = false;
     (async () => {
       try {
         const state = await api.get(initialOrderId, initialToken);
-        if (stop) return;
-        setOrder(state);
-        if (state.lyrics != null) setLyrics(state.lyrics);
-        const map = {
-          draft: 'writing', lyrics_pending: 'writing', lyrics_ready: 'lyrics',
-          rendering: 'making', preview_ready: 'demo', payment_claimed: 'demo',
-          paid: 'done', delivered: 'done',
-          refused: 'error', failed: 'error', expired: 'error',
-        };
-        if (state.status === 'rendering' || state.status === 'lyrics_pending') {
-          setWaitFrom(Date.now());
-        }
-        setScreen(map[state.status] ?? 'intro');
+        if (!stop) jumpTo(state);
       } catch {
         if (!stop) setScreen('intro');
       }
     })();
     return () => { stop = true; };
-  }, [initialOrderId, initialToken]);
+  }, [initialOrderId, initialToken, jumpTo]);
 
   /* Întrebăm serverul cât timp are ceva de lucru. Trei secunde e des cât să
      nu pară blocat și rar cât să nu încărcăm baza degeaba. */
@@ -1227,9 +1285,18 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
   if (screen === 'intro') {
     /* „Începe" pornește de la zero, deci ciorna veche se aruncă: altfel primul
        pas ar arăta bifat cu alegerile altei melodii. */
+    /* Numele pentru care i s-a început melodia. La o comandă îl avem de la
+       server; la o ciornă, din ce a completat în formular. */
+    const resumeName = resumeOrder
+      ? (resumeOrder.names?.find((n) => n?.trim())?.trim() || resumeOrder.songTitle || '')
+      : draftName(draft?.d);
+
+    /* „Începe" pornește de la zero. Ciorna se aruncă, dar comanda de pe server
+       NU se atinge: rămâne în bibliotecă și în linkul din email. */
     const start = () => {
       clearDraft();
       setDraft(null);
+      setResumeOrder(null);
       setD({
         style: null, sub: null, mood: null, voice: null,
         recipient: null, recipientOther: '', names: [''], occasion: null, occasionOther: '',
@@ -1242,6 +1309,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     };
 
     const resume = () => {
+      if (resumeOrder) { setResumeOrder(null); jumpTo(resumeOrder); return; }
       setD(draft.d);
       setStep(draft.step ?? 0);
       setEmail(draft.email ?? '');
@@ -1277,12 +1345,14 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
             {/* A lăsat ceva neterminat. Îl întrebăm o dată, aici, în locul
                 butonului obișnuit — nu-l aruncăm înapoi în formular, dar nici
                 nu ne facem că n-a fost nimic. */}
-            {draft ? (
+            {resumeOrder || draft ? (
               <div className="vc-resume">
                 <p className="vc-resumeTitle">
-                  {draftName(draft.d) ? t.resumeFor(draftName(draft.d)) : t.resumeTitle}
+                  {resumeName ? t.resumeFor(resumeName) : t.resumeTitle}
                 </p>
-                <p className="vc-resumeText">{t.resumeText}</p>
+                <p className="vc-resumeText">
+                  {resumeOrder ? t.resumeOrderText : t.resumeText}
+                </p>
                 <div className="vc-resumeRow">
                   <button className="vc-next" onClick={resume}>
                     <RotateCcw size={17} /> {t.resumeGo}

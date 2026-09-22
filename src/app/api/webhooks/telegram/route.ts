@@ -23,7 +23,7 @@ import { logEvent, paidExpiry, unpaidExpiry } from '@/lib/orders';
 import { PROVIDER } from '@/lib/plata';
 import { enqueue } from '@/lib/queue/queue';
 import { resetLimits } from '@/lib/rate-limit';
-import { answerCallback, closeMessage, esc, telegramEnabled } from '@/lib/telegram';
+import { answerCallback, closeMessage, esc, notify, telegramEnabled } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
 
@@ -145,6 +145,49 @@ async function reject(press: Press): Promise<string> {
     : `Comanda ${press.publicId} s-a întors la previzualizare. Clientul poate încerca din nou.`;
 }
 
+/**
+ * `/limite <ceva>` — șterge limitele zilnice ale unui client.
+ *
+ * Limitele apără previzualizarea gratuită, care ne costă credite Suno. Uneori
+ * însă opresc pe cine nu trebuie: doi frați pe același wi-fi, un client care
+ * s-a răzgândit de câteva ori, sau tu în timp ce încerci site-ul.
+ *
+ * `ceva` poate fi, în ordinea în care le recunoaștem:
+ *   · numărul comenzii — cel mai comod, îl ai în mesajele de mai sus;
+ *     îi ia singur și emailul, și IP-ul;
+ *   · o adresă de email;
+ *   · un IP.
+ */
+async function resetCommand(argument: string, from: string): Promise<string> {
+  const value = argument.trim();
+  if (!value) {
+    return '👉 Scrie <code>/limite</code> urmat de numărul comenzii, de email sau de IP.';
+  }
+
+  if (/^[a-z2-9]{12}$/.test(value)) {
+    const order = await db.query.orders.findFirst({ where: eq(orders.publicId, value) });
+    if (!order) return `Nu găsesc comanda <code>${esc(value)}</code>.`;
+    await resetLimits({ ip: order.consentIp, email: order.email });
+    await logEvent(order.id, 'limits_reset', { prin: 'telegram', de: from });
+    return `✅ Limitele pentru comanda <code>${esc(value)}</code> sunt șterse.\n` +
+      `Email: <code>${esc(order.email)}</code> · IP: <code>${esc(order.consentIp)}</code>`;
+  }
+
+  if (value.includes('@')) {
+    await resetLimits({ email: value });
+    return `✅ Limitele pentru <code>${esc(value)}</code> sunt șterse.`;
+  }
+
+  await resetLimits({ ip: value });
+  return `✅ Limitele pentru IP-ul <code>${esc(value)}</code> sunt șterse.`;
+}
+
+const AJUTOR =
+  '<b>Ce știu să fac</b>\n\n' +
+  '<code>/limite &lt;comandă|email|IP&gt;</code> — șterge limitele zilnice ale unui client.\n' +
+  'Exemplu: <code>/limite a7k2m9x4p3qd</code>\n\n' +
+  'Restul se face din butoanele de sub mesajele care vin singure.';
+
 export async function POST(req: Request) {
   if (!secretOk(req.headers.get('x-telegram-bot-api-secret-token'))) {
     return new Response('Secret invalid', { status: 401 });
@@ -176,13 +219,37 @@ export async function POST(req: Request) {
         };
       }
     }
+
+    /**
+     * Un mesaj scris de mână în chat. Se răspunde numai în chat-ul nostru: un
+     * bot are numele public, iar cine îl găsește îi poate scrie oricând.
+     */
+    const msg = raw.message as Record<string, unknown> | undefined;
+    if (msg && !press) {
+      const chat = (msg.chat ?? {}) as Record<string, unknown>;
+      const who = (msg.from ?? {}) as Record<string, unknown>;
+      const text = String(msg.text ?? '').trim();
+
+      if (text.startsWith('/') && String(chat.id) === String(env.TELEGRAM_CHAT_ID)) {
+        // `/limite@botul_meu argument` — Telegram lipește numele botului.
+        const [rawCmd, ...rest] = text.split(/\s+/);
+        const cmd = rawCmd.split('@')[0].toLowerCase();
+        const from = String(who.username ?? who.first_name ?? who.id ?? 'necunoscut');
+
+        if (cmd === '/limite') {
+          await notify(await resetCommand(rest.join(' '), from));
+        } else {
+          await notify(AJUTOR);
+        }
+      }
+      return new Response('ok', { status: 200 });
+    }
   } catch (err) {
     console.error('Webhook Telegram cu conținut necitibil:', err);
     return new Response('Conținut invalid', { status: 400 });
   }
 
-  // Orice altceva — un mesaj scris în chat, o comandă /start — nu ne privește.
-  // Răspundem 200, altfel Telegram retrimite la nesfârșit.
+  // Orice altceva nu ne privește. Răspundem 200, altfel Telegram retrimite.
   if (!press) return new Response('ok', { status: 200 });
 
   /**

@@ -57,11 +57,11 @@ case "${1:-pune}" in
 
   pune)
     echo "Înregistrez: $HOOK"
-    # `allowed_updates` cere doar apăsările de buton. Fără el, Telegram ne-ar
-    # trimite și fiecare mesaj scris în chat, degeaba.
+    # Cerem doar ce folosim: apăsările de buton și mesajele scrise în chat
+    # (pentru `/limite`). Fără `allowed_updates`, Telegram ne-ar trimite tot.
     curl -sS -X POST "${API}/setWebhook" \
       -H 'Content-Type: application/json' \
-      -d "$(printf '{"url":"%s","secret_token":"%s","allowed_updates":["callback_query"],"drop_pending_updates":true}' \
+      -d "$(printf '{"url":"%s","secret_token":"%s","allowed_updates":["callback_query","message"],"drop_pending_updates":true}' \
             "$HOOK" "$SECRET")"
     echo
     echo
