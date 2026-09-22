@@ -404,26 +404,26 @@ ok('pagina iese singură din așteptare după respingere',
 ok('clientului i se spune de ce',
   (await page.locator('.vc-alert').textContent().catch(() => '')).includes('Nu am găsit plata'));
 
-/* Poate încerca din nou, iar a doua oară plata chiar intră. */
+/* Poate încerca din nou. De data asta NU mai apasă „am efectuat achitarea":
+   sunt clienți care plătesc și închid pagina fără să confirme nimic, iar
+   deblocarea trebuie să ajungă la ei oricum. */
 await page.getByRole('button', { name: /Primește melodia/ }).first().click();
 await page.locator('.vc-payPanel').waitFor({ timeout: 15000 });
-await page.getByRole('button', { name: /Am efectuat achitarea/ }).click();
-await page.locator('.vc-payWait').waitFor({ timeout: 15000 });
-ok('poate anunța plata a doua oară',
-  sql(`select status from orders where public_id='${id}'`) === 'payment_claimed');
+ok('poate redeschide plata după o respingere',
+  sql(`select status from orders where public_id='${id}'`) === 'preview_ready');
 
 /* Adresa de webhook e cea mai periculoasă din proiect: cine o poate chema poate
    debloca melodii pe gratis. Fără secretul potrivit, nu răspunde nimic. */
 const fakeSecret = await press(`ok:${id}`, { secret: 'a'.repeat(32) });
 ok('apăsarea fără secretul potrivit e refuzată', fakeSecret.status() === 401);
 ok('apăsarea falsă nu a deblocat nimic',
-  sql(`select status from orders where public_id='${id}'`) === 'payment_claimed');
+  sql(`select status from orders where public_id='${id}'`) === 'preview_ready');
 
 /* Secretul e bun, dar apăsarea vine din alt chat: tot nu are voie. */
 const otherChat = await press(`ok:${id}`, { chat: '999000999' });
 ok('apăsarea din alt chat nu deblochează',
   otherChat.status() === 200
-  && sql(`select status from orders where public_id='${id}'`) === 'payment_claimed');
+  && sql(`select status from orders where public_id='${id}'`) === 'preview_ready');
 
 const unlockId = ++updateId;
 const unlocked = await press(`ok:${id}`, { id: unlockId });
@@ -437,6 +437,14 @@ ok('livrarea a intrat în coadă',
 ok('comanda plătită se păstrează 24 de luni',
   Number(sql(`select round(extract(epoch from (expires_at - now()))/86400) from orders
               where public_id='${id}'`)) > 700);
+
+/* Aici e schimbarea care contează: clientul n-a apăsat nimic. A deschis linkul
+   de plată, a plătit și a lăsat pagina deschisă. Deblocarea de pe Telegram
+   trebuie să ajungă la el singură — înainte, pagina lui nu întreba deloc
+   serverul cât timp nu anunțase o plată, deci rămânea cu panoul deschis. */
+await page.locator('.vc-doneTitle').waitFor({ timeout: 25000 }).catch(() => {});
+ok('melodia i se deschide singură, fără ca el să fi confirmat plata',
+  await page.locator('.vc-doneTitle').count() === 1);
 
 /* Înainte de plată, reluările erau consumate până la zero (vezi mai sus). Cine
    a dat 30 € are dreptul la încă o interpretare a aceleiași piese. */
@@ -562,6 +570,12 @@ for (const doc of ['termeni', 'rambursare', 'confidentialitate']) {
     (await en.locator('.vc-heroPrice').textContent()).includes('30'));
   ok('meniul duce la cele doua sectiuni',
     await en.locator('.vc-nav2 a').count() === 2);
+  /* Biblioteca se ajungea doar de pe ecranul de livrare, adică doar după ce
+     plăteai. Cine se întoarce peste o săptămână o caută în meniu. */
+  ok('biblioteca se ajunge din meniu, nu doar după plată',
+    await en.locator('.vc-navBtn').count() === 1);
+  ok('biblioteca se ajunge și din subsol',
+    await en.locator('.vc-footBtn').count() === 1);
   for (const id of ['how', 'faq']) {
     ok(`sectiunea „${id}" exista pe pagina`, await en.locator(`#${id}`).count() === 1);
   }

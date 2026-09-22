@@ -380,6 +380,8 @@ button.vc-mark:hover { opacity: .68; }
 .vc-footer { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; gap: 8px 16px; justify-content: center; flex-wrap: wrap; }
 .vc-footLink { font-size: 12px; color: var(--gray); text-decoration: none; font-weight: 500; }
 .vc-footLink:hover { color: var(--violet); }
+/* Un buton care trebuie să arate ca celelalte legături din subsol. */
+.vc-footBtn { background: none; border: 0; padding: 0; font-family: inherit; cursor: pointer; }
 
 .vc-tabs { display: flex; gap: 4px; background: var(--tile); padding: 4px; border-radius: 13px; margin-bottom: 16px; }
 .vc-tab { flex: 1; min-height: 42px; border-radius: 10px; font-size: 12px; font-weight: 600; color: var(--gray); padding: 0 6px; line-height: 1.25; }
@@ -444,14 +446,22 @@ button.vc-mark:hover { opacity: .68; }
    lateral în loc să se rupă sau să micșoreze literele sub ce se poate citi. */
 .vc-nav2 { max-width: 640px; margin: 0 auto; padding: 0 18px 10px; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
 .vc-nav2::-webkit-scrollbar { display: none; }
-.vc-nav2 a { font-size: 12.5px; font-weight: 600; color: var(--ink-2); text-decoration: none; padding: 6px 11px; border-radius: 999px; background: var(--tile); white-space: nowrap; transition: background .15s, color .15s; }
-.vc-nav2 a:hover { background: var(--violet-l); color: var(--violet); }
+.vc-nav2 a, .vc-navBtn { font-size: 12.5px; font-weight: 600; color: var(--ink-2); text-decoration: none; padding: 6px 11px; border-radius: 999px; background: var(--tile); white-space: nowrap; transition: background .15s, color .15s; }
+.vc-nav2 a:hover, .vc-navBtn:hover { background: var(--violet-l); color: var(--violet); }
+/* Butonul din meniu trebuie să arate exact ca legăturile de lângă el. */
+.vc-navBtn { border: 0; font-family: inherit; cursor: pointer; }
 
 /* Antetul are acum două rânduri, deci ancorele trebuie să se oprească mai jos
    ca titlul secțiunii să nu rămână ascuns sub el. */
 .vc-sec { scroll-margin-top: 104px; margin-top: 16px; padding: 20px 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--page); }
 .vc-secTitle { font-size: 19px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 5px; }
 .vc-secSub { font-size: 13.5px; line-height: 1.5; color: var(--gray); margin: 0 0 16px; }
+
+/* ─── biblioteca goală ─── */
+.vc-empty { text-align: center; padding: 26px 8px 8px; }
+.vc-emptyIcon { width: 58px; height: 58px; border-radius: 50%; background: var(--violet-t); color: var(--violet); display: inline-grid; place-items: center; margin-bottom: 14px; }
+.vc-emptyTitle { font-size: 16px; font-weight: 700; margin: 0 0 6px; letter-spacing: -.01em; }
+.vc-emptyText { font-size: 13px; line-height: 1.55; color: var(--gray); margin: 0; max-width: 340px; margin-inline: auto; }
 
 /* ─── încă o înregistrare, după plată ─── */
 .vc-again { border: 1px solid var(--line); background: var(--page); border-radius: 14px; padding: 13px; margin-top: 12px; }
@@ -735,9 +745,17 @@ function Take({ name, meta, playing, at, active, dur = 60, onToggle, onSeek, t }
 
 /* Documentele se deschid ca pagini proprii, în filă nouă: cine citește Termenii
    la pasul patru nu are voie să-și piardă povestea scrisă. */
-function Footer({ t, lang }) {
+function Footer({ t, lang, onLibrary }) {
   return (
     <div className="vc-footer">
+      {/* Biblioteca se ajungea doar de pe ecranul de livrare, adică doar după ce
+          plăteai. Acum e la îndemână de pe orice ecran: cine se întoarce peste o
+          săptămână îl caută exact aici, jos. */}
+      {onLibrary && (
+        <button className="vc-footLink vc-footBtn" onClick={onLibrary}>
+          {t.myLibrary}
+        </button>
+      )}
       <a className="vc-footLink" href={`/legal/${lang}/termeni`} target="_blank" rel="noopener noreferrer">
         {t.footTerms}
       </a>
@@ -1208,6 +1226,32 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
    */
   const waitingPayment = order?.status === 'payment_claimed';
 
+  /**
+   * Întrebăm serverul și cât timp e doar deschis panoul de plată, nu numai
+   * după ce a apăsat „am efectuat achitarea".
+   *
+   * Altfel, când deblocam noi de pe Telegram — pentru un client care a plătit
+   * și n-a mai confirmat nimic — pagina lui nu afla niciodată: rămânea cu
+   * panoul de plată deschis până dădea refresh din proprie inițiativă.
+   */
+  const awaitingPayment = waitingPayment || Boolean(pay);
+
+  /**
+   * Când se întoarce în filă, întrebăm pe loc.
+   *
+   * Plata se face în altă filă, iar omul poate zăbovi acolo: la întoarcere n-are
+   * de ce să mai aștepte încă cinci secunde, și nici să fi trecut de fereastra
+   * în care mai întrebam.
+   */
+  const [awake, setAwake] = useState(0);
+  useEffect(() => {
+    const wake = () => {
+      if (document.visibilityState === 'visible') setAwake((n) => n + 1);
+    };
+    document.addEventListener('visibilitychange', wake);
+    return () => document.removeEventListener('visibilitychange', wake);
+  }, []);
+
   const buy = () => run(async () => {
     setPay(await api.checkout(orderId));
   });
@@ -1228,31 +1272,59 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
    * serverul până dimineața. Textul spune de ce: melodia vine oricum pe email.
    */
   useEffect(() => {
-    if (!waitingPayment || !orderId) return;
+    if (!awaitingPayment || !orderId) return;
     const until = Date.now() + 900_000;
-    // `timer`, nu `t`: `t` sunt textele paginii, iar o variabilă cu același
-    // nume le-ar acoperi tocmai aici, unde avem nevoie de un mesaj din ele.
-    const timer = setInterval(async () => {
-      if (Date.now() > until) { clearInterval(timer); return; }
+    let stop = false;
+
+    const check = async () => {
+      if (stop) return;
       try {
         const fresh = await api.get(orderId, initialToken);
-        // Încă așteaptă. Nimic de făcut, întrebăm iar peste cinci secunde.
-        if (fresh.status === 'payment_claimed') return;
+        if (stop) return;
 
-        clearInterval(timer);
-        setOrder(fresh);
+        /**
+         * Plata a fost confirmată — nu contează de cine.
+         *
+         * Se ajunge aici și când o deblocăm noi, de pe Telegram, fără ca el să
+         * fi apăsat „am efectuat achitarea". Sunt clienți care plătesc și nu
+         * mai confirmă nimic; melodia li se deschide oricum, sub ochii lor.
+         */
+        if (fresh.paid) {
+          stop = true;
+          setOrder(fresh);
+          setPay(null);
+          setScreen('done');
+          return;
+        }
 
-        if (fresh.paid) { setScreen('done'); return; }
-
-        /* Am respins plata. Înainte, ecranul rămânea blocat în „verificăm"
-           până la reîncărcarea paginii: bucla se uita doar după `paid`, iar
-           întoarcerea la `preview_ready` trecea pe lângă ea. */
-        setPay(null);
-        setApiError(t.payRejected);
+        /**
+         * Anunțase o plată, iar noi n-am găsit-o.
+         *
+         * `waitingPayment` e prins aici din efectul curent, deci e adevărat
+         * doar cât comanda chiar aștepta o confirmare — un panou de plată pur
+         * și simplu deschis nu trece pe ramura asta.
+         */
+        if (waitingPayment && fresh.status !== 'payment_claimed') {
+          stop = true;
+          setOrder(fresh);
+          setPay(null);
+          setApiError(t.payRejected);
+        }
       } catch { /* o interogare pierdută nu e o eroare; încercăm iar */ }
+    };
+
+    // O dată pe loc: dacă tocmai s-a întors în filă, n-are de ce să mai aștepte.
+    void check();
+
+    // `timer`, nu `t`: `t` sunt textele paginii, iar o variabilă cu același
+    // nume le-ar acoperi tocmai aici, unde avem nevoie de un mesaj din ele.
+    const timer = setInterval(() => {
+      if (stop || Date.now() > until) { clearInterval(timer); return; }
+      void check();
     }, 5000);
-    return () => clearInterval(timer);
-  }, [waitingPayment, orderId, initialToken, t]);
+
+    return () => { stop = true; clearInterval(timer); };
+  }, [awaitingPayment, waitingPayment, orderId, initialToken, t, awake]);
 
   const openLibrary = () => run(async () => {
     const { orders } = await api.list();
@@ -1394,6 +1466,10 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
           <nav className="vc-nav2" aria-label={t.navAria}>
             <a href="#how">{t.navHow}</a>
             <a href="#faq">{t.navFaq}</a>
+            {/* Cine se întoarce după melodiile lui le caută în meniu, nu în
+                subsol. Merge și gol: atunci biblioteca îi spune că e goală și
+                îi dă butonul de a face prima. */}
+            <button className="vc-navBtn" onClick={openLibrary}>{t.myLibrary}</button>
           </nav>
         </div>
 
@@ -1475,7 +1551,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
             </p>
           </section>
 
-          <Footer t={t} lang={lang} />
+          <Footer t={t} lang={lang} onLibrary={openLibrary} />
         </div>
       </div>
     );
@@ -1548,7 +1624,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
             )}
             <Alert text={apiError} />
           </div>
-          <Footer t={t} lang={lang} />
+          <Footer t={t} lang={lang} onLibrary={openLibrary} />
         </div>
       </div>
     );
@@ -1620,7 +1696,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
             </div>
             <Alert text={apiError} />
           </div>
-          <Footer t={t} lang={lang} />
+          <Footer t={t} lang={lang} onLibrary={openLibrary} />
         </div>
       </div>
     );
@@ -1640,8 +1716,20 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
             <h1 className="vc-q" style={{ marginTop: 4 }}>{t.libTitle}</h1>
             <p className="vc-qSub">{t.libSub}</p>
 
+            {/* Biblioteca se ajunge acum de oriunde, deci se deschide des și
+                goală. Un rând de text într-o pagină pustie arată a greșeală;
+                mai bine îi spunem limpede că e goală și îi dăm ce a venit să
+                caute — un buton de a începe. */}
             {library.length === 0 && (
-              <p className="vc-qSub" style={{ marginTop: 14 }}>{t.libEmpty}</p>
+              <div className="vc-empty">
+                <span className="vc-emptyIcon"><ListMusic size={26} /></span>
+                <p className="vc-emptyTitle">{t.libEmpty}</p>
+                <p className="vc-emptyText">{t.libEmptyText}</p>
+                <button className="vc-next" style={{ width: '100%', marginTop: 16 }}
+                  onClick={goHome}>
+                  <Sparkles size={18} /> {t.ctaCreate}
+                </button>
+              </div>
             )}
 
             {library.map((it) => (
@@ -1682,7 +1770,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
               </button>
             </div>
           </div>
-          <Footer t={t} lang={lang} />
+          <Footer t={t} lang={lang} onLibrary={openLibrary} />
         </div>
       </div>
     );
@@ -1733,7 +1821,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
               {t.contactNote}
             </p>
           </div>
-          <Footer t={t} lang={lang} />
+          <Footer t={t} lang={lang} onLibrary={openLibrary} />
         </div>
       </div>
     );
@@ -1923,7 +2011,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
               </div>
             </div>
           </div>
-          <Footer t={t} lang={lang} />
+          <Footer t={t} lang={lang} onLibrary={openLibrary} />
         </div>
         {/* Bara de jos dispare odată ce s-a deschis panoul de plată: altfel ar
             acoperi tocmai butonul „am efectuat achitarea". */}
@@ -2031,7 +2119,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
             )}
             </div>
           </div>
-          <Footer t={t} lang={lang} />
+          <Footer t={t} lang={lang} onLibrary={openLibrary} />
         </div>
         {showBar && (
           <div className="vc-bar"><div className="vc-barIn">
@@ -2315,7 +2403,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
           </div>
         </div>
 
-        <Footer t={t} lang={lang} />
+        <Footer t={t} lang={lang} onLibrary={openLibrary} />
       </div>
 
       {showBar && (
