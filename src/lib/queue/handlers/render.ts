@@ -112,8 +112,14 @@ export async function handleRender(job: Job): Promise<void> {
       .set({ status: 'done', completedAt: new Date() })
       .where(eq(renders.id, render.id));
 
-    // Clientul ascultă ce tocmai a cerut; poate reveni oricând la cele vechi.
-    await setStatus(order.id, 'preview_ready', {
+    /**
+     * Clientul ascultă ce tocmai a cerut; poate reveni oricând la cele vechi.
+     *
+     * O comandă deja plătită NU se întoarce în „preview_ready". Cine a plătit și
+     * cere încă o înregistrare ar fi rămas altfel cu o comandă neplătită și cu
+     * fișierele închise, după ce dăduse banii.
+     */
+    await setStatus(order.id, order.paidAt ? 'paid' : 'preview_ready', {
       previewReadyAt: order.previewReadyAt ?? new Date(),
       currentRenderId: render.id,
     });

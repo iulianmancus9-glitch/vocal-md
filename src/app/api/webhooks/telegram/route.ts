@@ -51,7 +51,9 @@ async function unlock(press: Press): Promise<string> {
     where: eq(orders.publicId, press.publicId),
   });
   if (!order) return `Nu găsesc comanda ${press.publicId}.`;
-  if (order.status === 'paid' || order.status === 'delivered') {
+  // După `paid_at`, nu după stare: o comandă plătită care tocmai face încă o
+  // înregistrare stă în „rendering", dar deblocată e de mult.
+  if (order.paidAt !== null) {
     return `Comanda ${press.publicId} era deja deblocată.`;
   }
 
@@ -80,6 +82,13 @@ async function unlock(press: Press): Promise<string> {
       paidAt: new Date(),
       // Comanda plătită se păstrează 24 de luni, ca s-o poată redescărca.
       expiresAt: paidExpiry(),
+      /**
+       * Încercările se pun la loc. A plătit: dacă vrea altă interpretare a
+       * aceleiași piese, sau alt text, le poate cere. Fișierele pe care le are
+       * deja nu se pierd — o înregistrare nouă se adaugă lângă ele.
+       */
+      regensLeft: env.PAID_EXTRA_REGENS,
+      rendersLeft: env.PAID_EXTRA_RENDERS,
       updatedAt: new Date(),
     })
     .where(eq(orders.id, order.id));
@@ -112,9 +121,11 @@ async function reject(press: Press): Promise<string> {
   });
   if (!order) return `Nu găsesc comanda ${press.publicId}.`;
 
-  const wasPaid = order.status === 'paid' || order.status === 'delivered';
+  const wasPaid = order.paidAt !== null;
   if (!wasPaid && order.status !== 'payment_claimed') {
-    return `Comanda ${press.publicId} nu aștepta o confirmare.`;
+    // Apăsat pe mesajul „a deschis linkul", înainte ca el să confirme ceva.
+    // Nu e o greșeală, doar n-avem ce schimba: comanda e tot la previzualizare.
+    return `Comanda ${press.publicId} e tot la previzualizare. N-am schimbat nimic.`;
   }
 
   if (wasPaid) {

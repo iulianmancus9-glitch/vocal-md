@@ -433,6 +433,11 @@ ok('comanda plătită se păstrează 24 de luni',
   Number(sql(`select round(extract(epoch from (expires_at - now()))/86400) from orders
               where public_id='${id}'`)) > 700);
 
+/* Înainte de plată, reluările erau consumate până la zero (vezi mai sus). Cine
+   a dat 30 € are dreptul la încă o interpretare a aceleiași piese. */
+ok('plata pune la loc încercările consumate',
+  Number(sql(`select renders_left from orders where public_id='${id}'`)) > 0);
+
 /* Telegram retrimite până primește 200: a doua livrare nu are voie să facă nimic. */
 const again = await press(`ok:${id}`, { id: unlockId });
 ok('aceeași apăsare trimisă de două ori nu se procesează de două ori',

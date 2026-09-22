@@ -128,6 +128,23 @@ function clearDraft() {
 /** Pentru cine e melodia din ciornă, ca s-o putem numi când îl întrebăm. */
 const draftName = (d) => d?.names?.find((n) => n?.trim())?.trim() ?? '';
 
+/**
+ * Numărul de WhatsApp, în forma pe care o cere wa.me: doar cifre, cu prefixul
+ * de țară, fără plus și fără spații.
+ */
+const WHATSAPP_NUMBER = '37361039960';
+
+/**
+ * Semnul WhatsApp, desenat aici.
+ *
+ * `lucide-react`, de unde vin restul pictogramelor, nu mai are semne de marcă.
+ */
+const WhatsAppIcon = () => (
+  <svg width="21" height="21" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347M12.05 21.785h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884a9.82 9.82 0 0 1 6.988 2.896 9.83 9.83 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.82 11.82 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 0 0-3.48-8.413Z" />
+  </svg>
+);
+
 /** Ce ecran i se cuvine fiecărei stări a comenzii. */
 const SCREEN_FOR = {
   draft: 'writing', lyrics_pending: 'writing', lyrics_ready: 'lyrics',
@@ -435,6 +452,23 @@ button.vc-mark:hover { opacity: .68; }
 .vc-sec { scroll-margin-top: 104px; margin-top: 16px; padding: 20px 18px; border: 1px solid var(--line); border-radius: 18px; background: var(--page); }
 .vc-secTitle { font-size: 19px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 5px; }
 .vc-secSub { font-size: 13.5px; line-height: 1.5; color: var(--gray); margin: 0 0 16px; }
+
+/* ─── încă o înregistrare, după plată ─── */
+.vc-again { border: 1px solid var(--line); background: var(--page); border-radius: 14px; padding: 13px; margin-top: 12px; }
+.vc-againText { font-size: 12.8px; line-height: 1.5; color: var(--gray); margin: 0 0 10px; text-align: center; }
+
+/* ─── butonul de WhatsApp, mereu la îndemână ─── */
+/* Stă deasupra barei de jos când aceasta apare, altfel i-ar acoperi butonul
+   principal exact în clipa în care omul vrea să apese pe el. */
+.vc-wa { position: fixed; right: 16px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 45; display: flex; align-items: center; gap: 9px; padding: 11px 15px 11px 12px; border-radius: 999px; background: #25D366; color: #fff; font-size: 13.5px; font-weight: 600; text-decoration: none; box-shadow: 0 6px 20px rgba(37,211,102,.38); transition: transform .15s, box-shadow .2s, bottom .22s ease; }
+.vc-wa:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(37,211,102,.5); }
+.vc-wa:active { transform: scale(.97); }
+.vc-wa[data-up="1"] { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+.vc-wa svg { flex: none; }
+/* Pe ecran mic rămâne doar simbolul: un text lângă el ar acoperi pagina. */
+.vc-waText { display: none; }
+@media (min-width: 560px) { .vc-waText { display: inline; } }
+.vc-wa:focus-visible { outline: 2px solid var(--violet); outline-offset: 3px; }
 
 /* ─── panoul „continuă de unde ai rămas" ─── */
 .vc-resume { border: 1px solid rgba(108,92,231,.22); background: var(--violet-t); border-radius: 16px; padding: 15px 15px 16px; text-align: left; margin-top: 4px; }
@@ -1264,6 +1298,30 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     </div>
   );
 
+  /**
+   * Ce plutește peste orice ecran.
+   *
+   * Fereastra „înapoi la început" și butonul de WhatsApp stau împreună, într-un
+   * singur loc: fiecare ecran are propriul `return`, iar un buton adăugat de
+   * mână în zece locuri e un buton uitat în al unsprezecelea.
+   */
+  const overlays = (
+    <>
+      {homeDialog}
+      <a
+        className="vc-wa"
+        href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(t.waMessage)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        data-up={showBar ? '1' : '0'}
+        aria-label={t.waAria}
+      >
+        <WhatsAppIcon />
+        <span className="vc-waText">{t.waText}</span>
+      </a>
+    </>
+  );
+
   /* ────────── pagini legale ────────── */
   if (screen === 'loading') {
     return (
@@ -1323,7 +1381,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     return (
       <div className="vc">
         <style>{CSS}</style>
-        {homeDialog}
+        {overlays}
 
         <div className="vc-head">
           <div className="vc-headIn">
@@ -1429,7 +1487,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     return (
       <div className="vc">
         <style>{CSS}</style>
-      {homeDialog}
+      {overlays}
         <div className="vc-head"><div className="vc-headIn">
           <Brand onClick={askHome} t={t} /><span className="vc-headNote">{t.headLast}</span>
           <LangSwitch t={t} onClick={switchLang} />
@@ -1504,7 +1562,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     return (
       <div className="vc">
         <style>{CSS}</style>
-      {homeDialog}
+      {overlays}
         <div className="vc-head"><div className="vc-headIn">
           <Brand onClick={askHome} t={t} />
           <span className="vc-headNote">{t.headOrder(order?.publicId ?? '')}</span>
@@ -1539,6 +1597,19 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
               <span>{t.invoiceNote}</span>
             </div>
 
+            {/* A plătit, deci mai are dreptul la câteva interpretări ale
+                aceleiași piese. Cele pe care le are deja nu se pierd — una nouă
+                se adaugă lângă ele, iar linkurile rămân bune tot timpul. */}
+            {(order?.rendersLeft ?? 0) > 0 && (
+              <div className="vc-again">
+                <p className="vc-againText">{t.againText(order.rendersLeft)}</p>
+                <button className="vc-ghost" style={{ width: '100%' }}
+                  disabled={busy} onClick={askNewRecording}>
+                  <RefreshCw size={16} /> {t.againCta}
+                </button>
+              </div>
+            )}
+
             <div className="vc-nav" ref={navRef}>
               <button className="vc-ghost" style={{ flex: 1 }} disabled={busy} onClick={openLibrary}>
                 <ListMusic size={16} /> {t.myLibrary}
@@ -1559,7 +1630,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     return (
       <div className="vc">
         <style>{CSS}</style>
-      {homeDialog}
+      {overlays}
         <div className="vc-head"><div className="vc-headIn">
           <Brand onClick={askHome} t={t} /><span className="vc-headNote">{t.headLibrary}</span>
           <LangSwitch t={t} onClick={switchLang} />
@@ -1624,7 +1695,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     return (
       <div className="vc">
         <style>{CSS}</style>
-      {homeDialog}
+      {overlays}
         <div className="vc-head"><div className="vc-headIn">
           <Brand onClick={askHome} t={t} /><span className="vc-headNote">{t.headError}</span>
           <LangSwitch t={t} onClick={switchLang} />
@@ -1675,7 +1746,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     return (
       <div className="vc">
         <style>{CSS}</style>
-      {homeDialog}
+      {overlays}
         <div className="vc-head"><div className="vc-headIn"><Brand onClick={askHome} t={t} /><LangSwitch t={t} onClick={switchLang} /></div></div>
         <div className="vc-wrap"><div className="vc-panel">
           <div className="vc-wait">
@@ -1693,7 +1764,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     return (
       <div className="vc">
         <style>{CSS}</style>
-      {homeDialog}
+      {overlays}
         <div className="vc-head"><div className="vc-headIn"><Brand onClick={askHome} t={t} /><LangSwitch t={t} onClick={switchLang} /></div></div>
         <div className="vc-wrap"><div className="vc-panel">
           <div className="vc-wait">
@@ -1717,7 +1788,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     return (
       <div className="vc">
         <style>{CSS}</style>
-      {homeDialog}
+      {overlays}
         <div className="vc-head"><div className="vc-headIn">
           <Brand onClick={askHome} t={t} /><span className="vc-headNote">{t.headSong}</span>
           <LangSwitch t={t} onClick={switchLang} />
@@ -1882,7 +1953,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     return (
       <div className="vc">
         <style>{CSS}</style>
-      {homeDialog}
+      {overlays}
         <div className="vc-head"><div className="vc-headIn">
           <Brand onClick={askHome} t={t} /><span className="vc-headNote">{t.headLyrics}</span>
           <LangSwitch t={t} onClick={switchLang} />
@@ -1988,7 +2059,7 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
   return (
     <div className="vc">
       <style>{CSS}</style>
-      {homeDialog}
+      {overlays}
 
       <div className="vc-head"><div className="vc-headIn">
         <Brand onClick={askHome} t={t} />

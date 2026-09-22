@@ -158,6 +158,17 @@ const RO = {
   resumeOrderText: 'Melodia ta e salvată și te așteaptă. Poți continua de unde ai rămas sau poți începe alta.',
   resumeGo: 'Continuă melodia',
   resumeNew: 'Începe una nouă',
+
+  /* butonul de WhatsApp, prezent pe toate ecranele */
+  waText: 'Scrie-ne',
+  waAria: 'Scrie-ne pe WhatsApp',
+  waMessage: 'Bună! Am o întrebare despre Vocal MD.',
+
+  /* încă o înregistrare, după ce a plătit */
+  againCta: 'Cere altă înregistrare',
+  againText: (n: number) => n === 1
+    ? 'Nu-ți place cum a ieșit? Mai poți cere o înregistrare a aceleiași piese.'
+    : `Nu-ți place cum a ieșit? Mai poți cere ${n} înregistrări ale aceleiași piese.`,
   specTitle: 'Ce primești',
   spec1a: 'Două fișiere MP3', spec1b: ' — două interpretări ale melodiei tale',
   spec2a: 'Livrare ', spec2b: 'pe email', spec2c: ' și în pagină, după confirmarea plății',
@@ -482,6 +493,15 @@ const EN: typeof RO = {
   resumeOrderText: 'Your song is saved and waiting. You can carry on from where you left off, or start another one.',
   resumeGo: 'Carry on',
   resumeNew: 'Start a new one',
+
+  waText: 'Message us',
+  waAria: 'Message us on WhatsApp',
+  waMessage: 'Hello! I have a question about Vocal MD.',
+
+  againCta: 'Ask for another recording',
+  againText: (n: number) => n === 1
+    ? 'Not happy with how it turned out? You can ask for one more recording of the same song.'
+    : `Not happy with how it turned out? You can ask for ${n} more recordings of the same song.`,
   specTitle: 'What you get',
   spec1a: 'Two MP3 files', spec1b: ' — two takes of your song',
   spec2a: 'Delivered ', spec2b: 'by email', spec2c: ' and on this page, once your payment is confirmed',

@@ -71,7 +71,17 @@ export interface OrderState {
   lyricsHistory: LyricsVersionState[];
 }
 
-const PAID_STATUSES: Order['status'][] = ['paid', 'delivered'];
+/**
+ * Plata se citește din `paid_at`, nu din stare.
+ *
+ * O comandă plătită trece iar prin „rendering" dacă omul cere încă o
+ * înregistrare — iar dacă am citi starea, tocmai clientul care a plătit și-ar
+ * pierde fișierele cât se face varianta nouă. `paid_at` se scrie la confirmare
+ * și se șterge la rambursare, deci spune adevărul în orice moment.
+ */
+function isPaid(order: Order): boolean {
+  return order.paidAt !== null;
+}
 
 /** Explicația pe care o citește clientul când ceva s-a oprit. */
 function problemFor(order: Order): string | null {
@@ -87,7 +97,7 @@ function problemFor(order: Order): string | null {
 }
 
 export async function orderState(order: Order): Promise<OrderState> {
-  const paid = PAID_STATUSES.includes(order.status);
+  const paid = isPaid(order);
 
   const [recordingRows, trackRows, versionRows] = await Promise.all([
     db.select().from(renders).where(eq(renders.orderId, order.id)).orderBy(asc(renders.generation)),

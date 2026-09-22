@@ -42,12 +42,25 @@ export async function POST(
     const session = createCheckout(order.publicId);
     await logEvent(order.id, 'checkout_opened', { provider: 'maib' });
 
+    /**
+     * Mesajul are butoanele încă de acum, nu doar când clientul apasă „am
+     * plătit".
+     *
+     * Sunt oameni care plătesc și închid pagina, fără să mai confirme nimic.
+     * Dacă banii au intrat, melodia lui n-are de ce să aștepte un buton pe care
+     * el nu știe că trebuie să-l apese: deblochezi de aici și gata.
+     */
     await notify(
-      `💳 <b>A deschis linkul de plată</b>\n` +
+      `💳 <b>A deschis linkul de plată</b>\n\n` +
       `Comanda <code>${esc(order.publicId)}</code>\n` +
       `Email: <code>${esc(order.email)}</code>\n` +
       `Titlu: ${esc(order.songTitle ?? order.titleWanted ?? '—')}\n\n` +
-      `<i>Dacă intră 30 €, caută plata după emailul de mai sus.</i>`,
+      `<b>Dacă vezi 30 € în MAIB de la emailul de mai sus, deblochează de aici.</b>\n` +
+      `<i>Nu aștepta să confirme el — sunt clienți care nu apasă nimic.</i>`,
+      [
+        { text: '✅ Deblochează', data: `ok:${order.publicId}` },
+        { text: '❌ N-au intrat banii', data: `no:${order.publicId}` },
+      ],
     );
 
     return ok(session);

@@ -20,7 +20,14 @@ import { absPath, verifyDownload, type TrackKind } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
 
-const PAID_STATUSES = ['paid', 'delivered'];
+/**
+ * Plata se citește din `paid_at`, nu din stare.
+ *
+ * O comandă plătită trece iar prin „rendering" dacă omul cere încă o
+ * înregistrare — iar dacă accesul ar atârna de stare, tocmai clientul care a
+ * plătit și-ar pierde fișierele cât se face varianta nouă. `paid_at` se scrie
+ * la confirmare și se șterge la rambursare, deci spune adevărul tot timpul.
+ */
 
 export async function GET(
   req: Request,
@@ -56,7 +63,7 @@ export async function GET(
 
   // Semnătura dovedește că linkul e al nostru; plata se verifică separat, la
   // fiecare cerere, ca o rambursare să închidă accesul imediat.
-  if (kind === 'full' && !PAID_STATUSES.includes(order.status)) {
+  if (kind === 'full' && order.paidAt === null) {
     return new Response('Melodia completă se deblochează după plată.', { status: 402 });
   }
 

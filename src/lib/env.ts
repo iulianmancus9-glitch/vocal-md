@@ -91,6 +91,17 @@ const schema = z.object({
   MAX_EXTRA_RENDERS: z.coerce.number().int().min(0).max(5).default(2),
   MAX_LYRICS_REGENS: z.coerce.number().int().min(0).max(5).default(2),
 
+  /**
+   * Câte încercări primește, din nou, cine a plătit.
+   *
+   * La confirmarea plății, contoarele comenzii se pun la loc: a dat 30 €, iar
+   * dacă vrea încă o interpretare a aceleiași piese, o poate cere. Fiecare
+   * costă în continuare credite Suno reale, de asta e o manetă separată și nu
+   * „nelimitat".
+   */
+  PAID_EXTRA_RENDERS: z.coerce.number().int().min(0).max(10).default(3),
+  PAID_EXTRA_REGENS: z.coerce.number().int().min(0).max(10).default(3),
+
   // O comandă poate consuma acum până la 1 + MAX_EXTRA_RENDERS generări, deci
   // limita zilnică pe IP trebuie să lase loc pentru câteva comenzi întregi.
   MAX_RENDERS_PER_IP_PER_DAY: z.coerce.number().int().positive().default(9),
