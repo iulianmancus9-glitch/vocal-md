@@ -14,7 +14,7 @@ import { orderState } from '@/lib/order-state';
 import { logEvent, unpaidExpiry } from '@/lib/orders';
 import { enqueue } from '@/lib/queue/queue';
 import { checkLimit, clientIp } from '@/lib/rate-limit';
-import { loadOrder, remember, rememberedIds } from '@/lib/session';
+import { hasPaidBefore, loadOrder, remember, rememberedIds, visitorId } from '@/lib/session';
 import { orderInput } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +24,12 @@ export async function POST(req: Request) {
     const input = orderInput.parse(await req.json());
     const ip = clientIp(req.headers);
 
-    const limit = await checkLimit('lyrics', { ip, email: input.email });
+    const limit = await checkLimit('lyrics', {
+      ip,
+      email: input.email,
+      visitor: await visitorId(),
+      trusted: await hasPaidBefore(),
+    });
     if (!limit.ok) {
       return fail(
         'Ai cerut multe versuri astăzi. Încearcă mâine sau scrie-ne la base.vocalmd@gmail.com.',

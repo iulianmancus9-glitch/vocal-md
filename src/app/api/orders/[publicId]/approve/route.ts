@@ -11,7 +11,7 @@ import { fail, guard, ok } from '@/lib/api';
 import { logEvent } from '@/lib/orders';
 import { checkLimit, clientIp } from '@/lib/rate-limit';
 import { startRender } from '@/lib/renders';
-import { loadOrder } from '@/lib/session';
+import { hasPaidBefore, loadOrder, visitorId } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +52,8 @@ export async function POST(
     const limit = await checkLimit('render', {
       ip: clientIp(req.headers),
       email: order.email,
+      visitor: await visitorId(),
+      trusted: await hasPaidBefore(),
     });
     if (!limit.ok) {
       return fail(

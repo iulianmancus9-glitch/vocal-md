@@ -135,7 +135,12 @@ const id = sql("select public_id from orders where email='e2e@exemplu.md'");
 ok('comanda are un id public', /^[a-z2-9]{12}$/.test(id), id);
 ok('acordul cu termenii e înregistrat',
   sql(`select terms_accepted_at is not null from orders where public_id='${id}'`) === 't');
-ok('limita pe IP a fost numărată', Number(sql("select count from rate_limits limit 1")) === 1);
+ok('limita pe IP a fost numărată',
+  Number(sql("select count from rate_limits where bucket like 'lyrics:ip:%'")) === 1);
+/* Limita „pe om" e cea pe browser: o adresă IP nu e un aparat, iar pe una de
+   operator mobil stau mii de abonați care s-ar bloca unii pe alții. */
+ok('limita se numără și pe browser, nu doar pe IP',
+  Number(sql("select count(*) from rate_limits where bucket like 'lyrics:v:%'")) === 1);
 
 /* ─── worker-ul termină versurile ─── */
 

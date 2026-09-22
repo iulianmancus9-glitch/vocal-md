@@ -79,7 +79,23 @@ de business: `MAX_EXTRA_RENDERS` în `.env`.
 dar fiecare apăsare consumă credite Suno plătite de noi. Indexul parțial
 `jobs_active_key` face ca aceeași comandă să nu poată avea două joburi de același tip
 în lucru, deci un dublu-click nu produce două generări. Peste el, `rate_limits`
-limitează pe IP și pe email.
+numără pe patru niveluri, în ordinea asta:
+
+1. **pe tot site-ul** — frâna de mână pe bani. Singura limită pe care n-o poate
+   ocoli nimeni: nici cine șterge cookie-uri, nici cine schimbă adresa, nici
+   cine inventează emailuri. Când se atinge, pleacă un mesaj pe Telegram.
+2. **pe browser** (`vocal_v`, cookie httpOnly) — asta e limita „pe om".
+3. **pe IP** — plasă de siguranță, nu limită „pe om". O adresă IP nu e un
+   aparat: o familie pe wi-fi iese pe una singură, iar un operator de mobil
+   trece mii de abonați prin câteva. Ținută jos, blochează oameni străini unii
+   de alții — de asta e largă.
+4. **pe email** — împotriva celui care schimbă browserul dar nu și adresa.
+
+Cine a plătit vreodată de pe browserul respectiv sare peste 2, 3 și 4:
+limitele apără previzualizarea gratuită de cine vine s-o consume degeaba, iar
+un om care a dat 30 € nu e acela. Se citește din comenzile pe care le știe
+cookie-ul, deci nimeni nu poate pretinde că a plătit — i-ar trebui secretul
+unei comenzi plătite.
 
 **Renunțarea la retragere se dovedește cu o coloană.** `withdrawal_waived_at` și
 `terms_accepted_at` se scriu la checkout, împreună cu `legal_version` și IP-ul.

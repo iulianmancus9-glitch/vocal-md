@@ -10,7 +10,7 @@ import { orders } from '@/lib/db/schema';
 import { fail, guard, ok } from '@/lib/api';
 import { checkLimit, clientIp } from '@/lib/rate-limit';
 import { startRender } from '@/lib/renders';
-import { loadOrder } from '@/lib/session';
+import { hasPaidBefore, loadOrder, visitorId } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +34,14 @@ export async function POST(
       );
     }
 
-    const limit = await checkLimit('render', { ip: clientIp(req.headers), email: order.email });
+    const limit = await checkLimit('render', {
+      ip: clientIp(req.headers),
+      email: order.email,
+      visitor: await visitorId(),
+      // O comandă deja plătită nu se mai numără: i-am dat înapoi înregistrările
+      // tocmai ca să le poată folosi.
+      trusted: order.paidAt !== null || (await hasPaidBefore()),
+    });
     if (!limit.ok) {
       return fail(
         'Ai făcut multe înregistrări astăzi. Încearcă mâine sau scrie-ne la base.vocalmd@gmail.com.',

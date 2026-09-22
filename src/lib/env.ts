@@ -102,10 +102,34 @@ const schema = z.object({
   PAID_EXTRA_RENDERS: z.coerce.number().int().min(0).max(10).default(3),
   PAID_EXTRA_REGENS: z.coerce.number().int().min(0).max(10).default(3),
 
-  // O comandă poate consuma acum până la 1 + MAX_EXTRA_RENDERS generări, deci
-  // limita zilnică pe IP trebuie să lase loc pentru câteva comenzi întregi.
-  MAX_RENDERS_PER_IP_PER_DAY: z.coerce.number().int().positive().default(9),
+  /**
+   * Limita pe browser. Asta e limita „pe om".
+   *
+   * O melodie poate consuma până la trei înregistrări, iar cine face două
+   * cadouri în aceeași zi ajunge la șase. De asta e pusă la opt: un om normal
+   * n-o atinge niciodată, dar cine se joacă la nesfârșit se oprește.
+   */
+  MAX_RENDERS_PER_VISITOR_PER_DAY: z.coerce.number().int().positive().default(8),
+
+  /**
+   * Limita pe IP nu mai e limită „pe om", ci plasă de siguranță.
+   *
+   * O adresă IP nu e un aparat: o familie pe wi-fi iese pe una singură, iar un
+   * operator de mobil trece mii de abonați prin câteva. Ținută jos, bloca
+   * oameni străini unii de alții. Ținută sus, tot prinde ce trebuie să prindă:
+   * patruzeci de înregistrări într-o zi de pe aceeași adresă nu mai e o familie.
+   */
+  MAX_RENDERS_PER_IP_PER_DAY: z.coerce.number().int().positive().default(40),
   MAX_RENDERS_PER_EMAIL_PER_DAY: z.coerce.number().int().positive().default(6),
+
+  /**
+   * Plafonul zilnic pe tot site-ul. Ăsta e singurul care apără banii cu adevărat.
+   *
+   * Oricâte cookie-uri s-ar șterge, oricâte adrese s-ar schimba și oricâte
+   * emailuri s-ar inventa, într-o zi nu se pot consuma mai multe generări decât
+   * atât. E cea mai mare pierdere posibilă într-o zi proastă, aleasă de tine.
+   */
+  MAX_RENDERS_PER_DAY: z.coerce.number().int().positive().default(60),
 
   /**
    * Adrese IP care nu sunt limitate deloc — ale tale, ca să poți testa.
@@ -122,7 +146,13 @@ const schema = z.object({
    * nici engleză. Vezi `src/lib/lang.ts` pentru ordinea completă.
    */
   DEFAULT_LANG: z.enum(['ro', 'en']).default('ro'),
-  MAX_LYRICS_PER_IP_PER_DAY: z.coerce.number().int().positive().default(20),
+  /**
+   * Versurile costă fracțiuni de cent, nu credite Suno, deci limitele lor pot
+   * fi largi. Cea pe IP e ridicată din același motiv ca la înregistrări: pe o
+   * adresă de operator mobil stau mulți oameni străini unii de alții.
+   */
+  MAX_LYRICS_PER_VISITOR_PER_DAY: z.coerce.number().int().positive().default(10),
+  MAX_LYRICS_PER_IP_PER_DAY: z.coerce.number().int().positive().default(80),
 
   RETENTION_UNPAID_DAYS: z.coerce.number().int().positive().default(30),
   RETENTION_PAID_MONTHS: z.coerce.number().int().positive().default(24),

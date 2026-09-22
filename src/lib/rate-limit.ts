@@ -12,6 +12,7 @@ import { inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { env } from '@/lib/env';
 import { rateLimits } from '@/lib/db/schema';
+import { notify } from '@/lib/telegram';
 
 export type LimitAction = 'lyrics' | 'render';
 
@@ -20,6 +21,8 @@ export interface LimitResult {
   /** Câte au mai rămas azi. */
   remaining: number;
   limit: number;
+  /** A câta cerere a fost asta. Din ea se vede cine trece pragul primul. */
+  count: number;
 }
 
 /** Ziua curentă, ca text. Fereastra se resetează la miezul nopții UTC. */
@@ -49,7 +52,7 @@ async function bump(bucket: string, limit: number): Promise<LimitResult> {
   `);
 
   const count = rows[0]?.count ?? 1;
-  return { ok: count <= limit, remaining: Math.max(0, limit - count), limit };
+  return { ok: count <= limit, remaining: Math.max(0, limit - count), limit, count };
 }
 
 /** IP-urile scutite, citite o dată. */
@@ -68,12 +71,60 @@ function isExempt(ip: string): boolean {
  */
 export async function checkLimit(
   action: LimitAction,
-  { ip, email }: { ip: string; email?: string | null },
+  {
+    ip,
+    email,
+    visitor,
+    trusted = false,
+  }: { ip: string; email?: string | null; visitor?: string | null; trusted?: boolean },
 ): Promise<LimitResult> {
   // Adresele tale nu se numără deloc: nici contor, nici plafon.
-  if (isExempt(ip)) return { ok: true, remaining: Number.MAX_SAFE_INTEGER, limit: 0 };
+  if (isExempt(ip)) return { ok: true, remaining: Number.MAX_SAFE_INTEGER, limit: 0, count: 0 };
 
   const day = today();
+  const free: LimitResult = { ok: true, remaining: Number.MAX_SAFE_INTEGER, limit: 0, count: 0 };
+
+  /**
+   * Plafonul pe tot site-ul se numără înaintea oricărui altuia și se aplică
+   * tuturor, inclusiv clienților plătitori.
+   *
+   * El nu e o regulă de corectitudine, ci frâna de mână pe bani: e singura
+   * limită pe care n-o poate ocoli nici cine șterge cookie-uri, nici cine
+   * schimbă adresa, nici cine inventează emailuri.
+   */
+  if (action === 'render') {
+    const all = await bump(`render:all:${day}`, env.MAX_RENDERS_PER_DAY);
+    if (!all.ok) {
+      // Exact cererea care trece pragul, nu și cele de după ea. Altfel fiecare
+      // cerere blocată ar mai trimite un mesaj, iar alarma s-ar îneca în ea însăși.
+      if (all.count === all.limit + 1) {
+        void notify(
+          `🛑 <b>S-a atins plafonul zilnic de înregistrări</b> (${all.limit}).\n\n` +
+          `Nu se mai generează nimic până mâine. Dacă e trafic adevărat, ` +
+          `urcă <code>MAX_RENDERS_PER_DAY</code> în .env. Dacă nu, cineva încearcă ` +
+          `să consume credite.`,
+        );
+      }
+      return all;
+    }
+  }
+
+  /**
+   * Cine a plătit vreodată de pe browserul ăsta trece mai departe.
+   *
+   * Limitele apără previzualizarea gratuită de cine vine s-o consume degeaba.
+   * Un om care a dat 30 € nu e ăla — iar dacă vrea a doua melodie, cadou pentru
+   * altcineva, n-are de ce să fie oprit la primul text.
+   */
+  if (trusted) return free;
+
+  if (visitor) {
+    const visitorLimit = action === 'render'
+      ? env.MAX_RENDERS_PER_VISITOR_PER_DAY
+      : env.MAX_LYRICS_PER_VISITOR_PER_DAY;
+    const byVisitor = await bump(`${action}:v:${visitor}:${day}`, visitorLimit);
+    if (!byVisitor.ok) return byVisitor;
+  }
 
   const ipLimit =
     action === 'render' ? env.MAX_RENDERS_PER_IP_PER_DAY : env.MAX_LYRICS_PER_IP_PER_DAY;
