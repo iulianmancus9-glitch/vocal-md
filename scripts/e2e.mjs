@@ -348,6 +348,31 @@ ok('browserul nu poate debloca singur melodia', claimed.paid === false);
 ok('fișierul integral rămâne închis cât timp plata nu e confirmată',
   claimed.tracks?.[0]?.fullUrl == null);
 
+/* ─── respingerea îl scoate pe client din așteptare ─── */
+
+/* Prima dată, pagina rămânea blocată în „verificăm plata" până la reîncărcare:
+   bucla care întreba serverul se uita doar după „plătit", iar întoarcerea la
+   previzualizare trecea pe lângă ea. Omul aștepta degeaba, fără să afle nimic. */
+const refuz = await press(`no:${id}`);
+ok('apăsarea pe „respinge" e acceptată', refuz.status() === 200);
+ok('comanda se întoarce la previzualizare',
+  sql(`select status from orders where public_id='${id}'`) === 'preview_ready');
+
+await page.locator('.vc-payWait').waitFor({ state: 'detached', timeout: 20000 })
+  .catch(() => {});
+ok('pagina iese singură din așteptare după respingere',
+  await page.locator('.vc-payWait').count() === 0);
+ok('clientului i se spune de ce',
+  (await page.locator('.vc-alert').textContent().catch(() => '')).includes('Nu am găsit plata'));
+
+/* Poate încerca din nou, iar a doua oară plata chiar intră. */
+await page.getByRole('button', { name: /Primește melodia/ }).first().click();
+await page.locator('.vc-payPanel').waitFor({ timeout: 15000 });
+await page.getByRole('button', { name: /Am efectuat achitarea/ }).click();
+await page.locator('.vc-payWait').waitFor({ timeout: 15000 });
+ok('poate anunța plata a doua oară',
+  sql(`select status from orders where public_id='${id}'`) === 'payment_claimed');
+
 /* Adresa de webhook e cea mai periculoasă din proiect: cine o poate chema poate
    debloca melodii pe gratis. Fără secretul potrivit, nu răspunde nimic. */
 const fakeSecret = await press(`ok:${id}`, { secret: 'a'.repeat(32) });

@@ -823,7 +823,17 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
     return () => clearInterval(t);
   }, [screen]);
 
-  const waitSeconds = screen === 'making' ? 99 : 30;
+  /**
+   * Cât ținem bara, în secunde.
+   *
+   * 99 era prea mult: melodia ajungea pe la 75% din bară, adică după vreo 75 de
+   * secunde, și omul rămânea uitându-se la un sfert de bară care nu mai avea ce
+   * măsura. 78 o duce aproape de capăt exact când sosește piesa.
+   *
+   * Dacă Suno întârzie peste atât, `overtime` spune asta în cuvinte — bara nu
+   * rămâne blocată fără explicație.
+   */
+  const waitSeconds = screen === 'making' ? 78 : 30;
   const elapsed = waitFrom ? (Math.max(tick, waitFrom) - waitFrom) / 1000 : 0;
 
   /* Bara nu măsoară nimic real — Suno nu ne spune cât a făcut. Ce poate face
@@ -1018,19 +1028,29 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
   useEffect(() => {
     if (!waitingPayment || !orderId) return;
     const until = Date.now() + 900_000;
-    const t = setInterval(async () => {
-      if (Date.now() > until) { clearInterval(t); return; }
+    // `timer`, nu `t`: `t` sunt textele paginii, iar o variabilă cu același
+    // nume le-ar acoperi tocmai aici, unde avem nevoie de un mesaj din ele.
+    const timer = setInterval(async () => {
+      if (Date.now() > until) { clearInterval(timer); return; }
       try {
         const fresh = await api.get(orderId, initialToken);
-        if (fresh.paid) {
-          clearInterval(t);
-          setOrder(fresh);
-          setScreen('done');
-        }
+        // Încă așteaptă. Nimic de făcut, întrebăm iar peste cinci secunde.
+        if (fresh.status === 'payment_claimed') return;
+
+        clearInterval(timer);
+        setOrder(fresh);
+
+        if (fresh.paid) { setScreen('done'); return; }
+
+        /* Am respins plata. Înainte, ecranul rămânea blocat în „verificăm"
+           până la reîncărcarea paginii: bucla se uita doar după `paid`, iar
+           întoarcerea la `preview_ready` trecea pe lângă ea. */
+        setPay(null);
+        setApiError(t.payRejected);
       } catch { /* o interogare pierdută nu e o eroare; încercăm iar */ }
-    }, 10_000);
-    return () => clearInterval(t);
-  }, [waitingPayment, orderId, initialToken]);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [waitingPayment, orderId, initialToken, t]);
 
   const openLibrary = () => run(async () => {
     const { orders } = await api.list();

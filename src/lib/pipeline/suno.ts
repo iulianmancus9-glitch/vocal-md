@@ -8,6 +8,7 @@
 import { writeFile } from 'node:fs/promises';
 import { env } from '@/lib/env';
 import { GENDER_MAP } from './prompt';
+import { pentruSuno } from './pronuntie';
 import type { SunoTrack } from './types';
 
 const BASE = 'https://api.sunoapi.org';
@@ -95,7 +96,9 @@ export async function createTask(input: CreateTaskInput): Promise<string> {
   const body = {
     customMode: true,
     instrumental: false,
-    prompt: input.lyrics.slice(0, 5000),
+    // Corectura de pronunție se face aici, în ultima clipă: în pagină și în
+    // email clientul citește numele scris normal. Vezi `pronuntie.ts`.
+    prompt: pentruSuno(input.lyrics).slice(0, 5000),
     style: input.style.slice(0, 1000),
     title: input.title.slice(0, 90),
     model: env.SUNO_MODEL,

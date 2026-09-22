@@ -185,7 +185,7 @@ const RO = {
   yourSong: 'Melodia ta',
   variantOf: (n: number) => `varianta ${n}`,
   dlAria: (n: number) => `Descarcă varianta ${n}`,
-  invoiceNote: 'Plata a fost înregistrată. Melodia rămâne în biblioteca ta 24 de luni și o poți descărca de oricâte ori vrei. Dacă ai nevoie de factură, scrie-ne și ți-o trimitem.',
+  invoiceNote: 'Plata a fost înregistrată. Factura îți vine pe email, direct de la MAIB.',
   myLibrary: 'Biblioteca mea',
   makeAnother: 'Mai fac una',
 
@@ -221,7 +221,7 @@ const RO = {
   writingNormal: 'Povestea ta se citește și textul se generează. Durează câteva zeci de secunde — lasă pagina deschisă.',
   makingTitle: 'Se înregistrează melodia',
   makingLate: 'Mai durează câteva clipe — se lucrează la mixaj. Nu închide pagina, melodia vine.',
-  makingNormal: 'Vocea, instrumentele și mixajul. Durează două-trei minute — lasă pagina deschisă.',
+  makingNormal: 'Vocea, instrumentele și mixajul. Durează un minut-două — lasă pagina deschisă.',
 
   /* previzualizare + ofertă */
   headSong: 'Melodia ta',
@@ -260,6 +260,7 @@ const RO = {
   payFoot: 'Verificăm plata și îți deblocăm melodia. De obicei în câteva minute.',
   payCheckingTitle: 'Verificăm plata',
   payCheckingText: 'Melodia se deschide singură aici imediat ce confirmăm, și îți ajunge și pe email. Poți închide pagina — linkul din email rămâne bun.',
+  payRejected: 'Nu am găsit plata ta. Dacă ai achitat, scrie-ne la base.vocalmd@gmail.com și rezolvăm noi. Dacă nu, poți încerca din nou.',
 
   /* versuri */
   headLyrics: 'Versurile',
@@ -499,7 +500,7 @@ const EN: typeof RO = {
   yourSong: 'Your song',
   variantOf: (n: number) => `take ${n}`,
   dlAria: (n: number) => `Download take ${n}`,
-  invoiceNote: 'Your payment has been recorded. The song stays in your library for 24 months and you can download it as many times as you like. If you need an invoice, write to us and we will send one.',
+  invoiceNote: 'Your payment has been recorded. Your invoice is emailed to you directly by MAIB.',
   myLibrary: 'My library',
   makeAnother: 'Make another one',
 
@@ -532,7 +533,7 @@ const EN: typeof RO = {
   writingNormal: 'Your story is being read and the text generated. It takes a few dozen seconds — leave the page open.',
   makingTitle: 'Recording the song',
   makingLate: 'A few more moments — the mix is being finished. Do not close the page, the song is coming.',
-  makingNormal: 'The voice, the instruments and the mix. It takes two or three minutes — leave the page open.',
+  makingNormal: 'The voice, the instruments and the mix. It takes a minute or two — leave the page open.',
 
   headSong: 'Your song',
   demoEyebrow: 'Ready',
@@ -569,6 +570,7 @@ const EN: typeof RO = {
   payFoot: 'We check the payment and unlock your song. Usually within a few minutes.',
   payCheckingTitle: 'Checking your payment',
   payCheckingText: 'The song opens here on its own as soon as we confirm, and it also reaches you by email. You can close this page — the link in the email stays valid.',
+  payRejected: 'We could not find your payment. If you did pay, write to us at base.vocalmd@gmail.com and we will sort it out. If not, you can try again.',
 
   headLyrics: 'The lyrics',
   lyricsEyebrow: 'Next step',
