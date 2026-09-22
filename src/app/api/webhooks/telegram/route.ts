@@ -231,9 +231,15 @@ export async function POST(req: Request) {
       const text = String(msg.text ?? '').trim();
 
       if (text.startsWith('/') && String(chat.id) === String(env.TELEGRAM_CHAT_ID)) {
-        // `/limite@botul_meu argument` — Telegram lipește numele botului.
-        const [rawCmd, ...rest] = text.split(/\s+/);
-        const cmd = rawCmd.split('@')[0].toLowerCase();
+        /**
+         * `/limite@botul_meu argument` — Telegram lipește numele botului.
+         *
+         * Valorile implicite nu sunt de prisos: `noUncheckedIndexedAccess`
+         * spune adevărul despre orice indexare, iar `split` pe un șir gol poate
+         * întoarce mai puțin decât pare la prima vedere.
+         */
+        const [rawCmd = '', ...rest] = text.split(/\s+/);
+        const cmd = (rawCmd.split('@')[0] ?? '').toLowerCase();
         const from = String(who.username ?? who.first_name ?? who.id ?? 'necunoscut');
 
         if (cmd === '/limite') {
