@@ -17,7 +17,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -f .env ] || { echo "Nu găsesc .env. Rulează întâi deploy/setup.sh." >&2; exit 1; }
 
-get() { grep -E "^$1=" .env | head -1 | cut -d= -f2-; }
+# `|| true` nu e de decor. Cu `set -euo pipefail`, un grep care nu găsește rândul
+# întoarce 1, `pipefail` duce eșecul mai departe, iar `set -e` oprește scriptul pe
+# loc — fără să scrie nimic. Aici cheile există, pentru că le pune `set-keys.sh`,
+# deci nu s-a văzut niciodată — dar e aceeași capcană.
+get() { grep -E "^$1=" .env | head -1 | cut -d= -f2- || true; }
 
 TOKEN="$(get TELEGRAM_BOT_TOKEN)"
 SECRET="$(get TELEGRAM_WEBHOOK_SECRET)"
