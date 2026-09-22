@@ -19,12 +19,41 @@ cd "$(dirname "$0")/.."
 
 get() { grep -E "^$1=" .env | head -1 | cut -d= -f2-; }
 
+set_var() {
+  local key="$1" value="$2"
+  if grep -qE "^${key}=" .env; then
+    sed -i "s|^${key}=.*|${key}=${value}|" .env
+  else
+    printf '%s=%s\n' "$key" "$value" >> .env
+  fi
+}
+
 KEY="$(get EXPORT_KEY)"
 SITE="$(get APP_URL)"
 SITE="${SITE%/}"
 
-[ -z "$KEY" ] && { echo "Lipsește EXPORT_KEY din .env." >&2; exit 1; }
 [ -z "$SITE" ] && { echo "Lipsește APP_URL din .env." >&2; exit 1; }
+
+# Cheia se generează singură, prima dată.
+#
+# `setup.sh` o face la instalare, dar un .env mai vechi decât funcția asta nu o
+# are — și atunci scriptul se oprea cu o eroare pe care n-avea cum s-o rezolve
+# cineva care nu știe ce e o cheie de export.
+if [ -z "$KEY" ]; then
+  echo
+  echo "  Nu aveai încă o cheie de export. Am generat una acum."
+  KEY=$(openssl rand -hex 20)
+  set_var EXPORT_KEY "$KEY"
+  chmod 600 .env
+  echo "  Repornesc site-ul ca s-o folosească…"
+  echo
+  docker compose up -d >/dev/null 2>&1 || docker compose up -d
+  for _ in $(seq 1 40); do
+    curl -fsS -m 3 http://127.0.0.1:3000/api/health >/dev/null 2>&1 && break
+    sleep 2
+  done
+  echo "  ✓ Gata."
+fi
 
 cat <<EOF
 
