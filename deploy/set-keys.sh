@@ -18,6 +18,7 @@ DEFAULT_KEYS=(
   TELEGRAM_BOT_TOKEN
   TELEGRAM_CHAT_ID
   TELEGRAM_WEBHOOK_SECRET
+  PANEL_PASSWORD
   RESEND_API_KEY
   MAIL_FROM
 )
@@ -27,6 +28,7 @@ declare -A HINT=(
   [TELEGRAM_BOT_TOKEN]="de la @BotFather, după /newbot ; arată ca 12345:AAH..."
   [TELEGRAM_CHAT_ID]="de la @userinfobot ; e un număr, al tău"
   [TELEGRAM_WEBHOOK_SECRET]="îl inventezi tu ; generează-l cu: openssl rand -hex 32"
+  [PANEL_PASSWORD]="parola panoului de la /panou ; generează-o cu: openssl rand -base64 24"
   [RESEND_API_KEY]="Resend → API Keys ; începe cu re_"
   [MAIL_FROM]="de pe ce adresă pleacă emailurile, ex: Vocal MD <comenzi@vocal.md>"
 )

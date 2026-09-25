@@ -544,6 +544,44 @@ if (fullUrl) {
   ok('fișierul integral nu se mai descarcă după rambursare', false, 'lipsește linkul');
 }
 
+/* ─── panoul nu se deschide nimănui ─── */
+
+/* Panoul arată tot: emailuri, povești, melodii integrale ale comenzilor
+   neplătite. Verificarea de aici e singura care contează — că un om care n-a
+   dat parola nu ajunge la lista de comenzi, oricum ar intra. */
+{
+  const strain = await browser.newContext({ viewport: { width: 400, height: 900 } });
+  const p = await strain.newPage();
+  const raspuns = await p.goto(`${BASE}/panou`, { waitUntil: 'domcontentloaded' });
+
+  /* Două răspunsuri sunt bune, după cum e pus `PANEL_PASSWORD` pe serverul de
+     test: 404 dacă panoul e oprit, sau pagina de parolă dacă e pornit. Ce NU
+     are voie să apară e lista de comenzi. */
+  const adresa = p.url();
+  const areLista = await p.locator('table.p-table').count();
+  ok('panoul nu arată comenzile fără parolă',
+    areLista === 0 && (raspuns.status() === 404 || adresa.includes('/panou/intrare')),
+    `${raspuns.status()} · ${adresa}`);
+
+  /* Și fișierele integrale rămân închise: parametrul `panou=1` cere o
+     verificare, nu ține loc de ea. */
+  const token2 = sql(`select access_token from orders where public_id='${id}'`);
+  const stare2 = await p.evaluate(async ([oid, tok]) => {
+    const r = await fetch(`/api/orders/${oid}?token=${encodeURIComponent(tok)}`);
+    return r.json();
+  }, [id, token2]);
+  const linkPreview = stare2.tracks?.[0]?.previewUrl;
+  if (linkPreview) {
+    const furat = await p.request.get(`${linkPreview.replace('/preview?', '/full?')}&panou=1`);
+    ok('„panou=1" nu deschide singur fișierul integral', furat.status() === 402,
+      String(furat.status()));
+  } else {
+    ok('„panou=1" nu deschide singur fișierul integral', false, 'lipsește linkul');
+  }
+
+  await strain.close();
+}
+
 /* ─── exportul pentru foaia de calcul ─── */
 
 const key = process.env.EXPORT_KEY ?? 'cheie-de-test-12345';

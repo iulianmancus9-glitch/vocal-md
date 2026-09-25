@@ -14,7 +14,7 @@ import { env } from '@/lib/env';
 import { rateLimits } from '@/lib/db/schema';
 import { notify } from '@/lib/telegram';
 
-export type LimitAction = 'lyrics' | 'render';
+export type LimitAction = 'lyrics' | 'render' | 'panou';
 
 export interface LimitResult {
   ok: boolean;
@@ -126,8 +126,14 @@ export async function checkLimit(
     if (!byVisitor.ok) return byVisitor;
   }
 
-  const ipLimit =
-    action === 'render' ? env.MAX_RENDERS_PER_IP_PER_DAY : env.MAX_LYRICS_PER_IP_PER_DAY;
+  const ipLimit = {
+    render: env.MAX_RENDERS_PER_IP_PER_DAY,
+    lyrics: env.MAX_LYRICS_PER_IP_PER_DAY,
+    // Parola panoului e un singur cuvânt, iar o adresă lăsată liberă poate fi
+    // încercată de zeci de mii de ori pe minut. Zece pe zi e mai mult decât îi
+    // trebuie unui om care și-a uitat parola.
+    panou: env.MAX_PANEL_TRIES_PER_DAY,
+  }[action];
 
   const byIp = await bump(`${action}:ip:${ip}:${day}`, ipLimit);
   if (!byIp.ok) return byIp;

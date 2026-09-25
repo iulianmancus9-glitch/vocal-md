@@ -17,6 +17,7 @@ import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { orderTracks, orders, renders } from '@/lib/db/schema';
 import { absPath, verifyDownload, type TrackKind } from '@/lib/storage';
+import { signedIn } from '@/lib/panou/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,7 +64,16 @@ export async function GET(
 
   // Semnătura dovedește că linkul e al nostru; plata se verifică separat, la
   // fiecare cerere, ca o rambursare să închidă accesul imediat.
-  if (kind === 'full' && order.paidAt === null) {
+  /**
+   * Panoul ascultă și variantele integrale ale comenzilor neplătite.
+   *
+   * `panou=1` nu e o cheie și nu dă drepturi: doar cere verificarea. Dreptul
+   * vine din biletul semnat din cookie, exact ca la paginile panoului. Cine
+   * pune parametrul fără să fie înăuntru primește același 402 ca oricine.
+   */
+  const dinPanou = url.searchParams.get('panou') === '1' && (await signedIn());
+
+  if (kind === 'full' && order.paidAt === null && !dinPanou) {
     return new Response('Melodia completă se deblochează după plată.', { status: 402 });
   }
 

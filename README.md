@@ -216,6 +216,43 @@ Se traduc doar etichetele văzute de om. Alegerile din formular — „Femeie",
 ele sunt protocolul: `validation.ts` le verifică drept enumerări exacte, iar
 promptul lui Suno se construiește din ele. Vezi `src/lib/i18n.ts`.
 
+## Panoul de comenzi
+
+La **`/panou`**, cu parola din `PANEL_PASSWORD`. Arată toate comenzile, nu doar
+cele plătite: unde se opresc oamenii spune mai mult despre ce merge prost decât
+spun vânzările reușite.
+
+O comandă deschisă arată tot ce se știe despre ea, în ordinea în care o cauți
+când îți scrie un client: ce a cerut și povestea lui, toate variantele de
+versuri, toate înregistrările — de ascultat pe loc, inclusiv cele integrale ale
+comenzilor neplătite — plata, consimțămintele, emailurile plecate și urma
+auditabilă.
+
+Câteva decizii care nu sunt evidente:
+
+**Nu e pe subdomeniu.** Un subdomeniu ar cere o înregistrare DNS, un bloc nou
+în Caddy și un certificat, ca să rezolve o problemă pe care n-o avem: nu
+separăm nimic. Pe aceeași adresă, cookie-ul de sesiune e deja pe domeniul
+potrivit și nu se configurează nimic.
+
+**Fără parolă în `.env`, panoul răspunde 404**, nu „parolă greșită". Un panou
+care spune că e acolo e un panou pe care cineva începe să-l încerce.
+
+**Paza stă în layout-ul grupului `(protejat)`**, nu în fiecare pagină. O pagină
+nouă e apărată din clipa în care e creată — nu trebuie să-și amintească cineva
+să pună o verificare în ea. Pagina de intrare stă dinadins în afara grupului;
+sub aceeași pază, s-ar fi trimis la ea însăși la nesfârșit.
+
+**Biletul e semnat, nu ținut în bază.** O sesiune în bază ar cere un tabel, o
+migrare și o curățare, ca să rezolve o problemă pe care n-o avem: nu trebuie să
+închidem sesiunea altcuiva. Schimbarea lui `APP_SECRET` le invalidează pe toate
+deodată — ăsta e butonul de „scoate pe toată lumea afară".
+
+**Linkurile de audio din panou poartă `panou=1`.** Parametrul nu e o cheie și
+nu dă drepturi: doar cere verificarea. Dreptul vine din același bilet din
+cookie. Cine pune parametrul fără să fie înăuntru primește același 402 ca
+oricine — și există un test care ține asta în loc.
+
 ## Mini-CRM în Google Sheets
 
 Două adrese care întorc CSV, protejate cu `EXPORT_KEY` din `.env`:

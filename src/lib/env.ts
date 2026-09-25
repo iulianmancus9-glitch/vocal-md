@@ -101,6 +101,21 @@ const schema = z.object({
    */
   EXPORT_KEY: z.string().default(''),
 
+  /**
+   * Parola panoului de comenzi, la /panou.
+   *
+   * Cât timp e goală, panoul nu există: adresa răspunde 404, nu „parolă
+   * greșită". Un panou care spune că e acolo e un panou pe care cineva începe
+   * să-l încerce.
+   *
+   * Nu e stocată ca hash. Ar fi mai frumos, dar `.env` e deja plin de chei care
+   * dau acces la tot — cine îl citește are oricum cheia Suno și baza de date.
+   * Un hash aici ar adăuga un pas de generat, fără să apere de nimic real.
+   */
+  PANEL_PASSWORD: z.string().default(''),
+  /** Câte încercări de parolă pe zi, de pe aceeași adresă. */
+  MAX_PANEL_TRIES_PER_DAY: z.coerce.number().int().positive().default(10),
+
   RESEND_API_KEY: z.string().default(''),
   MAIL_FROM: z.string().default('Vocal MD <comenzi@vocal.md>'),
   MAIL_REPLY_TO: z.string().default('base.vocalmd@gmail.com'),

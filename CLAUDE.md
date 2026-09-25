@@ -98,6 +98,19 @@ Când se leagă Paynet, de făcut:
    lui, iar plata o procesează MAIB. **Partea de TVA n-a fost scrisă de tine și
    nu o scrie:** el o verifică cu contabilul. Tu nu ești consilier fiscal.
 
+## Panoul de comenzi
+
+La `/panou`, cu parola din `PANEL_PASSWORD`. Toate comenzile, nu doar cele
+plătite; o comandă deschisă arată tot — formular, poveste, toate variantele de
+versuri, toate înregistrările de ascultat, plata, emailurile, urma auditabilă.
+
+Nu e pe subdomeniu, dinadins: n-ar rezolva nimic și ar cere DNS, Caddy și
+certificat. Paza stă în layout-ul grupului `(protejat)`, deci o pagină nouă e
+apărată din clipa în care e creată. Pagina de intrare stă în afara grupului,
+altfel s-ar trimite la ea însăși la nesfârșit.
+
+Fără parolă în `.env`, panoul răspunde 404, nu „parolă greșită".
+
 ## Ce a mai rămas nefăcut
 
 - emailurile către clienți sunt doar în română, deși site-ul e bilingv
