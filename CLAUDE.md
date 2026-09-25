@@ -19,9 +19,9 @@ Firma: WADE PRODUCTION S.R.L., IDNO 1025600056881.
 
 vocal.md — vinde melodii personalizate. Clientul completează un formular în șase
 pași, versurile le scrie Gemini (prin OpenRouter), melodia o cântă Suno (plan
-Premier, cu drepturi comerciale). Versurile și un minut din melodie sunt
-gratuite; melodia întreagă costă 30 €, plată unică, și se livrează ca două
-fișiere MP3.
+Premier, cu drepturi comerciale). Versurile și melodia întreagă (cu o semnătură
+sonoră peste ea) se ascultă gratuit; fișierele curate costă 30 €, plată unică,
+și se livrează ca două fișiere MP3.
 
 Detaliile tehnice sunt în `README.md`. Citește-l înainte să schimbi ceva.
 

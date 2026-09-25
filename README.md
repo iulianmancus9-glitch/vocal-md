@@ -1,8 +1,8 @@
 # VOCAL MD
 
 Site unde oamenii comandă melodii personalizate. Formular în șase pași, versuri
-gratuite scrise de Gemini, previzualizare gratuită de 60 de secunde în două
-interpretări, apoi 30 € pentru melodia completă, printr-un link de plată MAIB.
+gratuite scrise de Gemini, melodia întreagă de ascultat gratuit cu o semnătură
+sonoră peste ea, apoi 30 € pentru fișierele curate, printr-un link de plată MAIB.
 
 Next.js + PostgreSQL, în Docker, pe VPS Ubuntu 24.04. Caddy termină HTTPS pe gazdă.
 
@@ -138,6 +138,35 @@ fără schimbări de conținut. Cele trei manete de reglaj sunt aceleași:
 Ce e nou față de scriptul de probă: la regenerare trimitem explicit un alt unghi
 (`REGEN_HINT`) și variantele deja respinse, altfel modelul întoarce același text cu
 două cuvinte schimbate și clientul își consumă degeaba variantele gratuite.
+
+---
+
+## Varianta gratuită
+
+Gratuit se ascultă **melodia întreagă**, nu un minut din ea. Peste ea se aude o
+semnătură sonoră, din treizeci în treizeci de secunde. Fișierele primite după
+plată sunt curate.
+
+Un minut convinge mai puțin decât toată piesa — dar o piesă întreagă și curată
+n-ar mai avea de ce să fie cumpărată. Marca rezolvă amândouă: omul aude tot, dar
+nu poate dărui ce a auzit.
+
+Începutul rămâne curat dinadins: primele treizeci de secunde sunt cele care
+conving, iar o bucată de treizeci de secunde nu e un cadou.
+
+```bash
+npm run marca        # face o melodie falsă, pune marca, spune ce a ieșit
+```
+
+Filtrul ffmpeg e singura bucată din lanț care nu se poate verifica citind codul:
+ori merge, ori dă o eroare lungă. Proba de mai sus o spune în cinci secunde, și
+lasă fișierul pe disc, de ascultat. Dacă marca se aude prea tare sau prea încet,
+se schimbă `WATERMARK_VOLUME` în `.env` — nu se calculează, se ascultă.
+
+Sunetul stă în `marca/` pe server, montat în worker, NU în depozitul de cod: e
+un fișier personal, iar depozitul e public. Dacă lipsește, se face automat
+vechea previzualizare de `PREVIEW_SECONDS` — o marcă ștearsă din greșeală nu
+oprește generarea, scade doar la ce era înainte. Cum se pune: `marca/CITESTE.md`.
 
 ---
 

@@ -39,6 +39,25 @@ const schema = z.object({
 
   STORAGE_DIR: z.string().default('/data/audio'),
   PREVIEW_SECONDS: z.coerce.number().int().positive().default(60),
+
+  /**
+   * Varianta gratuită: melodia întreagă, cu o semnătură sonoră peste ea.
+   *
+   * Un minut de ascultat convinge mai puțin decât toată piesa. Cu marca peste
+   * ea, omul poate asculta tot fără s-o poată dărui — fișierele de după plată
+   * sunt curate.
+   *
+   * Dacă fișierul lipsește, se face automat vechea previzualizare de 60 de
+   * secunde. Așa, o marcă ștearsă din greșeală nu oprește generarea; scade doar
+   * la ce era înainte.
+   */
+  WATERMARK_FILE: z.string().default('marca/marca.mp4'),
+  /** Prima marcă. Începutul rămâne curat: el e cel care convinge. */
+  WATERMARK_FROM_SECONDS: z.coerce.number().int().min(1).default(30),
+  /** Din câte în câte secunde se repetă. */
+  WATERMARK_EVERY_SECONDS: z.coerce.number().int().min(5).default(30),
+  /** Cât de tare, față de melodie. Se reglează cu urechea, nu din calcul. */
+  WATERMARK_VOLUME: z.coerce.number().min(0.05).max(2).default(0.5),
   DOWNLOAD_LINK_TTL: z.coerce.number().int().positive().default(86_400),
 
   /**
@@ -207,4 +226,4 @@ export function assertConfig(): void {
 }
 
 /** Versiunea documentelor legale acceptate de client, stocată la fiecare comandă. */
-export const LEGAL_VERSION = '2026-09-22';
+export const LEGAL_VERSION = '2026-09-26';

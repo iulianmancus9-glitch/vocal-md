@@ -8,12 +8,14 @@
  *    reîncercare după o pană de rețea reia așteptarea, nu generarea;
  *  · `renders_left` de pe comandă limitează câte reluări poate cere clientul.
  */
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { and, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { lyricsVersions, orderTracks, orders, renders, type Job } from '@/lib/db/schema';
 import { env } from '@/lib/env';
 import { logEvent, setStatus } from '@/lib/orders';
-import { getDuration, makePreview } from '@/lib/pipeline/audio';
+import { getDuration, makeDemo, makePreview } from '@/lib/pipeline/audio';
 import { briefFromOrder } from '@/lib/pipeline/brief';
 import { buildStyle } from '@/lib/pipeline/prompt';
 import { mailEnabled, sendPreviewReady } from '@/lib/mail';
@@ -22,6 +24,37 @@ import { absPath, ensureOrderDir, trackRelPath } from '@/lib/storage';
 
 /** Suno întoarce două interpretări; pe astea le promitem clientului. */
 const VARIANTS = 2;
+
+/**
+ * Varianta gratuită: melodia întreagă, cu semnătura sonoră peste ea.
+ *
+ * Dacă fișierul mărcii lipsește, cădem înapoi pe previzualizarea de 60 de
+ * secunde. O marcă ștearsă din greșeală n-are voie să oprească generarea unei
+ * comenzi — scade doar la ce era înainte, iar jurnalul spune de ce.
+ */
+async function makeFreeVersion(
+  fullFile: string,
+  outFile: string,
+  duration: number,
+): Promise<void> {
+  const mark = resolve(process.cwd(), env.WATERMARK_FILE);
+
+  if (env.WATERMARK_FILE && existsSync(mark)) {
+    try {
+      await makeDemo(fullFile, mark, outFile, {
+        startAt: env.WATERMARK_FROM_SECONDS,
+        every: env.WATERMARK_EVERY_SECONDS,
+        volume: env.WATERMARK_VOLUME,
+        duration,
+      });
+      return;
+    } catch (err) {
+      console.error('Marca sonoră nu s-a putut aplica; fac previzualizarea scurtă:', err);
+    }
+  }
+
+  await makePreview(fullFile, outFile, { seconds: env.PREVIEW_SECONDS });
+}
 
 export async function handleRender(job: Job): Promise<void> {
   if (!job.orderId) throw new Error('Jobul de înregistrare are nevoie de order_id.');
@@ -77,7 +110,7 @@ export async function handleRender(job: Job): Promise<void> {
 
       const fullBytes = await downloadTrack(track.audioUrl, absPath(fullRel));
       const duration = await getDuration(absPath(fullRel)).catch(() => track.duration ?? 0);
-      await makePreview(absPath(fullRel), absPath(previewRel), { seconds: env.PREVIEW_SECONDS });
+      await makeFreeVersion(absPath(fullRel), absPath(previewRel), duration);
 
       await db
         .insert(orderTracks)

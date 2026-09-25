@@ -70,6 +70,10 @@ services:
     command: ['npm', 'run', 'worker']
     volumes:
       - audio:/data/audio
+      # Semnătura sonoră vine de pe gazdă, nu din imagine: e un fișier personal,
+      # iar depozitul de cod e public. Se schimbă punând altul în locul lui și
+      # repornind worker-ul — fără reconstruit nimic. Vezi marca/CITESTE.md.
+      - ./marca:/app/marca:ro
     depends_on:
       db:
         condition: service_healthy

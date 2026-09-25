@@ -14,3 +14,8 @@ next-env.d.ts
 data/
 !data/.gitkeep
 tsconfig.tsbuildinfo
+
+# Semnătura sonoră stă doar pe server: e un fișier personal, iar depozitul
+# e public. Vezi marca/CITESTE.md.
+/marca/*
+!/marca/CITESTE.md

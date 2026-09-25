@@ -1887,9 +1887,11 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
   if (screen === 'demo') {
     const tracks = order?.tracks ?? [];
     const recordings = order?.recordings ?? [];
-    // Previzualizarea e tăiată la 60 de secunde, dar dacă piesa e mai scurtă
-    // playerul trebuie să arate durata adevărată, nu una promisă.
-    const previewLen = Math.min(60, Math.max(...tracks.map((x) => x.duration || 60), 60));
+    /* Varianta gratuită e melodia întreagă, deci bara merge cât ține piesa.
+       Era plafonată la 60 de secunde, de pe vremea previzualizării scurte —
+       lăsată așa, bara s-ar fi umplut la un minut și ar fi stat acolo, cu
+       melodia cântând mai departe. */
+    const previewLen = Math.max(...tracks.map((x) => x.duration || 0), 30);
     return (
       <div className="vc">
         <style>{CSS}</style>

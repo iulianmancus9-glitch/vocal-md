@@ -187,8 +187,12 @@ function deliverRecording(generation) {
     execFileSync('ffmpeg', ['-y', '-f', 'lavfi', '-i',
       `sine=frequency=${200 + generation * 90 + v * 140}:duration=150`, '-b:a', '192k',
       `${base}-integrala.mp3`], { stdio: 'ignore' });
-    execFileSync('ffmpeg', ['-y', '-i', `${base}-integrala.mp3`, '-t', '60',
-      '-af', 'afade=t=out:st=57:d=3', '-b:a', '128k', `${base}-preview.mp3`], { stdio: 'ignore' });
+    /* Varianta gratuită e melodia ÎNTREAGĂ, cu semnătura sonoră peste ea — nu
+       un minut din ea. Aici o imităm doar ca durată: ce verificăm în test e că
+       pagina dă drumul la toată piesa, nu că filtrul ffmpeg e bun. Filtrul se
+       verifică singur, cu `npm run marca`. */
+    execFileSync('ffmpeg', ['-y', '-i', `${base}-integrala.mp3`,
+      '-b:a', '128k', `${base}-preview.mp3`], { stdio: 'ignore' });
     sql(`insert into order_tracks (order_id, render_id, variant, full_path, preview_path, duration_seconds)
          select o.id, '${renderId}', ${v},
                 '${id}/inregistrarea-${generation}-varianta-${v}-integrala.mp3',
@@ -219,7 +223,10 @@ const played = await page.locator('audio').first()
   .evaluate((a) => ({ time: a.currentTime, paused: a.paused, dur: a.duration }));
 ok('previzualizarea chiar rulează', played.time > 0.5 && !played.paused,
   `${played.time.toFixed(1)}s`);
-ok('durata afișată e cea reală', Math.round(played.dur) === 60, `${played.dur?.toFixed(1)}s`);
+/* Gratuit se ascultă melodia întreagă, nu un minut din ea: ce oprește pe cineva
+   s-o dăruiască fără să plătească e semnătura sonoră, nu lungimea. */
+ok('gratuit se aude melodia întreagă, nu un minut',
+  Math.round(played.dur) === 150, `${played.dur?.toFixed(1)}s`);
 
 await page.locator('.vc-playBtn').nth(1).click();
 await page.waitForTimeout(1200);
