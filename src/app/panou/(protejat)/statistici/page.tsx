@@ -20,20 +20,28 @@ import { STYLE_NAMES } from '@/lib/pipeline/brief';
 
 export const dynamic = 'force-dynamic';
 
-interface Luna {
+/**
+ * Formele rândurilor întoarse de interogările de mai jos.
+ *
+ * Scrise ca `type`, nu ca `interface`, și asta nu e o preferință: `db.execute`
+ * cere o formă care se poate citi după orice nume de coloană. O `interface`
+ * poate fi completată mai târziu, în alt fișier, deci TypeScript nu-i poate
+ * promite asta; unui `type` da, pentru că e închis pe loc.
+ */
+type Luna = {
   luna: string;
   incepute: number;
   cuVersuri: number;
   auAscultat: number;
   platite: number;
   bani: number;
-}
+};
 
-interface Stil {
+type Stil = {
   stil: string | null;
   incepute: number;
   platite: number;
-}
+};
 
 const LUNI = [
   'ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie',
