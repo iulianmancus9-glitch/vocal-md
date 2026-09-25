@@ -56,8 +56,13 @@ const schema = z.object({
   WATERMARK_FROM_SECONDS: z.coerce.number().int().min(1).default(30),
   /** Din câte în câte secunde se repetă. */
   WATERMARK_EVERY_SECONDS: z.coerce.number().int().min(5).default(30),
-  /** Cât de tare, față de melodie. Se reglează cu urechea, nu din calcul. */
-  WATERMARK_VOLUME: z.coerce.number().min(0.05).max(2).default(0.5),
+  /**
+   * Cât de tare, față de melodie. 1 = exact cât e în fișierul tău.
+   *
+   * Se reglează cu urechea, nu din calcul. Sub 1 o face discretă; peste 1 o
+   * scoate în față, dar limitatorul de la capătul lanțului o va aplatiza.
+   */
+  WATERMARK_VOLUME: z.coerce.number().min(0.05).max(2).default(1),
   DOWNLOAD_LINK_TTL: z.coerce.number().int().positive().default(86_400),
 
   /**

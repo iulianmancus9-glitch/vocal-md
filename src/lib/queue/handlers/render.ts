@@ -47,10 +47,22 @@ async function makeFreeVersion(
         volume: env.WATERMARK_VOLUME,
         duration,
       });
+      console.log(
+        `Varianta gratuită: melodia întreagă (${Math.round(duration)}s), ` +
+        `marcă din ${env.WATERMARK_EVERY_SECONDS} în ${env.WATERMARK_EVERY_SECONDS}s ` +
+        `la volumul ${env.WATERMARK_VOLUME}.`,
+      );
       return;
     } catch (err) {
       console.error('Marca sonoră nu s-a putut aplica; fac previzualizarea scurtă:', err);
     }
+  } else {
+    // Fără rândul ăsta, lipsa mărcii trecea nevăzută: previzualizarea ieșea
+    // scurtă, exact ca înainte, iar din jurnal nu se înțelegea de ce.
+    console.error(
+      `Nu găsesc marca sonoră la ${mark}. Fac previzualizarea scurtă, de ` +
+      `${env.PREVIEW_SECONDS}s. Vezi marca/CITESTE.md.`,
+    );
   }
 
   await makePreview(fullFile, outFile, { seconds: env.PREVIEW_SECONDS });

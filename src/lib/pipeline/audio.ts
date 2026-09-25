@@ -82,7 +82,10 @@ export async function makeDemo(
     duration?: number;
   } = {},
 ): Promise<string> {
-  const total = duration ?? (await getDuration(input).catch(() => 0));
+  /* `||`, nu `??`: durata vine de sus dintr-o măsurătoare care poate întoarce
+     0 când a eșuat. Cu `??`, zero e o valoare bună, iar melodia ar ieși fără
+     nicio marcă — tăcut, fără nicio eroare. */
+  const total = duration || (await getDuration(input).catch(() => 0));
 
   /* Momentele în care intră marca. Ultima trebuie să încapă întreagă, de asta
      ne oprim cu câteva secunde înainte de final. */

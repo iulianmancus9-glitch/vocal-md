@@ -27,7 +27,7 @@ const SECONDS = Number(process.argv[2] ?? 150);
 const MARK = resolve(process.cwd(), process.env.WATERMARK_FILE ?? 'marca/marca.mp4');
 const FROM = Number(process.env.WATERMARK_FROM_SECONDS ?? 30);
 const EVERY = Number(process.env.WATERMARK_EVERY_SECONDS ?? 30);
-const VOLUME = Number(process.env.WATERMARK_VOLUME ?? 0.5);
+const VOLUME = Number(process.env.WATERMARK_VOLUME ?? 1);
 
 async function main() {
   if (!existsSync(MARK)) {
@@ -70,7 +70,7 @@ async function main() {
   }
   console.log(`\nAscultă fișierul:\n  ${out}\n`);
   console.log('Dacă marca se aude prea tare sau prea încet, schimbă');
-  console.log('WATERMARK_VOLUME în .env și rulează iar. 0.5 e punctul de plecare.\n');
+  console.log('WATERMARK_VOLUME în .env și rulează iar. 1 = cât e în fișierul tău.\n');
 }
 
 main().catch((err) => {
