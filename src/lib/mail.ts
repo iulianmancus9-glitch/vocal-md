@@ -125,7 +125,8 @@ export async function sendPreviewReady(order: Order): Promise<void> {
       title: 'Melodia ta e gata.',
       lines: [
         `Am înregistrat <strong>„${esc(title)}"</strong> în două interpretări. Ascultă-le pe amândouă și alege-o pe cea care îți place.`,
-        'Primul minut e gratuit. Plătești doar dacă te-a convins ce auzi.',
+        'O asculți întreagă, gratuit. Varianta gratuită are o semnătură sonoră peste ea; ' +
+          'fișierele pe care le primești după plată sunt curate.',
       ],
       button: { label: 'Ascultă melodia', url: orderUrl(order) },
       footer: 'Dacă nu cumperi, păstrăm melodia 30 de zile și pe urmă o ștergem.',
