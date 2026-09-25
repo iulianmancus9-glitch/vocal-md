@@ -34,7 +34,10 @@ export default async function Protejat({ children }: { children: React.ReactNode
       <div className="p-head">
         <div className="p-headIn">
           <Link className="p-brand" href="/panou">VOCAL<span>MD</span></Link>
-          <span className="p-headNote">panou de comenzi</span>
+          <nav className="p-nav">
+            <Link href="/panou">Comenzi</Link>
+            <Link href="/panou/statistici">Statistici</Link>
+          </nav>
           <div className="p-headRight">
             <a className="p-btn" href="/" target="_blank" rel="noopener noreferrer">Site</a>
             <form action="/api/panou/iesire" method="post">

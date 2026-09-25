@@ -39,9 +39,9 @@ function destinatar(o: typeof orders.$inferSelect): string {
 export default async function Comenzi({
   searchParams,
 }: {
-  searchParams: Promise<{ f?: string; q?: string }>;
+  searchParams: Promise<{ f?: string; q?: string; spus?: string }>;
 }) {
-  const { f = 'toate', q = '' } = await searchParams;
+  const { f = 'toate', q = '', spus } = await searchParams;
   const cautat = q.trim();
   const filtru = FILTRE[f] ? f : 'toate';
   const ales = FILTRE[filtru] ?? FILTRE.toate!;
@@ -86,6 +86,8 @@ export default async function Comenzi({
     <div className="p-wrap">
       <h1 className="p-h1">Comenzi</h1>
       <p className="p-sub">Tot ce s-a început pe site, nu doar ce s-a vândut.</p>
+
+      {spus && <p className="p-spus" style={{ margin: '0 0 16px' }}>{spus}</p>}
 
       <div className="p-stats">
         <div className="p-stat">

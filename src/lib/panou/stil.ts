@@ -31,6 +31,10 @@ a { color: var(--violet); }
 .p-brand { font-weight: 800; letter-spacing: -.02em; font-size: 15px; text-decoration: none; color: var(--ink); }
 .p-brand span { color: var(--violet); }
 .p-headNote { font-size: 12.5px; color: var(--gray); }
+.p-nav { display: flex; gap: 4px; }
+.p-nav a { font-size: 13px; font-weight: 600; color: var(--ink-2); text-decoration: none;
+  padding: 5px 10px; border-radius: 8px; }
+.p-nav a:hover { background: var(--violet-l); color: var(--violet); }
 .p-headRight { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 
 .p-wrap { max-width: 1120px; margin: 0 auto; padding: 22px 20px 60px; }
@@ -86,6 +90,18 @@ table.p-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .p-pill[data-t="wait"] { background: var(--amber-l); color: var(--amber); }
 .p-pill[data-t="bad"]  { background: var(--red-l); color: var(--red); }
 .p-pill[data-t="work"] { background: var(--violet-l); color: var(--violet); }
+
+/* ─── ce poți face cu o comandă ─── */
+.p-actiuni { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0 16px; }
+.p-actiuni form { margin: 0; display: contents; }
+.p-right { margin-left: auto; }
+.p-btn[data-danger="1"] { background: var(--red); border-color: var(--red); color: #fff; }
+.p-btn[data-danger="1"]:hover { opacity: .92; color: #fff; }
+.p-confirm { display: flex !important; flex-wrap: wrap; gap: 8px; align-items: center;
+  background: var(--red-l); border: 1px solid rgba(179,38,30,.25); border-radius: 12px;
+  padding: 10px 12px; font-size: 13px; color: var(--red); width: 100%; }
+.p-spus { font-size: 13px; background: var(--violet-t); border: 1px solid rgba(108,92,231,.22);
+  border-radius: 11px; padding: 10px 13px; margin: 12px 0 0; }
 
 /* ─── pagina unei comenzi ─── */
 .p-back { font-size: 12.5px; color: var(--gray); text-decoration: none; }

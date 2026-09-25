@@ -31,10 +31,13 @@ function Rand({ eticheta, children }: { eticheta: string; children: React.ReactN
 
 export default async function Comanda({
   params,
+  searchParams,
 }: {
   params: Promise<{ publicId: string }>;
+  searchParams: Promise<{ spus?: string; sterg?: string }>;
 }) {
   const { publicId } = await params;
+  const { spus, sterg } = await searchParams;
 
   const order = await db.query.orders.findFirst({ where: eq(orders.publicId, publicId) });
   if (!order) notFound();
@@ -83,6 +86,51 @@ export default async function Comanda({
           deschide ca clientul
         </a>
       </p>
+
+      {spus && <p className="p-spus">{spus}</p>}
+
+      {/* ─── ce poți face ─── */}
+      <div className="p-actiuni">
+        {order.paidAt === null ? (
+          <form action="/api/panou/comanda" method="post">
+            <input type="hidden" name="comanda" value={order.publicId} />
+            <input type="hidden" name="actiune" value="deblocheaza" />
+            <button className="p-btn" data-primary="1" type="submit">✅ Deblochează melodia</button>
+          </form>
+        ) : (
+          <form action="/api/panou/comanda" method="post">
+            <input type="hidden" name="comanda" value={order.publicId} />
+            <input type="hidden" name="actiune" value="respinge" />
+            <button className="p-btn" type="submit">❌ Închide accesul (rambursare)</button>
+          </form>
+        )}
+
+        {order.status === 'payment_claimed' && (
+          <form action="/api/panou/comanda" method="post">
+            <input type="hidden" name="comanda" value={order.publicId} />
+            <input type="hidden" name="actiune" value="respinge" />
+            <button className="p-btn" type="submit">❌ N-au intrat banii</button>
+          </form>
+        )}
+
+        {/* Ștergerea cere două apăsări, nu una. Nu se poate desface. */}
+        {sterg === '1' ? (
+          <form action="/api/panou/comanda" method="post" className="p-confirm">
+            <input type="hidden" name="comanda" value={order.publicId} />
+            <input type="hidden" name="actiune" value="sterge" />
+            <span>
+              Sigur ștergi? Dispar melodiile, versurile și urma plății.
+              {order.paidAt !== null && <strong> Comanda asta e plătită.</strong>}
+            </span>
+            <button className="p-btn" data-danger="1" type="submit">Da, șterge</button>
+            <Link className="p-btn" href={`/panou/${order.publicId}`}>Nu</Link>
+          </form>
+        ) : (
+          <Link className="p-btn p-right" href={`/panou/${order.publicId}?sterg=1`}>
+            🗑 Șterge comanda
+          </Link>
+        )}
+      </div>
 
       <div className="p-grid">
         <div style={{ display: 'grid', gap: 14 }}>

@@ -17,11 +17,10 @@
 import { timingSafeEqual } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { orders, payments, webhookEvents } from '@/lib/db/schema';
+import { orders, webhookEvents } from '@/lib/db/schema';
 import { env } from '@/lib/env';
-import { logEvent, paidExpiry, unpaidExpiry } from '@/lib/orders';
-import { PROVIDER } from '@/lib/plata';
-import { enqueue } from '@/lib/queue/queue';
+import { deblocheaza, respinge } from '@/lib/comenzi';
+import { logEvent } from '@/lib/orders';
 import { resetLimits } from '@/lib/rate-limit';
 import { answerCallback, closeMessage, esc, notify, telegramEnabled } from '@/lib/telegram';
 
@@ -45,116 +44,6 @@ interface Press {
   publicId: string;
 }
 
-/** Banii s-au văzut: comanda se deschide și livrarea intră în coadă. */
-async function unlock(press: Press): Promise<string> {
-  const order = await db.query.orders.findFirst({
-    where: eq(orders.publicId, press.publicId),
-  });
-  if (!order) return `Nu găsesc comanda ${press.publicId}.`;
-  // După `paid_at`, nu după stare: o comandă plătită care tocmai face încă o
-  // înregistrare stă în „rendering", dar deblocată e de mult.
-  if (order.paidAt !== null) {
-    return `Comanda ${press.publicId} era deja deblocată.`;
-  }
-
-  /**
-   * Plata n-are identificator de la MAIB: linkul e fix și nu ne întoarce nimic.
-   * Punem unul construit de noi, ca să rămână unic pe comandă și ca o a doua
-   * apăsare să nu scrie un al doilea rând de plată.
-   */
-  await db
-    .insert(payments)
-    .values({
-      orderId: order.id,
-      provider: PROVIDER,
-      transactionId: `manual:${order.publicId}`,
-      status: 'completed',
-      amountCents: Math.round(env.SONG_PRICE_EUR * 100),
-      currency: 'EUR',
-      rawPayload: { confirmatDe: press.from, prin: 'telegram', la: new Date().toISOString() },
-    })
-    .onConflictDoNothing({ target: [payments.provider, payments.transactionId] });
-
-  await db
-    .update(orders)
-    .set({
-      status: 'paid',
-      paidAt: new Date(),
-      // Comanda plătită se păstrează 24 de luni, ca s-o poată redescărca.
-      expiresAt: paidExpiry(),
-      /**
-       * Încercările se pun la loc. A plătit: dacă vrea altă interpretare a
-       * aceleiași piese, sau alt text, le poate cere. Fișierele pe care le are
-       * deja nu se pierd — o înregistrare nouă se adaugă lângă ele.
-       */
-      regensLeft: env.PAID_EXTRA_REGENS,
-      rendersLeft: env.PAID_EXTRA_RENDERS,
-      updatedAt: new Date(),
-    })
-    .where(eq(orders.id, order.id));
-
-  await logEvent(order.id, 'paid', { prin: 'telegram', confirmatDe: press.from });
-  await enqueue('deliver', order.id);
-
-  // A plătit, deci limita zilnică nu-l mai privește: e liber să înceapă o a
-  // doua melodie, cadou pentru altcineva, fără să fie oprit la primul text.
-  await resetLimits({ ip: order.consentIp, email: order.email });
-
-  return `Comanda ${press.publicId} e deblocată. Emailul cu melodia pleacă singur.`;
-}
-
-/**
- * Banii nu s-au văzut — sau au fost dați înapoi.
- *
- * Aceeași apăsare acoperă două lucruri, pentru că fac exact același lucru la
- * noi: comanda se întoarce la previzualizare. Păstrează minutul gratuit, pierde
- * fișierele integrale. Ruta de audio verifică starea la fiecare cerere, deci
- * accesul se închide imediat, nu la următoarea repornire.
- *
- * Pe o comandă deja deblocată, asta e rambursarea: banii îi dai înapoi din
- * MAIB, iar butonul închide accesul. Nu se poate apăsa din greșeală mai târziu,
- * pentru că butoanele dispar din mesaj după prima apăsare.
- */
-async function reject(press: Press): Promise<string> {
-  const order = await db.query.orders.findFirst({
-    where: eq(orders.publicId, press.publicId),
-  });
-  if (!order) return `Nu găsesc comanda ${press.publicId}.`;
-
-  const wasPaid = order.paidAt !== null;
-  if (!wasPaid && order.status !== 'payment_claimed') {
-    // Apăsat pe mesajul „a deschis linkul", înainte ca el să confirme ceva.
-    // Nu e o greșeală, doar n-avem ce schimba: comanda e tot la previzualizare.
-    return `Comanda ${press.publicId} e tot la previzualizare. N-am schimbat nimic.`;
-  }
-
-  if (wasPaid) {
-    await db
-      .update(payments)
-      .set({ status: 'refunded', refundedCents: Math.round(env.SONG_PRICE_EUR * 100), updatedAt: new Date() })
-      .where(eq(payments.orderId, order.id));
-  }
-
-  await db
-    .update(orders)
-    .set({
-      status: 'preview_ready',
-      paidAt: null,
-      // Redevine comandă neplătită, deci și retenția se întoarce la 30 de zile.
-      expiresAt: unpaidExpiry(),
-      updatedAt: new Date(),
-    })
-    .where(eq(orders.id, order.id));
-
-  await logEvent(order.id, wasPaid ? 'refunded' : 'payment_rejected', {
-    prin: 'telegram',
-    respinsDe: press.from,
-  });
-
-  return wasPaid
-    ? `Comanda ${press.publicId} s-a închis la loc. Nu uita să dai banii înapoi din MAIB.`
-    : `Comanda ${press.publicId} s-a întors la previzualizare. Clientul poate încerca din nou.`;
-}
 
 /**
  * `/limite <ceva>` — șterge limitele zilnice ale unui client.
@@ -293,7 +182,17 @@ export async function POST(req: Request) {
   if (inserted.length === 0) return new Response('ok (deja procesat)', { status: 200 });
 
   try {
-    const result = press.action === 'ok' ? await unlock(press) : await reject(press);
+    /* Aceleași funcții pe care le cheamă și panoul. Două copii ar fi însemnat
+       că, la a treia schimbare, una face altceva decât cealaltă. */
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.publicId, press.publicId),
+    });
+
+    const result = !order
+      ? `Nu găsesc comanda ${press.publicId}.`
+      : press.action === 'ok'
+        ? await deblocheaza(order, press.from)
+        : await respinge(order, press.from);
 
     await answerCallback(press.callbackId, result);
     await closeMessage(

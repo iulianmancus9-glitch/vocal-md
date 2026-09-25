@@ -5,11 +5,10 @@
  * întâi fișierele de pe disc, apoi rândul — dacă ordinea ar fi inversă și pică
  * ceva la mijloc, ar rămâne fișiere fără nimeni care să știe de ele.
  */
-import { rm } from 'node:fs/promises';
-import { lt, sql } from 'drizzle-orm';
+import { lt } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { orders, rateLimits, webhookEvents } from '@/lib/db/schema';
-import { orderDir } from '@/lib/storage';
+import { stergeComanda } from '@/lib/comenzi';
 
 export async function handleCleanup(): Promise<void> {
   const now = new Date();
@@ -20,10 +19,12 @@ export async function handleCleanup(): Promise<void> {
     .where(lt(orders.expiresAt, now))
     .limit(200);
 
+  /* Aceeași ștergere pe care o face și panoul — inclusiv plățile, a căror
+     legătură e `restrict`. Fără ele, jobul ăsta ar fi picat la prima comandă
+     plătită ajunsă la capătul celor 24 de luni, iar politica de retenție n-ar
+     mai fi fost respectată. */
   for (const order of expired) {
-    await rm(orderDir(order.publicId), { recursive: true, force: true });
-    // Piesele, versurile, emailurile și evenimentele pleacă în cascadă.
-    await db.delete(orders).where(sql`${orders.id} = ${order.id}`);
+    await stergeComanda(order);
   }
 
   const limits = await db.delete(rateLimits).where(lt(rateLimits.expiresAt, now)).returning({
