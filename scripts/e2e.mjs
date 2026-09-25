@@ -569,9 +569,27 @@ for (const doc of ['termeni', 'rambursare', 'confidentialitate']) {
 
 /* ─── site-ul în engleză ─── */
 
-/* Engleza e limba pe care o vede un vizitator nou, deci merită mai mult decât
-   încredere. Nu reluăm tot formularul în engleză: ce se putea strica la
-   traducere sunt etichetele, iar drumul prin server e același. */
+/* Un vizitator nou, cu browserul în engleză, trebuie să vadă româna.
+   Înainte se citea `Accept-Language`, iar oamenii din Moldova și România care
+   au telefonul în engleză — și sunt mulți — primeau un site englezesc pe care
+   îl comutau de fiecare dată. Antetul spune ce limbă are aparatul, nu ce limbă
+   vorbește omul. */
+{
+  const strain = await browser.newContext({
+    viewport: { width: 400, height: 900 },
+    locale: 'en-US',
+  });
+  const nou = await strain.newPage();
+  await nou.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await nou.waitForTimeout(400);
+  ok('vizitatorul nou vede româna, chiar cu browserul în engleză',
+    await nou.getByRole('button', { name: /Creează melodia ta/ }).count() === 1);
+  await strain.close();
+}
+
+/* Engleza rămâne la un buton distanță, iar alegerea se ține minte în cookie.
+   Nu reluăm tot formularul în engleză: ce se putea strica la traducere sunt
+   etichetele, iar drumul prin server e același. */
 {
   const en = await browser.newPage({ viewport: { width: 400, height: 900 } });
   const enErrors = [];

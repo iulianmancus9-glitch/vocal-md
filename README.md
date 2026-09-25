@@ -199,11 +199,17 @@ npm run worker:dev        # coada, în alt terminal
 Site-ul e în română și engleză. Limba se alege pe server, în ordinea asta:
 
 1. cookie-ul `lang`, pus de butonul din antet — alegerea omului bate tot;
-2. antetul `Accept-Language` — un browser care cere română primește română;
-3. `DEFAULT_LANG` din `.env` — restul lumii.
+2. `DEFAULT_LANG` din `.env` — pentru toți ceilalți.
 
 `DEFAULT_LANG=ro` acum: clienții sunt majoritatea din Moldova și România. Pentru
 engleză implicită se schimbă în `en` și se repornește; nimic altceva.
+
+**`Accept-Language` nu se mai citește**, deși pare lucrul evident de făcut.
+Minte exact în piața noastră: foarte mulți oameni din Moldova și din România au
+telefonul în engleză dar vorbesc românește, iar ei primeau un site englezesc și
+îl comutau de fiecare dată. Antetul spune ce limbă are aparatul, nu ce limbă
+vorbește omul. Cine chiar vrea engleză o are la un buton distanță, iar alegerea
+i se ține minte.
 
 Se traduc doar etichetele văzute de om. Alegerile din formular — „Femeie",
 „Altcineva", „Română", stările de spirit — rămân în română oriunde, pentru că
