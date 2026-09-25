@@ -52,17 +52,17 @@ const schema = z.object({
    * la ce era înainte.
    */
   WATERMARK_FILE: z.string().default('marca/marca.mp4'),
-  /** Prima marcă. Începutul rămâne curat: el e cel care convinge. */
-  WATERMARK_FROM_SECONDS: z.coerce.number().int().min(1).default(30),
+  /** Prima marcă. */
+  WATERMARK_FROM_SECONDS: z.coerce.number().int().min(1).default(20),
   /** Din câte în câte secunde se repetă. */
-  WATERMARK_EVERY_SECONDS: z.coerce.number().int().min(5).default(30),
+  WATERMARK_EVERY_SECONDS: z.coerce.number().int().min(5).default(20),
   /**
    * Cât de tare, față de melodie. 1 = exact cât e în fișierul tău.
    *
    * Se reglează cu urechea, nu din calcul. Sub 1 o face discretă; peste 1 o
    * scoate în față, dar limitatorul de la capătul lanțului o va aplatiza.
    */
-  WATERMARK_VOLUME: z.coerce.number().min(0.05).max(2).default(1),
+  WATERMARK_VOLUME: z.coerce.number().min(0.05).max(3).default(1.5),
   DOWNLOAD_LINK_TTL: z.coerce.number().int().positive().default(86_400),
 
   /**

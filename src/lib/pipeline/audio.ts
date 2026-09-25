@@ -51,8 +51,8 @@ export async function makePreview(
  * Fișierele primite după plată sunt curate.
  *
  * Prima marcă vine după `startAt` secunde, apoi din `every` în `every`, cât ține
- * melodia. Începutul rămâne curat dinadins: primele secunde sunt cele care
- * conving, iar o bucată de treizeci de secunde nu e un cadou.
+ * melodia. Începutul rămâne curat până la prima marcă: primele secunde sunt
+ * cele care conving, iar o bucată atât de scurtă nu e un cadou.
  *
  * ── De ce `asplit` ──
  *

@@ -144,15 +144,25 @@ două cuvinte schimbate și clientul își consumă degeaba variantele gratuite.
 ## Varianta gratuită
 
 Gratuit se ascultă **melodia întreagă**, nu un minut din ea. Peste ea se aude o
-semnătură sonoră, din treizeci în treizeci de secunde. Fișierele primite după
+semnătură sonoră, din douăzeci în douăzeci de secunde. Fișierele primite după
 plată sunt curate.
 
 Un minut convinge mai puțin decât toată piesa — dar o piesă întreagă și curată
 n-ar mai avea de ce să fie cumpărată. Marca rezolvă amândouă: omul aude tot, dar
 nu poate dărui ce a auzit.
 
-Începutul rămâne curat dinadins: primele treizeci de secunde sunt cele care
-conving, iar o bucată de treizeci de secunde nu e un cadou.
+Începutul rămâne curat până la prima marcă: primele secunde sunt cele care
+conving, iar o bucată atât de scurtă nu e un cadou.
+
+Cele trei manete stau în `.env` și se reglează cu urechea, nu din calcul:
+`WATERMARK_FROM_SECONDS`, `WATERMARK_EVERY_SECONDS`, `WATERMARK_VOLUME`.
+
+Aici e un compromis de care merită să fii conștient când le miști. Marca apără
+produsul, dar ascultarea gratuită e tocmai lucrul care vinde: dacă acoperă prea
+mult din melodie, omul nu mai apucă să se îndrăgostească de ea. Pârghia cea mai
+bună nu e volumul, ci **durata fișierului mărcii** — o marcă de două secunde,
+deasă și tare, protejează mai bine decât una de opt secunde, și nu strică
+ascultarea.
 
 ```bash
 npm run marca        # face o melodie falsă, pune marca, spune ce a ieșit
