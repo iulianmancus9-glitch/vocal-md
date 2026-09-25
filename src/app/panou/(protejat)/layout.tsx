@@ -11,6 +11,7 @@
  * Fără parolă în `.env`, panoul răspunde 404, nu „parolă greșită". Un panou
  * care spune că e acolo e un panou pe care cineva începe să-l încerce.
  */
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { panelEnabled, signedIn } from '@/lib/panou/auth';
 import { CSS } from '@/lib/panou/stil';
@@ -32,7 +33,7 @@ export default async function Protejat({ children }: { children: React.ReactNode
       <style>{CSS}</style>
       <div className="p-head">
         <div className="p-headIn">
-          <a className="p-brand" href="/panou">VOCAL<span>MD</span></a>
+          <Link className="p-brand" href="/panou">VOCAL<span>MD</span></Link>
           <span className="p-headNote">panou de comenzi</span>
           <div className="p-headRight">
             <a className="p-btn" href="/" target="_blank" rel="noopener noreferrer">Site</a>

@@ -10,6 +10,7 @@
  * departe, iar panoul merge fără JavaScript.
  */
 import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
+import Link from 'next/link';
 import { db } from '@/lib/db';
 import { orders, payments, type OrderStatus } from '@/lib/db/schema';
 import { acum, stare } from '@/lib/panou/cuvinte';
@@ -108,14 +109,14 @@ export default async function Comenzi({
       <div className="p-tools">
         <div className="p-filters">
           {Object.entries(FILTRE).map(([cheie, val]) => (
-            <a
+            <Link
               key={cheie}
               className="p-filter"
               data-on={cheie === filtru ? '1' : '0'}
               href={`/panou?f=${cheie}${cautat ? `&q=${encodeURIComponent(cautat)}` : ''}`}
             >
               {val.nume}
-            </a>
+            </Link>
           ))}
         </div>
         <form className="p-search" action="/panou" method="get">
@@ -158,9 +159,9 @@ export default async function Comenzi({
                         {acum(o.createdAt)}
                       </td>
                       <td>
-                        <a className="p-id p-strong" href={`/panou/${o.publicId}`}>
+                        <Link className="p-id p-strong" href={`/panou/${o.publicId}`}>
                           {o.publicId}
-                        </a>
+                        </Link>
                         <div className="p-muted p-cut">{o.songTitle ?? o.titleWanted ?? '—'}</div>
                       </td>
                       <td className="p-cut">{o.email ?? '—'}</td>

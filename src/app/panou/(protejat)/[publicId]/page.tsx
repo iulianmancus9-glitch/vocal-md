@@ -10,6 +10,7 @@
  * doar de la cineva care e deja în panou.
  */
 import { asc, desc, eq } from 'drizzle-orm';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db';
 import { emails, lyricsVersions, orderEvents, orderTracks, orders, payments, renders } from '@/lib/db/schema';
@@ -67,7 +68,7 @@ export default async function Comanda({
 
   return (
     <div className="p-wrap">
-      <a className="p-back" href="/panou">← Toate comenzile</a>
+      <Link className="p-back" href="/panou">← Toate comenzile</Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '10px 0 3px', flexWrap: 'wrap' }}>
         <h1 className="p-h1" style={{ margin: 0 }}>
@@ -128,7 +129,7 @@ export default async function Comanda({
                   <span className="p-muted">{SURSE[v.source] ?? v.source}</span>
                   <span className="p-muted" style={{ marginLeft: 'auto' }}>{cand(v.createdAt)}</span>
                 </div>
-                {v.title && <p className="p-muted" style={{ margin: '0 0 6px' }}>„{v.title}"</p>}
+                {v.title && <p className="p-muted" style={{ margin: '0 0 6px' }}>„{v.title}&rdquo;</p>}
                 <p className="p-lyrics">{v.lyrics}</p>
               </div>
             ))}
