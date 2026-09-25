@@ -15,6 +15,7 @@ import { db } from '@/lib/db';
 import { orders, payments, type OrderStatus } from '@/lib/db/schema';
 import { acum, stare } from '@/lib/panou/cuvinte';
 import { STYLE_NAMES } from '@/lib/pipeline/brief';
+import { numeTara, steag } from '@/lib/tara';
 
 export const dynamic = 'force-dynamic';
 
@@ -147,6 +148,7 @@ export default async function Comenzi({
                   <th>Când</th>
                   <th>Comandă</th>
                   <th>Email</th>
+                  <th>Țara</th>
                   <th>Pentru cine</th>
                   <th>Stil</th>
                   <th>Unde a ajuns</th>
@@ -167,6 +169,10 @@ export default async function Comenzi({
                         <div className="p-muted p-cut">{o.songTitle ?? o.titleWanted ?? '—'}</div>
                       </td>
                       <td className="p-cut">{o.email ?? '—'}</td>
+                      <td style={{ whiteSpace: 'nowrap' }} title={numeTara(o.country)}>
+                        {steag(o.country)}{' '}
+                        <span className="p-muted">{o.country ?? '—'}</span>
+                      </td>
                       <td className="p-cut">{destinatar(o)}</td>
                       <td className="p-muted" style={{ whiteSpace: 'nowrap' }}>
                         {STYLE_NAMES[o.styleId ?? ''] ?? o.styleId ?? '—'}

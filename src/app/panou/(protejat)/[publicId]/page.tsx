@@ -17,6 +17,7 @@ import { emails, lyricsVersions, orderEvents, orderTracks, orders, payments, ren
 import { acum, cand, eveniment, stare, SURSE } from '@/lib/panou/cuvinte';
 import { STYLE_NAMES } from '@/lib/pipeline/brief';
 import { downloadUrl } from '@/lib/storage';
+import { tara } from '@/lib/tara';
 
 export const dynamic = 'force-dynamic';
 
@@ -139,6 +140,7 @@ export default async function Comanda({
             <p className="p-boxTitle">Ce a cerut</p>
             <dl className="p-rows" style={{ margin: 0 }}>
               <Rand eticheta="Email">{order.email ?? '—'}</Rand>
+              <Rand eticheta="Din ce țară">{tara(order.country)}</Rand>
               <Rand eticheta="Pentru cine">{cui}</Rand>
               <Rand eticheta="Nume în piesă">
                 {order.names.filter((n) => n?.trim()).join(', ') || '—'}

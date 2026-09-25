@@ -16,6 +16,7 @@ import { orderTracks, orders, payments, renders } from '@/lib/db/schema';
 import { env } from '@/lib/env';
 import { csvResponse, toCsv, type CsvValue } from '@/lib/csv';
 import { STYLE_NAMES } from '@/lib/pipeline/brief';
+import { numeTara } from '@/lib/tara';
 
 export const dynamic = 'force-dynamic';
 
@@ -104,6 +105,7 @@ export async function GET(
         o.names.join(', '),
         occasionOf(o),
         o.language,
+        numeTara(o.country),
         pay ? (pay.amountCents / 100).toFixed(2) : '',
         pay?.currency ?? '',
         pay?.transactionId ?? '',
@@ -116,7 +118,7 @@ export async function GET(
     return csvResponse(
       toCsv(
         ['Data plății', 'Comandă', 'Email', 'Titlu', 'Stil', 'Direcție', 'Stare de spirit',
-         'Voce', 'Pentru cine', 'Nume', 'Ocazie', 'Limbă', 'Sumă', 'Monedă',
+         'Voce', 'Pentru cine', 'Nume', 'Ocazie', 'Limbă', 'Țara', 'Sumă', 'Monedă',
          'Tranzacție', 'Stare', 'Înregistrări', 'Data comenzii'],
         rows,
       ),
@@ -153,6 +155,7 @@ export async function GET(
         // Povestea e materia primă a piesei: cel mai util lucru de citit când
         // vrei să înțelegi de ce a ieșit bine sau prost.
         o.story?.replace(/\s+/g, ' ').slice(0, 500),
+        numeTara(o.country),
         o.consentIp,
       ];
     });
@@ -162,7 +165,7 @@ export async function GET(
         ['Data', 'Comandă', 'Email', 'Unde a ajuns', 'A plătit', 'Stil', 'Direcție',
          'Stare de spirit', 'Voce', 'Pentru cine', 'Nume', 'Ocazie', 'Limbă', 'Versuri',
          'A primit versuri', 'Înregistrări reușite', 'Piese generate', 'Reluări text rămase',
-         'Reluări melodie rămase', 'Motiv oprire', 'Povestea', 'IP'],
+         'Reluări melodie rămase', 'Motiv oprire', 'Povestea', 'Țara', 'IP'],
         rows,
       ),
       'incercari.csv',

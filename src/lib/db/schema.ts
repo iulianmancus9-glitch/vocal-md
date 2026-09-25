@@ -163,6 +163,15 @@ export const orders = pgTable(
     withdrawalWaivedAt: timestamp('withdrawal_waived_at', { withTimezone: true }),
     legalVersion: text('legal_version'),
     consentIp: text('consent_ip'),
+    /**
+     * Țara din care a venit comanda, cod de două litere.
+     *
+     * Vine din antetul pus de Cloudflare la creare și se păstrează aici:
+     * antetul nu mai există când te uiți în panou peste o lună. `null` când
+     * n-am putut afla — Tor, rețele necunoscute, sau site-ul rulat fără
+     * Cloudflare în față.
+     */
+    country: text('country'),
     consentUserAgent: text('consent_user_agent'),
 
     /* ─── eșec ─── */

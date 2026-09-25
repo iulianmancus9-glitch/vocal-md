@@ -17,6 +17,7 @@
 import { sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { STYLE_NAMES } from '@/lib/pipeline/brief';
+import { numeTara, steag } from '@/lib/tara';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,13 @@ type Stil = {
   stil: string | null;
   incepute: number;
   platite: number;
+};
+
+type Tara = {
+  cod: string | null;
+  incepute: number;
+  platite: number;
+  bani: number;
 };
 
 const LUNI = [
@@ -88,6 +96,22 @@ export default async function Statistici() {
   `);
 
   const baniPe = new Map(incasari.map((r) => [r.luna, r.bani]));
+
+  /* Pe țări. Banii se leagă de comandă, nu de luna plății: aici întrebarea e
+     „de unde vin oamenii care cumpără", nu „cât am încasat în februarie". */
+  const { rows: tari } = await db.execute<Tara>(sql`
+    select
+      o.country                                            as cod,
+      count(*)::int                                        as incepute,
+      count(*) filter (where o.paid_at is not null)::int     as platite,
+      coalesce(sum(p.amount_cents) filter (
+        where p.status = 'completed'
+      ), 0)::int                                           as bani
+    from orders o
+    left join payments p on p.order_id = o.id
+    group by 1
+    order by 2 desc
+  `);
 
   const { rows: stiluri } = await db.execute<Stil>(sql`
     select
@@ -172,6 +196,48 @@ export default async function Statistici() {
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2 className="p-h1" style={{ fontSize: 17 }}>Din ce țări vin</h2>
+      <p className="p-sub">
+        Din toate lunile. O țară de unde vin mulți dar cumpără puțini e o țară
+        unde ceva nu se potrivește — prețul, limba, sau felul de a plăti.
+      </p>
+
+      <div className="p-card" style={{ marginBottom: 22 }}>
+        <div className="p-scroll">
+          <table className="p-table">
+            <thead>
+              <tr>
+                <th>Țara</th>
+                <th>Au început</th>
+                <th>Au plătit</th>
+                <th>Cumpără</th>
+                <th>Încasat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tari.length === 0 && (
+                <tr><td colSpan={5}><p className="p-empty">Nimic încă.</p></td></tr>
+              )}
+              {tari.map((t) => (
+                <tr key={t.cod ?? 'necunoscuta'}>
+                  <td className="p-strong" style={{ whiteSpace: 'nowrap' }}>
+                    {steag(t.cod)} {numeTara(t.cod)}
+                  </td>
+                  <td className="p-num">{t.incepute}</td>
+                  <td className="p-num">{t.platite}</td>
+                  <td>
+                    <span className="p-pill" data-t={t.platite > 0 ? 'paid' : 'idle'}>
+                      {procent(t.platite, t.incepute)}
+                    </span>
+                  </td>
+                  <td className="p-num p-strong">{(t.bani / 100).toFixed(0)} €</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

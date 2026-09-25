@@ -14,6 +14,7 @@ import { orderState } from '@/lib/order-state';
 import { logEvent, unpaidExpiry } from '@/lib/orders';
 import { enqueue } from '@/lib/queue/queue';
 import { checkLimit, clientIp } from '@/lib/rate-limit';
+import { taraDin } from '@/lib/tara';
 import { hasPaidBefore, loadOrder, remember, rememberedIds, visitorId } from '@/lib/session';
 import { orderInput } from '@/lib/validation';
 
@@ -68,6 +69,9 @@ export async function POST(req: Request) {
         legalVersion: LEGAL_VERSION,
         consentIp: ip,
         consentUserAgent: req.headers.get('user-agent')?.slice(0, 400) ?? null,
+        /* Citit acum, nu mai târziu: antetul pus de Cloudflare există doar cât
+           ține cererea asta. */
+        country: taraDin(req.headers),
         regensLeft: env.MAX_LYRICS_REGENS,
         rendersLeft: env.MAX_EXTRA_RENDERS,
         expiresAt: unpaidExpiry(now),
