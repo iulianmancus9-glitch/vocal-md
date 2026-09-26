@@ -17,10 +17,32 @@
 /** Ce nu e o țară: Tor, rețele necunoscute, adrese care n-au putut fi legate. */
 const NECUNOSCUTE = new Set(['XX', 'T1', '']);
 
-/** Codul țării din anteturi, sau `null` dacă nu știm. */
+/**
+ * Codul țării din anteturi, sau `null` dacă nu știm.
+ *
+ * Scrie în jurnal ce a găsit. Fără rândul ăsta, o coloană plină de
+ * „necunoscută" nu spune care din trei lucruri s-a întâmplat: Cloudflare nu
+ * trimite antetul, Caddy nu-l duce mai departe, sau chiar n-a putut fi aflată
+ * țara. Sunt trei reparații diferite, iar din tăcere nu se alege între ele.
+ */
 export function taraDin(headers: Headers): string | null {
-  const cod = (headers.get('cf-ipcountry') ?? '').trim().toUpperCase();
-  if (!/^[A-Z]{2}$/.test(cod) || NECUNOSCUTE.has(cod)) return null;
+  const brut = (headers.get('cf-ipcountry') ?? '').trim();
+  const cod = brut.toUpperCase();
+
+  if (!brut) {
+    console.warn(
+      'Comandă fără CF-IPCountry. Ori nu trece prin Cloudflare, ori „IP ' +
+      'Geolocation" e oprit în panoul Cloudflare (Network → IP Geolocation).',
+    );
+    return null;
+  }
+
+  if (!/^[A-Z]{2}$/.test(cod) || NECUNOSCUTE.has(cod)) {
+    console.warn(`CF-IPCountry a venit ca „${brut}" — nu e o țară.`);
+    return null;
+  }
+
+  console.log(`Comandă nouă din ${cod}.`);
   return cod;
 }
 
