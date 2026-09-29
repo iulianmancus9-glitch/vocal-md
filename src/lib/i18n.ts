@@ -159,6 +159,16 @@ const RO = {
   resumeGo: 'Continuă melodia',
   resumeNew: 'Începe una nouă',
 
+  /* „nu e cum ai vrut?", sub caseta de cumpărare */
+  helpTitle: 'Nu sună cum ai vrut?',
+  helpText: 'Mai poți cere o înregistrare sau schimba versurile — e gratuit. Iar dacă vrei să ne ocupăm noi, scrie-ne: ne spui cum trebuie să sune, iar echipa noastră lucrează pe melodia ta până iese. Vedem împreună ce se poate face.',
+  helpWa: 'Scrie-ne pe WhatsApp',
+  helpMail: 'Scrie-ne pe email',
+  helpWaMessage: (comanda: string) =>
+    `Bună! Am făcut o melodie pe vocal.md${comanda ? ` (comanda ${comanda})` : ''} și aș vrea să vorbim despre ea.`,
+  helpMailSubject: (comanda: string) =>
+    comanda ? `Melodia mea — comanda ${comanda}` : 'Melodia mea de pe vocal.md',
+
   /* butonul de WhatsApp, prezent pe toate ecranele */
   waText: 'Scrie-ne',
   waAria: 'Scrie-ne pe WhatsApp',
@@ -495,6 +505,15 @@ const EN: typeof RO = {
   resumeOrderText: 'Your song is saved and waiting. You can carry on from where you left off, or start another one.',
   resumeGo: 'Carry on',
   resumeNew: 'Start a new one',
+
+  helpTitle: 'Not quite how you wanted it?',
+  helpText: 'You can ask for another recording or change the lyrics — that is free. And if you would rather we took care of it, write to us: tell us how it should sound and our team works on your song until it does. We will see together what can be done.',
+  helpWa: 'Message us on WhatsApp',
+  helpMail: 'Write us an email',
+  helpWaMessage: (comanda: string) =>
+    `Hello! I made a song on vocal.md${comanda ? ` (order ${comanda})` : ''} and I would like to talk about it.`,
+  helpMailSubject: (comanda: string) =>
+    comanda ? `My song — order ${comanda}` : 'My song on vocal.md',
 
   waText: 'Message us',
   waAria: 'Message us on WhatsApp',

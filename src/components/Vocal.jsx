@@ -457,6 +457,18 @@ button.vc-mark:hover { opacity: .68; }
 .vc-secTitle { font-size: 19px; font-weight: 700; letter-spacing: -.01em; margin: 0 0 5px; }
 .vc-secSub { font-size: 13.5px; line-height: 1.5; color: var(--gray); margin: 0 0 16px; }
 
+/* ─── „nu e cum ai vrut?", sub caseta de cumpărare ─── */
+/* Discretă dinadins: nu are voie să concureze cu butonul de cumpărare, doar să
+   fie acolo pentru cine a trecut pe lângă el. */
+.vc-help { margin-top: 18px; border: 1px solid var(--line); background: var(--page); border-radius: 15px; padding: 16px; }
+.vc-helpTitle { font-size: 14.5px; font-weight: 700; margin: 0 0 5px; letter-spacing: -.01em; }
+.vc-helpText { font-size: 13px; line-height: 1.6; color: var(--gray); margin: 0 0 13px; }
+.vc-helpRow { display: grid; gap: 8px; }
+@media (min-width: 480px) { .vc-helpRow { grid-template-columns: 1fr 1fr; } }
+.vc-helpBtn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border-radius: 11px; border: 1px solid var(--line-2); background: var(--page); color: var(--ink-1); font-size: 13.5px; font-weight: 600; text-decoration: none; transition: border-color .15s, color .15s; }
+.vc-helpBtn:hover { border-color: var(--violet); color: var(--violet); }
+.vc-helpBtn svg { flex: none; }
+
 /* ─── biblioteca goală ─── */
 .vc-empty { text-align: center; padding: 26px 8px 8px; }
 .vc-emptyIcon { width: 58px; height: 58px; border-radius: 50%; background: var(--violet-t); color: var(--violet); display: inline-grid; place-items: center; margin-bottom: 14px; }
@@ -2027,6 +2039,32 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
                   <span className="vc-trustBit"><Zap size={13} /> {t.trust2}</span>
                   <span className="vc-trustBit"><Download size={13} /> {t.trust3}</span>
                 </div>
+              </div>
+            </div>
+
+            {/* Sub caseta de cumpărare, nu deasupra ei.
+                Cine s-a convins apasă butonul și nu mai citește nimic. Cine nu
+                s-a convins derulează mai departe — și exact acolo, în locul în
+                care altfel ar fi închis pagina, dă peste celălalt drum. */}
+            <div className="vc-help">
+              <p className="vc-helpTitle">{t.helpTitle}</p>
+              <p className="vc-helpText">{t.helpText}</p>
+              <div className="vc-helpRow">
+                <a
+                  className="vc-helpBtn"
+                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                    t.helpWaMessage(order?.publicId ?? ''),
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <WhatsAppIcon /> {t.helpWa}
+                </a>
+                <a className="vc-helpBtn" href={`mailto:base.vocalmd@gmail.com?subject=${
+                  encodeURIComponent(t.helpMailSubject(order?.publicId ?? ''))
+                }`}>
+                  <Mail size={17} /> {t.helpMail}
+                </a>
               </div>
             </div>
           </div>
