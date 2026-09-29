@@ -463,9 +463,7 @@ button.vc-mark:hover { opacity: .68; }
 .vc-help { margin-top: 18px; border: 1px solid var(--line); background: var(--page); border-radius: 15px; padding: 16px; }
 .vc-helpTitle { font-size: 14.5px; font-weight: 700; margin: 0 0 5px; letter-spacing: -.01em; }
 .vc-helpText { font-size: 13px; line-height: 1.6; color: var(--gray); margin: 0 0 13px; }
-.vc-helpRow { display: grid; gap: 8px; }
-@media (min-width: 480px) { .vc-helpRow { grid-template-columns: 1fr 1fr; } }
-.vc-helpBtn { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border-radius: 11px; border: 1px solid var(--line-2); background: var(--page); color: var(--ink-1); font-size: 13.5px; font-weight: 600; text-decoration: none; transition: border-color .15s, color .15s; }
+.vc-helpBtn { display: flex; width: 100%; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border-radius: 11px; border: 1px solid var(--line-2); background: var(--page); color: var(--ink-1); font-size: 13.5px; font-weight: 600; text-decoration: none; transition: border-color .15s, color .15s; }
 .vc-helpBtn:hover { border-color: var(--violet); color: var(--violet); }
 .vc-helpBtn svg { flex: none; }
 
@@ -2049,23 +2047,16 @@ export default function Vocal({ initialOrderId = null, initialToken = null, lang
             <div className="vc-help">
               <p className="vc-helpTitle">{t.helpTitle}</p>
               <p className="vc-helpText">{t.helpText}</p>
-              <div className="vc-helpRow">
-                <a
-                  className="vc-helpBtn"
-                  href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
-                    t.helpWaMessage(order?.publicId ?? ''),
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <WhatsAppIcon /> {t.helpWa}
-                </a>
-                <a className="vc-helpBtn" href={`mailto:base.vocalmd@gmail.com?subject=${
-                  encodeURIComponent(t.helpMailSubject(order?.publicId ?? ''))
-                }`}>
-                  <Mail size={17} /> {t.helpMail}
-                </a>
-              </div>
+              <a
+                className="vc-helpBtn"
+                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(
+                  t.helpWaMessage(order?.publicId ?? ''),
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <WhatsAppIcon /> {t.helpWa}
+              </a>
             </div>
           </div>
           <Footer t={t} lang={lang} onLibrary={openLibrary} />
