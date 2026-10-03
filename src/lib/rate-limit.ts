@@ -83,10 +83,61 @@ export async function checkLimit(
 
   const day = today();
   const free: LimitResult = { ok: true, remaining: Number.MAX_SAFE_INTEGER, limit: 0, count: 0 };
+  let rezultat = free;
 
   /**
-   * Plafonul pe tot site-ul se numără înaintea oricărui altuia și se aplică
-   * tuturor, inclusiv clienților plătitori.
+   * Întâi limitele „pe om", apoi plafonul pe tot site-ul. Ordinea asta nu e
+   * un moft.
+   *
+   * Plafonul era numărat primul, înaintea tuturor. Așa, o cerere oprită de
+   * limita proprie a omului — a noua apăsare a cuiva care are voie opt — tot
+   * mânca din bugetul zilei. Cineva care apasă de șaizeci de ori la rând,
+   * blocat de la a noua, golea plafonul zilnic fără să se genereze nimic: pe
+   * server se vedeau opt înregistrări, iar site-ul se oprea.
+   *
+   * Plafonul apără banii, iar banii se cheltuie doar când cererea trece de
+   * toate celelalte. Deci se numără ultimul.
+   */
+  if (!trusted) {
+    /**
+     * Cine a plătit vreodată de pe browserul ăsta sare peste limitele astea.
+     * Ele apără previzualizarea gratuită de cine vine s-o consume degeaba — un
+     * om care a dat 30 € nu e acela.
+     */
+    if (visitor) {
+      const visitorLimit = action === 'render'
+        ? env.MAX_RENDERS_PER_VISITOR_PER_DAY
+        : env.MAX_LYRICS_PER_VISITOR_PER_DAY;
+      const byVisitor = await bump(`${action}:v:${visitor}:${day}`, visitorLimit);
+      if (!byVisitor.ok) return byVisitor;
+      rezultat = byVisitor;
+    }
+
+    const ipLimit = {
+      render: env.MAX_RENDERS_PER_IP_PER_DAY,
+      lyrics: env.MAX_LYRICS_PER_IP_PER_DAY,
+      // Parola panoului e un singur cuvânt, iar o adresă lăsată liberă poate fi
+      // încercată de zeci de mii de ori pe minut. Zece pe zi e mai mult decât îi
+      // trebuie unui om care și-a uitat parola.
+      panou: env.MAX_PANEL_TRIES_PER_DAY,
+    }[action];
+
+    const byIp = await bump(`${action}:ip:${ip}:${day}`, ipLimit);
+    if (!byIp.ok) return byIp;
+    rezultat = byIp;
+
+    if (action === 'render' && email) {
+      const byEmail = await bump(
+        `${action}:email:${email.toLowerCase()}:${day}`,
+        env.MAX_RENDERS_PER_EMAIL_PER_DAY,
+      );
+      if (!byEmail.ok) return byEmail;
+    }
+  }
+
+  /**
+   * Plafonul pe tot site-ul, la urmă, și pentru toată lumea — inclusiv pentru
+   * clienții plătitori.
    *
    * El nu e o regulă de corectitudine, ci frâna de mână pe bani: e singura
    * limită pe care n-o poate ocoli nici cine șterge cookie-uri, nici cine
@@ -107,46 +158,10 @@ export async function checkLimit(
       }
       return all;
     }
+    rezultat = all;
   }
 
-  /**
-   * Cine a plătit vreodată de pe browserul ăsta trece mai departe.
-   *
-   * Limitele apără previzualizarea gratuită de cine vine s-o consume degeaba.
-   * Un om care a dat 30 € nu e ăla — iar dacă vrea a doua melodie, cadou pentru
-   * altcineva, n-are de ce să fie oprit la primul text.
-   */
-  if (trusted) return free;
-
-  if (visitor) {
-    const visitorLimit = action === 'render'
-      ? env.MAX_RENDERS_PER_VISITOR_PER_DAY
-      : env.MAX_LYRICS_PER_VISITOR_PER_DAY;
-    const byVisitor = await bump(`${action}:v:${visitor}:${day}`, visitorLimit);
-    if (!byVisitor.ok) return byVisitor;
-  }
-
-  const ipLimit = {
-    render: env.MAX_RENDERS_PER_IP_PER_DAY,
-    lyrics: env.MAX_LYRICS_PER_IP_PER_DAY,
-    // Parola panoului e un singur cuvânt, iar o adresă lăsată liberă poate fi
-    // încercată de zeci de mii de ori pe minut. Zece pe zi e mai mult decât îi
-    // trebuie unui om care și-a uitat parola.
-    panou: env.MAX_PANEL_TRIES_PER_DAY,
-  }[action];
-
-  const byIp = await bump(`${action}:ip:${ip}:${day}`, ipLimit);
-  if (!byIp.ok) return byIp;
-
-  if (action === 'render' && email) {
-    const byEmail = await bump(
-      `${action}:email:${email.toLowerCase()}:${day}`,
-      env.MAX_RENDERS_PER_EMAIL_PER_DAY,
-    );
-    if (!byEmail.ok) return byEmail;
-  }
-
-  return byIp;
+  return rezultat;
 }
 
 /**
