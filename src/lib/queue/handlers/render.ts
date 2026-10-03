@@ -21,9 +21,44 @@ import { buildStyle } from '@/lib/pipeline/prompt';
 import { mailEnabled, sendPreviewReady } from '@/lib/mail';
 import { SunoError, createTask, downloadTrack, waitForTask } from '@/lib/pipeline/suno';
 import { absPath, ensureOrderDir, trackRelPath } from '@/lib/storage';
+import { oDataPeZi, releaseLimit } from '@/lib/rate-limit';
+import { esc, notify } from '@/lib/telegram';
 
 /** Suno întoarce două interpretări; pe astea le promitem clientului. */
 const VARIANTS = 2;
+
+/**
+ * Te anunță pe Telegram când Suno refuză, și îți spune ce să faci.
+ *
+ * Până acum aflai de la clienți. O zi fără credite arăta, din afară, ca un
+ * site stricat: fiecare om apăsa, aștepta, primea eroare, reîncerca. Tu vedeai
+ * abia mesajele lor, după ore.
+ *
+ * Trimitem o singură dată pe zi pentru fiecare fel de problemă. A doua zecime
+ * de mesaj identic nu adaugă nimic, iar o alarmă care sună de cincizeci de ori
+ * se închide — și atunci nu mai sună nici când trebuie.
+ */
+async function anuntaProblemaSuno(err: unknown, publicId: string): Promise<void> {
+  if (!(err instanceof SunoError)) return;
+
+  const mesaje: Record<number, string> = {
+    429: '🔴 <b>Nu mai ai credite pe Suno.</b>\n\nNicio melodie nu se mai poate ' +
+         'înregistra. Intră pe sunoapi.org și încarcă contul. Comenzile ' +
+         'așteaptă — se reiau singure după ce pui credite.',
+    401: '🔴 <b>Cheia Suno nu e bună.</b>\n\nFie e greșită, fie a fost schimbată. ' +
+         'Pune-o din nou: <code>bash deploy/set-keys.sh SUNO_API_KEY</code>',
+    413: '⚠️ <b>Versurile sunt prea lungi pentru Suno.</b>\n\nSe întâmplă rar, la ' +
+         'povești foarte lungi. Comanda de mai jos are nevoie de un text mai scurt.',
+    455: '⚠️ <b>Suno e în mentenanță.</b>\n\nNu e nimic de făcut; se reia singur.',
+  };
+
+  const text = mesaje[err.code];
+  if (!text) return;
+
+  if (!(await oDataPeZi(`suno:${err.code}`))) return;
+
+  await notify(`${text}\n\nComanda: <code>${esc(publicId)}</code>`);
+}
 
 /**
  * Varianta gratuită: melodia întreagă, cu semnătura sonoră peste ea.
@@ -190,6 +225,19 @@ export async function handleRender(job: Job): Promise<void> {
       .update(renders)
       .set({ status: 'failed', errorMessage: message.slice(0, 1000) })
       .where(eq(renders.id, render.id));
+
+    /**
+     * Înregistrarea n-a avut loc, deci nici banii n-au fost cheltuiți.
+     * Plafonul zilnic se pune la loc.
+     *
+     * Fără asta, o zi în care Suno refuză tot — n-ai credite, sau cheia e
+     * greșită — golea plafonul din reîncercări, iar site-ul se oprea pentru
+     * toată lumea anunțând că s-a atins limita. Pe server se vedeau zero
+     * înregistrări reușite.
+     */
+    await releaseLimit('render');
+
+    await anuntaProblemaSuno(err, order.publicId);
 
     // Filtrul de conținut al lui Suno e definitiv: reîncercarea dă același răspuns.
     if (err instanceof SunoError && !err.retryable) {

@@ -22,6 +22,7 @@ import { env } from '@/lib/env';
 import { deblocheaza, respinge } from '@/lib/comenzi';
 import { logEvent } from '@/lib/orders';
 import { resetLimits } from '@/lib/rate-limit';
+import { getCredits } from '@/lib/pipeline/suno';
 import { answerCallback, closeMessage, esc, notify, telegramEnabled } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
@@ -82,10 +83,34 @@ async function resetCommand(argument: string, from: string): Promise<string> {
   return `✅ Limitele pentru IP-ul <code>${esc(value)}</code> sunt șterse.`;
 }
 
+/**
+ * `/credite` — câte credite mai sunt la Suno.
+ *
+ * O zi fără credite arată, din afară, ca un site stricat. Alarma vine singură
+ * când se termină, dar asta e pentru când vrei să te uiți înainte, nu după.
+ *
+ * Răspunsul se arată așa cum vine, netrecut prin nicio presupunere de-a mea
+ * despre forma lui: mai bine un număr lângă un nume ciudat, decât un număr
+ * frumos care nu înseamnă ce pare.
+ */
+async function crediteCommand(): Promise<string> {
+  try {
+    const raspuns = await getCredits();
+    const text = typeof raspuns === 'object'
+      ? JSON.stringify(raspuns)
+      : String(raspuns);
+    return `💳 <b>Credite Suno</b>\n\n<code>${esc(text)}</code>`;
+  } catch (err) {
+    const mesaj = err instanceof Error ? err.message : String(err);
+    return `Nu am putut întreba Suno: ${esc(mesaj)}`;
+  }
+}
+
 const AJUTOR =
   '<b>Ce știu să fac</b>\n\n' +
   '<code>/limite &lt;comandă|email|IP&gt;</code> — șterge limitele zilnice ale unui client.\n' +
   'Exemplu: <code>/limite a7k2m9x4p3qd</code>\n\n' +
+  '<code>/credite</code> — câte credite mai sunt la Suno.\n\n' +
   'Restul se face din butoanele de sub mesajele care vin singure.';
 
 export async function POST(req: Request) {
@@ -144,6 +169,8 @@ export async function POST(req: Request) {
 
         if (cmd === '/limite') {
           await notify(await resetCommand(rest.join(' '), from));
+        } else if (cmd === '/credite') {
+          await notify(await crediteCommand());
         } else {
           await notify(AJUTOR);
         }

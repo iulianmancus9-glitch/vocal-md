@@ -8,7 +8,7 @@
  * Numărătoarea stă în Postgres, nu în memoria procesului: web-ul și worker-ul
  * sunt containere separate, iar o repornire nu are voie să reseteze limita.
  */
-import { inArray, sql } from 'drizzle-orm';
+import { eq, inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { env } from '@/lib/env';
 import { rateLimits } from '@/lib/db/schema';
@@ -162,6 +162,51 @@ export async function checkLimit(
   }
 
   return rezultat;
+}
+
+/**
+ * Pune la loc un loc din plafonul zilnic.
+ *
+ * Se cheamă când înregistrarea n-a avut loc: Suno a refuzat, n-am avut credite,
+ * ceva a căzut la mijloc. Plafonul apără banii, iar bani necheltuiți n-au ce
+ * căuta scăzuți din el.
+ *
+ * Fără asta, o zi în care Suno refuză tot golea plafonul din reîncercări, iar
+ * site-ul se oprea pentru toată lumea anunțând că s-a atins limita — deși nu se
+ * generase nimic.
+ */
+export async function releaseLimit(action: LimitAction): Promise<void> {
+  if (action !== 'render') return;
+  try {
+    await db
+      .update(rateLimits)
+      // `greatest` ca să nu ajungă sub zero dacă două eliberări se întâlnesc.
+      .set({ count: sql`greatest(0, ${rateLimits.count} - 1)` })
+      .where(eq(rateLimits.bucket, `render:all:${today()}`));
+  } catch (err) {
+    console.error('Nu am putut pune la loc un loc din plafon:', err);
+  }
+}
+
+/**
+ * Adevărat o singură dată pe zi, pentru cheia dată.
+ *
+ * Pentru alarme. A zecea copie a aceluiași mesaj nu adaugă nimic, iar o alarmă
+ * care sună de cincizeci de ori se închide — și atunci nu mai sună nici când
+ * trebuie.
+ *
+ * Folosește aceeași tabelă ca limitele, care se golește singură la miezul
+ * nopții, deci nu cere nici tabel nou, nici curățenie.
+ */
+export async function oDataPeZi(cheie: string): Promise<boolean> {
+  try {
+    const { ok } = await bump(`alarma:${cheie}:${today()}`, 1);
+    return ok;
+  } catch (err) {
+    // Dacă nu putem ține socoteala, mai bine o alarmă în plus decât niciuna.
+    console.error('Nu am putut verifica alarma:', err);
+    return true;
+  }
 }
 
 /**
